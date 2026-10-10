@@ -1131,8 +1131,8 @@ export class World {
     if (t.tagT > 0) { t.tagT -= dt; if (t.tagT <= 0) { t.tagT = 0; t.tag = 0; } }
     if (t.blade.store) t.store = Math.max(0, t.store - t.blade.store.fade * dt);
     const G = t.blade.grey;
-    if (G && t.store > 0 && !this.result && t.spin > 0 && (t.haste > 0 || Math.hypot(opp.x - t.x, opp.z - t.z) >= G.far)) {
-      // Grey spin flows back while it is out of the fight.
+    if (G && t.store > 0 && !this.result && t.spin > 0 && t.haste > 0) {
+      // Grey spin flows back while it is hasted.
       const h = Math.min(G.rate * dt, t.store, t.spinMax - t.spin);
       t.spin += h; t.store -= h;
     }

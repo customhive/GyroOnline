@@ -97,16 +97,16 @@ console.log('HARBOR REAPER (Pyke)');
 {
   let { w, me, foe, run, saw } = setup('reaper', 3);
   w.hurt(me, 100, foe, 'clash');
-  check(Math.abs(me.store - 25) < 1, 'P: a quarter of the damage taken is kept as grey spin');
+  check(Math.abs(me.store - 25) < 1, 'W: a quarter of the damage taken is kept as grey spin');
   const s0 = me.spin; run(1);
-  check(me.spin < s0 && me.store > 24, 'P: no recovery while close and not hasted');
+  check(me.spin < s0 && me.store > 24, 'W: no recovery while not hasted');
   w.cast(me, 'W', me.x, me.z);
   check(me.haste > 4.9, 'W: 5 seconds of haste (no camouflage, by agreement)');
   const s1 = me.spin; run(1);
-  check(me.store < 1 && me.spin > s1 + 10, 'P: grey spin returns while hasted');
+  check(me.store < 1 && me.spin > s1 + 10, 'W: grey spin returns while hasted');
   ({ w, me, foe, run, saw } = setup('reaper', 20));
-  w.hurt(me, 100, foe, 'clash'); const s2 = me.spin; run(1);
-  check(me.spin > s2 + 10, 'P: grey spin also returns at distance 10 or more');
+  w.hurt(me, 100, foe, 'clash'); run(1);
+  check(me.store > 24, 'W: grey spin does not return just for being far away');
 
   ({ w, me, foe, run, saw } = setup('reaper', 7));
   w.hold(me, 'Q'); w.cast(me, 'Q', foe.x, foe.z);

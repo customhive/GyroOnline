@@ -150,7 +150,7 @@ export const BLADES = {
     atk: 1.36, def: 1.02, mass: 0.96, speed: 15.5, decay: 6.5, spinMax: 1000, cdMul: 1.0, guardMul: 1.0,
     bars: { atk: 5, def: 2, sta: 2, spd: 5 },
     store: { taken: 0.25, dealt: 0, max: 120, fade: 0 },
-    grey: { rate: 45, far: 10 },
+    grey: { rate: 45 },
     desc: '溜めて伸ばす銛で引き寄せ、弱った相手を必殺技で「処刑」する。',
   },
   barrel: {
@@ -709,7 +709,7 @@ export const SKILLS = {
   ghostwater: {
     name: 'ゴーストウォーター', en: 'GHOSTWATER DIVE', aim: 'self', kind: 'buff', icon: 'buff', cd: 10,
     haste: 5,
-    desc: '5秒間加速する。受けたダメージの一部はゲージに灰色で残っていて、加速中か、相手から離れている間に戻ってくる。',
+    desc: '5秒間加速する。受けたダメージの一部はゲージに灰色で残っていて、加速している間に戻ってくる。',
   },
   undertow: {
     name: '亡者の引き波', en: 'PHANTOM UNDERTOW', aim: 'dash', kind: 'dash', icon: 'dash', cd: 11,
