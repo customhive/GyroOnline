@@ -248,10 +248,10 @@ export const BLADES = {
     id: 'spark', kit: { Q: 'burstfire', W: 'ultrashock', E: 'surge', R: 'crash' },
     name: 'スパーク・サージ', en: 'SPARK SURGE', type: 'ATTACK', typeJa: 'アタック',
     color: 0xd8ff3a, css: '#d8ff3a', teeth: 4,
-    atk: 1.2, def: 0.98, mass: 0.92, speed: 16, decay: 6.7, spinMax: 1000, cdMul: 1.0, guardMul: 1.0,
+    atk: 1.1, def: 1.0, mass: 0.92, speed: 16, decay: 6.6, spinMax: 1000, cdMul: 1.0, guardMul: 1.0,
     bars: { atk: 4, def: 2, sta: 2, spd: 5 },
-    buff: { speed: 1.25, atk: 1.15 },
-    desc: '短い間隔で撃ち続ける連射型。必殺技で帯電し、移動も攻撃も一段速くなる。',
+    buff: { speed: 1.15, atk: 1.15, extendTo: 5 },
+    desc: 'Qを押しっぱなしにして小さな弾を浴びせ続ける連射型。必殺技で過充電に入る。',
   },
   plume: {
     id: 'plume', kit: { Q: 'daggers', W: 'plumage', E: 'bladecaller', R: 'storm' },
@@ -301,9 +301,9 @@ export const BLADES = {
     id: 'cosmos', kit: { Q: 'breath', W: 'flight', E: 'blackhole', R: 'fallingstar' },
     name: 'スターフォージ', en: 'STAR FORGER', type: 'STAMINA', typeJa: 'スタミナ',
     color: 0x5a6cff, css: '#5a6cff', teeth: 6,
-    atk: 1.2, def: 1.05, mass: 1.05, speed: 13, decay: 5.4, spinMax: 1000, cdMul: 1.0, guardMul: 1.0,
+    atk: 1.25, def: 1.05, mass: 1.05, speed: 13, decay: 5.4, spinMax: 1000, cdMul: 1.0, guardMul: 1.0,
     bars: { atk: 3, def: 3, sta: 5, spd: 2 },
-    desc: '息吹を吐き続け、重力の穴に引き込み、星を落とす。大きく飛んで位置も変えられる。',
+    desc: '息吹を吐き続け、重力の穴に引き込み、星を落とす。当てるほど星屑が溜まり、技が大きくなる。',
   },
   hex: {
     id: 'hex', kit: { Q: 'balefulstrike', W: 'darkmatter', E: 'horizon', R: 'primordial' },
@@ -315,12 +315,13 @@ export const BLADES = {
     desc: 'Qを当てるたびに魔力が溜まり、与えるダメージが2%ずつ上がる（最大30回）。魔力は次のラウンドにも持ち越す。',
   },
   gauntlet: {
-    id: 'gauntlet', kit: { Q: 'vault', W: 'blastshield', E: 'relentless', R: 'cease' },
+    id: 'gauntlet', kit: { Q: 'vault', W: 'denting', E: 'relentless', R: 'cease' },
     name: 'ヴォルト・ブレイカー', en: 'VAULT BREAKER', type: 'ATTACK', typeJa: 'アタック',
     color: 0xff4f9a, css: '#ff4f9a', teeth: 3,
-    atk: 1.08, def: 1.05, mass: 1.15, speed: 14.5, decay: 6.6, spinMax: 1000, cdMul: 1.0, guardMul: 1.0,
+    atk: 0.86, def: 0.98, mass: 1.15, speed: 14.5, decay: 6.8, spinMax: 1000, cdMul: 1.0, guardMul: 1.0,
     bars: { atk: 5, def: 3, sta: 3, spd: 4 },
-    desc: '長い突進で殴り込む。必殺技は離れた相手に一瞬で詰め寄り、打ち上げる。',
+    dent: { dmg: 16, shred: 1.2, dur: 4, window: 3 },
+    desc: '溜めた突進で殴り込み、3発ごとに相手を凹ませる。必殺技は離れた相手に一瞬で詰め寄り、打ち上げる。',
   },
   arcane: {
     id: 'arcane', kit: { Q: 'mystic', W: 'flux', E: 'arcshift', R: 'trueshot' },
@@ -982,24 +983,28 @@ export const SKILLS = {
   },
   // ---- SPARK SURGE: never stop shooting --------------------------------------
   burstfire: {
-    name: '連射', en: 'BURST FIRE', aim: 'line', kind: 'shot', icon: 'shot', cd: 1.1,
-    tele: 0.2, range: 9, speed: 44, radius: 0.6, dmg: 16, fan: 3, half: 0.1, kb: 1, tumble: 0, launch: 0,
-    desc: '3発の弾を細い扇で撃つ。クールダウンがとても短い。',
+    name: 'バーストファイア', en: 'BURST FIRE', aim: 'line', kind: 'shot', icon: 'shot', cd: 0.13, rapid: true,
+    range: 5.6, speed: 55, radius: 0.5, dmg: 5.5, alt: 'burstfire2', altKey: 'E', refundKey: { E: 0.5 },
+    desc: '押している間、カーソルへ向けて小さな弾を撃ち続ける。当てるたびにEのクールダウンが0.5秒縮む。',
   },
   ultrashock: {
-    name: 'ウルトラショック', en: 'ULTRASHOCK LASER', aim: 'line', kind: 'shot', icon: 'beam', cd: 8,
-    tele: 0.4, range: 18, speed: 50, radius: 0.7, dmg: 46, slow: 1.5,
-    desc: '長射程の電撃。当たった相手をスロウにする。',
+    name: 'ウルトラショックレーザー', en: 'ULTRASHOCK LASER', aim: 'line', kind: 'shot', icon: 'beam', cd: 8,
+    tele: 0.4, range: 9.9, speed: 50, radius: 0.7, dmg: 46, slow: 2, slowPct: 0.5,
+    desc: '電磁パルスを放ち、当たった相手を2秒間50%のスロウにする。',
   },
   surge: {
-    name: 'スパークサージ', en: 'SPARK SURGE', aim: 'dash', kind: 'dash', icon: 'dash', cd: 7,
-    dist: 6, minDist: 4, speed: 40, through: true, haste: 2,
-    desc: '相手をすり抜ける突進。そのあと2秒間加速する。',
+    name: 'スパークサージ', en: 'SPARK SURGE', aim: 'dash', kind: 'dash', icon: 'dash', cd: 18,
+    dist: 3, minDist: 3, speed: 40, through: true, linger: 5,
+    desc: '短く駆け抜ける。そのあと5秒間、Qの弾が相手を貫通し、威力が上がる。',
   },
   crash: {
     name: 'ライトニングクラッシュ', en: 'LIGHTNING CRASH', aim: 'self', kind: 'burst', icon: 'burst', cd: 2, ult: true,
-    aoe: 5, dmg: 110, kb: 8, buff: 8,
-    desc: '【必殺技】周囲に放電し、8秒間、移動速度と与えるダメージが上がる。',
+    aoe: 8.6, dmg: 110, kb: 6, buffHit: 5,
+    desc: '【必殺技】周囲に放電する。当たると5秒間の過充電に入り、移動速度と与えるダメージが上がる。弾を当て続けるかぎり過充電は切れない。',
+  },
+  burstfire2: {
+    name: 'バーストファイア', en: 'BURST FIRE', aim: 'line', kind: 'shot', hidden: true, rapid: true,
+    range: 5.6, speed: 55, radius: 0.5, dmg: 7.5, pierce: true, refundKey: { E: 0.5 },
   },
   // ---- FEATHER STORM: the feathers come back ---------------------------------
   daggers: {
@@ -1120,24 +1125,28 @@ export const SKILLS = {
   },
   // ---- STAR FORGER: breath, gravity, a falling star --------------------------
   breath: {
-    name: '星の息吹', en: 'BREATH OF LIGHT', aim: 'cone', kind: 'cone', icon: 'cone', cd: 1.6,
-    tele: 0.2, range: 8, half: 0.3, dmg: 30,
-    desc: '細い扇で息吹を吐く。クールダウンがとても短い。',
+    name: '星炎の息吹', en: 'BREATH OF LIGHT', aim: 'cone', kind: 'cone', icon: 'cone', cd: 0.125, rapid: true,
+    stream: { max: 3.25, cd: 3, gap: 0.3 }, range: 7.4, half: 0.2, dmg: 6.5, tick: { n: 8, dmg: 26, gain: 2 },
+    desc: '押している間、カーソルへ向けて息吹を吐き続ける（最大3.25秒）。同じ相手に1秒当て続けるごとに爆発し、星屑を2つ得る。',
   },
   flight: {
-    name: '星間飛行', en: 'ASTRAL FLIGHT', aim: 'leap', kind: 'leap', icon: 'leap', cd: 13,
-    range: 12, aoe: 1.5, air: 0.9, height: 5,
-    desc: '遠くまで飛ぶ。飛んでいる間は攻撃を受けない。',
+    name: '天空への飛翔', en: 'ASTRAL FLIGHT', aim: 'dash', kind: 'dash', icon: 'leap', cd: 16,
+    dist: 15, minDist: 6, speed: 15, through: true, fly: true,
+    desc: '狙った方向へ飛ぶ。飛んでいる間もスキルを使え、Qは時間切れにならない。',
   },
   blackhole: {
-    name: '特異点', en: 'SINGULARITY', aim: 'ground', kind: 'field', icon: 'field', cd: 10,
-    tele: 0.1, range: 9, aoe: 4, dur: 4, dps: 30, pullIn: 6, slowIn: true,
-    desc: '4秒間の重力の穴を置く。中の相手は中心へ引かれ、スロウになり削られ続ける。',
+    name: '特異点', en: 'SINGULARITY', aim: 'ground', kind: 'field', icon: 'field', cd: 12,
+    tele: 0.1, range: 7.4, aoe: 4, dur: 5, dps: 26, pullIn: 6, slowIn: true, star: true, gain: 1, core: 1.4, line: 0.05, perLine: 0.00026,
+    desc: '5秒間のブラックホールを置く。中の相手は中心へ引かれ続け、中にいる間は毎秒星屑を1つ得る。中心で回転が5%を切った相手は即KO。星屑が多いほど広がる。',
   },
   fallingstar: {
-    name: '流星', en: 'FALLING STAR', aim: 'ground', kind: 'blast', icon: 'blast', cd: 2, ult: true,
-    tele: 0.1, range: 10, aoe: 5, delay: 0.9, dmg: 150, stun: 1.2, kb: 6,
-    desc: '【必殺技】指定地点に星を落とす。巻き込んだ相手をスタンさせる。',
+    name: '星の邂逅', en: 'FALLING STAR', aim: 'ground', kind: 'blast', icon: 'blast', cd: 2, ult: true,
+    tele: 0.1, range: 12.5, aoe: 5, delay: 0.9, dmg: 150, stun: 0.6, star: true, gain: 5, evolve: 'skies', evolveAt: 75,
+    desc: '【必殺技】指定地点に星を落とし、巻き込んだ相手をスタンさせる。当てると星屑を5つ得る。星屑が多いほど広がり、75個で「崩れ落つ天穹」になって相手を打ち上げる。星屑は次のラウンドにも持ち越す。',
+  },
+  skies: {
+    name: '崩れ落つ天穹', en: 'THE SKIES DESCEND', aim: 'ground', kind: 'blast', hidden: true,
+    aoe: 6.5, delay: 0.9, dmg: 170, up: 0.6, slow: 1, slowPct: 0.5, star: true, gain: 5,
   },
   // ---- DARK SORCERER: it only gets worse for them ----------------------------
   balefulstrike: {
@@ -1162,23 +1171,22 @@ export const SKILLS = {
   },
   // ---- VAULT BREAKER: straight in --------------------------------------------
   vault: {
-    name: 'ヴォルトブレイカー', en: 'VAULT BREAKER', aim: 'dash', kind: 'dash', icon: 'dash', cd: 8,
-    tele: 0.45, dist: 9, minDist: 4, speed: 40, dmg: 38, keep: 0.6, kb: 12,
-    desc: '長い突進。当てると大ダメージと強いノックバック。',
+    name: '真っすぐいってぶっとばす', en: 'VAULT BREAKER', aim: 'dash', kind: 'dash', icon: 'dash', cd: 6,
+    tele: 0.45, wind: { min: 0, full: 1.25, max: 4, cancelCd: 3 }, near: 2.5, range: 7.25, dist: 7.25, minDist: 2.5, speed: 40, dmg: 26, powMul: 1, keep: 0.5, kb: 9,
+    desc: '長押しで溜める（溜め中は少し遅くなり、4秒で不発）。溜めるほど遠くまで突進し、威力も最大2倍になる。相手に当たるとそこで止まり、押し飛ばす。',
   },
-  blastshield: {
-    name: 'ブラストシールド', en: 'BLAST SHIELD', aim: 'self', kind: 'buff', icon: 'shield', cd: 10,
-    shield: 75, hold: 3,
-    desc: '3秒間のバリアを張る。',
+  denting: {
+    name: 'メッタ打ち', en: 'DENTING BLOWS', aim: 'self', icon: 'burst', cd: 0, passive: true,
+    desc: '【常時効果】体当たりやスキルを3回当てるごとに追加ダメージを与え、4秒間、相手の受けるダメージを20%増やす。',
   },
   relentless: {
-    name: '連打', en: 'RELENTLESS FORCE', aim: 'self', kind: 'buff', icon: 'buff', cd: 6,
-    empower: 5, bonus: 26, kb: 6,
-    desc: '5秒間、次の体当たりを強化する。クールダウンが短い。',
+    name: '無慈悲な連撃', en: 'RELENTLESS FORCE', aim: 'self', kind: 'buff', icon: 'buff', cd: 1,
+    stock: { max: 2, every: 8 }, empower: 7, bonus: 30, kb: 6,
+    desc: '7秒間、次の体当たりを強化する。2回ぶん溜めておける（8秒で1回ぶん戻る）。',
   },
   cease: {
-    name: '強制執行', en: 'CEASE AND DESIST', aim: 'self', kind: 'strike', icon: 'star', cd: 2, ult: true,
-    need: 'range', range: 9, tp: true, dmg: 115, up: 1.0,
+    name: '突入捜査', en: 'CEASE AND DESIST', aim: 'self', kind: 'strike', icon: 'star', cd: 2, ult: true,
+    need: 'range', range: 9.25, tp: true, dmg: 115, up: 0.8,
     desc: '【必殺技】近くの相手へ一瞬で詰め寄り、打ち上げる。',
   },
   // ---- ARCANE SHOOTER: land the shot, get everything back --------------------

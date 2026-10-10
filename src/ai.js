@@ -128,6 +128,11 @@ export class CpuBrain {
       if (p && Math.hypot(foe.x - p.x, foe.z - p.z) < SKILLS.shatter.aoe - 0.6 && w.rng() < L.cast + 0.3) return this.use('flashfrost');
     }
     if (this.has('lastbreath') && w.rng() < L.cast + 0.3) return this.use('lastbreath');
+    // Held-to-fire skills: keep firing while the target is in reach.
+    for (const k of KEYS) {
+      const S = w.aimSkill(me, k);
+      if (skillOf(me, k).rapid && d < S.range + 1.5 && w.canCast(me, k)) { const p = this.jitter({ x: foe.x + foe.vx * 0.1, z: foe.z + foe.vz * 0.1 }, 0.5); return w.cast(me, k, p.x, p.z); }
+    }
     if (this.has('fling') && w.rng() < L.cast + 0.2) return this.use('fling');
     if (this.again('brokenwings') && d < 6.5 && this.has('brokenwings')) return this.use('brokenwings', foe.x, foe.z);
     return false;
@@ -267,7 +272,7 @@ export class CpuBrain {
     const r = w.rng;
     for (const k of KEYS) {
       const base = skillOf(me, k);
-      if (!base.icon || !w.canCast(me, k)) continue;
+      if (!base.icon || base.rapid || !w.canCast(me, k)) continue;
       const S = w.aimSkill(me, k), again = me.re[k] > 0, wind = me.windup[k];
       const go = (x = me.x, z = me.z) => w.cast(me, k, x, z, S.wind ? S.wind.full : 0);
       const at = (p) => go(p.x, p.z);

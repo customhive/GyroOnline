@@ -158,7 +158,7 @@ export class UI {
     this.skills = {};
     for (const k of KEYS) {
       const S = kitOf(blade)[KEYS.indexOf(k)];
-      const how = S.aim === 'self' ? '押すと即発動' : '長押しで照準 → 離して発動';
+      const how = S.passive ? '常時効果' : S.rapid ? '押している間、撃ち続ける' : S.wind ? '長押しで溜める → 離して発動' : S.aim === 'self' ? '押すと即発動' : '長押しで照準 → 離して発動';
       const b = el('div', 'skill' + (S.ult ? ' ult' : ''));
       b.innerHTML = `<div class="s-ring"></div><div class="s-icon">${iconOf(S)}</div><div class="s-cd"></div><div class="s-num"></div><div class="s-key">${k}</div><div class="s-badge"></div>
         <div class="s-tip"><b>${S.name}</b><i>${S.en}</i><p>${S.desc}</p><span>${S.ult ? 'ゲージ 100%' : 'クールダウン ' + +(S.cd * blade.cdMul).toFixed(1) + '秒'}　／　${how}</span></div>`;
@@ -435,6 +435,8 @@ export class UI {
       case 'conquer': case 'shift': return world.own(me, 'arise').length ? '' : '—';
     }
     // Skills described by fields (see `kind` in config.js).
+    if (S.stock) return String(me.stk);
+    if (S.star || S.tick) return me.perm ? '★' + me.perm : '';
     if (S.casts) return me.re[key] > 0 ? String(S.casts - me.stack) : '';
     if (S.re) return me.re[key] > 0 ? '↩' : '';
     if (S.permHit) return me.perm ? String(me.perm) : '';

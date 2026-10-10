@@ -297,6 +297,12 @@ export class View {
       }
       case 'cone': {
         const t = e.top, c = this.colorOf(t);
+        if (e.skill.rapid) {
+          // A continuous breath: a stream of motes rather than a flash per tick.
+          const a0 = Math.atan2(e.dz, e.dx), y = groundY(t.x, t.z) + 0.8;
+          for (let i = 0; i < 14; i++) { const a = a0 + (Math.random() * 2 - 1) * e.skill.half, sp = e.skill.range * (2.5 + Math.random() * 2); P.emit(t.x + Math.cos(a) * 1.2, y, t.z + Math.sin(a) * 1.2, Math.cos(a) * sp, Math.random() * 2, Math.sin(a) * sp, 0.3, 0.3, Math.random() < 0.35 ? 0xffffff : c, 0, 2.5); }
+          break;
+        }
         this.cones.push({ x: t.x, z: t.z, dx: e.dx, dz: e.dz, t: 0, T: 0.35, color: c, skill: e.skill });
         if (e.hit) this.siphon(e.target, t, 24, c);
         this.addShake(e.hit ? 0.3 : 0.1);
@@ -427,6 +433,8 @@ export class View {
       case 'shoot': {
         const p = e.proj, c = this.colorOf(e.top);
         const y = groundY(p.x, p.z) + 0.8;
+        // A stream of small shots would drown the screen in muzzle flashes.
+        if (p.skill.rapid) { P.burst(p.x, y, p.z, 5, c, 10, { dx: p.dx, dz: p.dz, bias: 0.8, up: 0.3, life: 0.2, gravity: 0 }); break; }
         P.burst(p.x, y, p.z, 40, c, 16, { dx: p.dx, dz: p.dz, bias: 0.7, up: 0.4, life: 0.35, gravity: 4 });
         F.flash(p.x, y, p.z, 5, 0.18, c, 1, 60);
         W.spawn(p.x - p.dx * 0.9, y - 0.7, p.z - p.dz * 0.9, 0.6, 2.6, 0.3, c, 0.7);
@@ -443,6 +451,7 @@ export class View {
       }
       case 'projHit': {
         const y = groundY(e.x, e.z) + 0.8, c = this.colorOf(e.proj.owner);
+        if (e.proj.skill.rapid) { P.burst(e.x, y, e.z, 10, c, 12, { up: 0.7, life: 0.3, gravity: 8 }); this.addShake(0.04); break; }
         P.burst(e.x, y, e.z, 90, c, 22, { dx: e.dx, dz: e.dz, bias: 0.55, up: 0.6, life: 0.55, size: 0.28, gravity: 8 });
         P.burst(e.x, y, e.z, 30, 0xffffff, 12, { up: 1, life: 0.4 });
         W.spawn(e.x, y - 0.7, e.z, 0.4, 4.5, 0.4, c, 1);
@@ -1014,6 +1023,7 @@ export class View {
       }
       if (foe.mark > 0) G.ring(foe.x, foe.z, 1.6, 1.85, c, 0.6 + 0.3 * Math.sin(this.time * 12));
       // Marked for execution: the ring drains with the time left.
+      if (foe.shred > 0) G.ring(foe.x, foe.z, 1.45, 1.6, 0xffc060, 0.5 + 0.3 * Math.sin(this.time * 9));
       if (foe.doom > 0) { G.ring(foe.x, foe.z, 2.0, 2.2, BLOOD, 0.9, 0.1, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * (foe.doom / 5)); G.ring(foe.x, foe.z, 0, 0.3, BLOOD, 0.9, 0.12); }
       for (let i = 0; i < foe.tag; i++) { const a = -Math.PI / 2 + (i - (foe.tag - 1) / 2) * 0.42; G.ring(foe.x + Math.cos(a) * 2.1, foe.z + Math.sin(a) * 2.1, 0, 0.2, 0xffffff, 0.95, 0.12); }
       if (foe.bleed > 0) for (let i = 0; i < foe.bleed; i++) { const a = -Math.PI / 2 + (i - (foe.bleed - 1) / 2) * 0.42; G.ring(foe.x + Math.cos(a) * 2.1, foe.z + Math.sin(a) * 2.1, 0, 0.2, BLOOD, 0.95, 0.12); }
@@ -1206,7 +1216,7 @@ export class View {
       G.rect(tg.x + dz * S.wall, tg.z - dx * S.wall, -dz, dx, S.wall * 2, 0.4, col, ok ? 0.8 : 0.35);
     } else if (S.aim === 'line' || S.aim === 'dash') {
       const line = S.aim === 'line';
-      const len = Math.min(toWall(me.x, me.z, dx, dz), line ? w.holdRange(me, key) : clamp(d, S.minDist, S.dist));
+      const len = Math.min(toWall(me.x, me.z, dx, dz), line || S.wind ? w.holdRange(me, key) : clamp(d, S.minDist, S.dist));
       const hw = line ? S.radius : 1.25;
       // A wound-up skill: its full stretch as a ring, and the reach of the
       // long throw growing from the moment the key goes down, so the jump

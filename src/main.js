@@ -560,7 +560,9 @@ window.addEventListener('keydown', (e) => {
   const me = player(), S = game.world.aimSkill(me, k);
   if (S.aim === 'self') { tryCast(k, me.x, me.z); return; }
   // Aiming is allowed while briefly unable to act; only a real cooldown refuses.
-  if (!game.world.ready(me, k, 0.25) || me.air || me.out) { audio.denied(); ui.denied(k); return; }
+  const base = skillOf(me, k);
+  if (base.passive) return; // always on: the key does nothing
+  if (!base.rapid && (!game.world.ready(me, k, 0.25) || me.air || me.out)) { audio.denied(); ui.denied(k); return; }
   game.aimKey = k;
   // Some skills wind up for as long as the key stays down.
   if (S.wind) doHold(k);
@@ -569,6 +571,8 @@ window.addEventListener('keyup', (e) => {
   const k = e.key.toUpperCase();
   if (k !== game.aimKey) return;
   game.aimKey = null;
+  // Held-to-fire skills have been firing all along; letting go just stops them.
+  if (game.world && skillOf(player(), k).rapid) return;
   refreshCursor();
   tryCast(k, game.cursor.x, game.cursor.z);
 });
@@ -664,6 +668,7 @@ function onEvent(e) {
       if (e.skill.ult && mine(e.top)) popAt(e.top, 'POWER UP', 'word gold');
       break;
     case 'cone':
+      if (e.skill.rapid) { if (e.hit >= 12) dmgPop(e.target, e.hit); break; }
       audio.flare();
       if (e.hit) { dmgPop(e.target, e.hit); game.hitstop = 0.07; }
       break;
@@ -719,13 +724,15 @@ function onEvent(e) {
     case 'heal':
       healPop(e.top, e.amount);
       break;
-    case 'shoot': if (e.proj.skill.chain) audio.chain(); else audio.shoot(); break;
+    case 'shoot': if (e.proj.skill.chain) audio.chain(); else if (e.proj.skill.rapid) audio.tone('square', 1900, 1100, 0.045, 0.07); else audio.shoot(); break;
     case 'reflect':
       audio.parry();
       popAt(e.top, 'REFLECT!', 'word gold');
       game.hitstop = 0.1;
       break;
     case 'projHit':
+      // A stream of small shots: a tick each, no freeze.
+      if (e.proj.skill.rapid) { audio.tone('square', 700, 300, 0.04, 0.09); dmgPop(e.top, e.dmg); break; }
       audio.projHit();
       dmgPop(e.top, e.dmg);
       if (e.proj.skill.chain) popAt(e.top, 'HOOKED!', 'word');
@@ -793,6 +800,11 @@ function frame(rdt, draw = true) {
       if (game.buffer) {
         game.buffer.t -= rdt;
         if (tryCast(game.buffer.key, game.buffer.x, game.buffer.z, true) || (game.buffer && game.buffer.t <= 0)) game.buffer = null;
+      }
+      // A key held on a rapid-fire skill shoots at the cursor every time it comes off cooldown.
+      if (game.aimKey && game.state === 'fight' && !game.paused && skillOf(player(), game.aimKey).rapid && w.canCast(player(), game.aimKey)) {
+        refreshCursor();
+        if (doCast(game.aimKey, game.cursor.x, game.cursor.z)) ui.castFx(game.aimKey);
       }
       if (game.mouseDown && game.state === 'fight' && !game.paused) {
         game.moveRepeat -= rdt;

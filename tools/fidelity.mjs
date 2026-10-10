@@ -550,5 +550,98 @@ console.log('UNSUNDERED GLAIVE (Zaahen)');
   check(w.result && w.result.winner === foe, 'without the stacks there is no second life');
 }
 
+console.log('VAULT BREAKER (Vi)');
+{
+  let { w, me, foe, run, saw } = setup('gauntlet', 20);
+  w.hold(me, 'Q');
+  const r0 = w.holdRange(me, 'Q'); run(0.6); const r1 = w.holdRange(me, 'Q'); run(0.7); const r2 = w.holdRange(me, 'Q');
+  check(r0 === 2.5 && r1 > 4 && r1 < 6 && r2 === 7.25, `Q held: the dash grows from 2.5 to 7.25 over 1.25 seconds (${r0} -> ${r1.toFixed(1)} -> ${r2})`);
+  const z0 = me.z; w.cast(me, 'Q', foe.x, foe.z); for (let i = 0; i < 22; i++) w.step(DT);
+  check(Math.abs(z0 - me.z - 7.25) < 0.8, 'Q released: it covers the distance wound up');
+  const hit = (hold) => { const s = setup('gauntlet', 4.5); s.w.hold(s.me, 'Q'); s.run(hold); const f = s.foe.spin; s.w.cast(s.me, 'Q', s.foe.x, s.foe.z); for (let i = 0; i < 40; i++) s.w.step(DT); return f - s.foe.spin; };
+  const weak = hit(0.05), strong = hit(1.3);
+  check(strong > weak * 1.3, `Q: a full wind-up hits much harder (${weak.toFixed(0)} -> ${strong.toFixed(0)})`);
+  ({ w, me, foe, run, saw } = setup('gauntlet', 20));
+  w.hold(me, 'Q'); run(4.1);
+  check(!me.hold && me.cd.Q > 2 && me.cd.Q <= 3, 'Q held 4 seconds: wasted, on a 3-second cooldown');
+  ({ w, me, foe, run, saw } = setup('gauntlet', 6));
+  check(!w.canCast(me, 'W'), 'W: always on, the key does nothing');
+  w.hurt(foe, 10, me, 'clash'); w.hurt(foe, 10, me, 'clash'); const f0 = foe.spin; w.hurt(foe, 10, me, 'clash');
+  check(foe.shred > 3.9 && f0 - foe.spin > 20 && foe.tag === 0, 'W: the third hit dents: extra damage and 4 seconds of weakness');
+  const a1 = w.hurt(foe, 100, me, 'x'); foe.shred = 0; foe.tag = 0; const b1 = w.hurt(foe, 100, me, 'x');
+  check(Math.abs(a1 / b1 - 1.2) < 0.01, 'W: a dented target takes 20% more');
+  ({ w, me, foe, run, saw } = setup('gauntlet', 20));
+  check(me.stk === 2 && w.cast(me, 'E', me.x, me.z), 'E: starts with two uses');
+  run(1.05);
+  check(w.cast(me, 'E', me.x, me.z) && me.stk === 0, 'E: the second a second later');
+  run(1.05);
+  check(!w.canCast(me, 'E'), 'E: none left');
+  run(6);
+  check(me.stk === 1 && w.canCast(me, 'E'), 'E: one comes back after 8 seconds');
+  ({ w, me, foe, run, saw } = setup('gauntlet', 8));
+  w.cast(me, 'R', me.x, me.z);
+  check(Math.abs(foe.up - 0.8) < 0.01 && Math.hypot(me.x - foe.x, me.z - foe.z) < 3, 'R: closes in and knocks up for 0.8 seconds');
+}
+
+console.log('SPARK SURGE (Zeri)');
+{
+  let { w, me, foe, run, saw } = setup('spark', 5);
+  let shots = 0; for (let i = 0; i < 120; i++) { if (w.cast(me, 'Q', foe.x, foe.z)) shots++; w.step(DT); foe.x = 0; foe.z = -2.5; me.x = 0; me.z = 2.5; me.vx = me.vz = foe.vx = foe.vz = 0; }
+  check(shots >= 7 && shots <= 8, `Q held: about 7.5 shots a second (${shots})`);
+  check(foe.spinMax - foe.spin < shots * 12, 'Q: each shot is small');
+  ({ w, me, foe, run, saw } = setup('spark', 5));
+  me.cd.E = 10; w.cast(me, 'Q', foe.x, foe.z); run(0.2);
+  check(Math.abs(me.cd.E - 9.3) < 0.05, 'Q: a hit takes half a second off E');
+  ({ w, me, foe, run, saw } = setup('spark', 12));
+  w.cast(me, 'E', foe.x, foe.z); setup.last.drift(0.2);
+  check(w.aimSkill(me, 'Q').id === 'burstfire2' && w.aimSkill(me, 'Q').pierce, 'E: for 5 seconds after, Q pierces');
+  setup.last.drift(5);
+  check(w.aimSkill(me, 'Q').id === 'burstfire', 'E: then Q is back to normal');
+  ({ w, me, foe, run, saw } = setup('spark', 20));
+  w.cast(me, 'R', me.x, me.z);
+  check(me.buff === 0, 'R: a miss means no overcharge');
+  ({ w, me, foe, run, saw } = setup('spark', 5));
+  w.cast(me, 'R', me.x, me.z);
+  check(me.buff === 5, 'R: a hit starts 5 seconds of overcharge');
+  run(3); me.cd.Q = 0; w.cast(me, 'Q', foe.x, foe.z); run(0.2);
+  check(me.buff > 4.7, 'R: landing shots keeps it going');
+}
+
+console.log('STAR FORGER (Aurelion Sol)');
+{
+  let { w, me, foe, run, saw } = setup('cosmos', 5);
+  let ticks = 0, burst = 0; const f0 = foe.spin;
+  for (let i = 0; i < 480; i++) { const f = foe.spin; if (w.cast(me, 'Q', foe.x, foe.z)) ticks++; if (f - foe.spin > 15) burst++; w.step(DT); foe.x = 0; foe.z = -2.5; me.x = 0; me.z = 2.5; me.vx = me.vz = foe.vx = foe.vz = 0; }
+  check(ticks >= 24 && ticks <= 27, `Q held: it breathes for 3.25 seconds and then stops (${ticks} ticks in 4 seconds)`);
+  check(burst === 3 && me.perm === 6, `Q: a flare-up for every second on the same target, two stardust each (${burst} flare-ups, ${me.perm} stardust)`);
+  check(me.cd.Q > 2 && me.cd.Q <= 3, 'Q: a 3-second cooldown once it runs out');
+  ({ w, me, foe, run, saw } = setup('cosmos', 5));
+  for (let i = 0; i < 60; i++) { w.cast(me, 'Q', foe.x, foe.z); w.step(DT); }
+  for (let i = 0; i < 48; i++) w.step(DT);
+  check(me.cd.Q > 2.4, 'Q let go early: the cooldown starts a moment later');
+  ({ w, me, foe, run, saw } = setup('cosmos', 22));
+  w.cast(me, 'W', me.x, me.z - 30);
+  for (let i = 0; i < 30; i++) w.step(DT);
+  check(!!me.dash && w.cast(me, 'Q', foe.x, foe.z), 'W: flying, and still able to breathe');
+  ({ w, me, foe, run, saw } = setup('cosmos', 6));
+  w.cast(me, 'E', foe.x, foe.z); const small = w.zones[0].r; run(2.05);
+  check(me.perm === 2 && foe.slow > 0, 'E: a stardust for every second the target spends inside');
+  ({ w, me, foe, run, saw } = setup('cosmos', 6));
+  me.perm = 60; w.cast(me, 'E', foe.x, foe.z);
+  check(Math.abs(w.zones[0].r / small - 1.3) < 0.01, 'E: 60 stardust makes it 30% wider');
+  foe.spin = foe.spinMax * 0.04; run(0.05);
+  check(w.result && w.result.winner === me, 'E: at the centre, under 5% spin, the target is crushed');
+  ({ w, me, foe, run, saw } = setup('cosmos', 6));
+  w.cast(me, 'R', foe.x, foe.z); run(1);
+  check(me.perm === 5 && foe.stun > 0 && foe.up === 0, 'R: a stun, and five stardust for the hit');
+  w.resetRound();
+  check(me.perm === 5, 'stardust carries into the next round');
+  ({ w, me, foe, run, saw } = setup('cosmos', 6));
+  me.perm = 75; w.cast(me, 'R', foe.x, foe.z);
+  check(w.zones[0].kind === 'skies', 'R at 75 stardust: The Skies Descend');
+  run(1);
+  check(foe.up > 0 && foe.slowK === 0.5, 'R at 75: a knock-up and a 50% slow instead');
+}
+
 console.log(bad ? `\n${bad} of ${n} checks failed` : `\nall ${n} checks passed`);
 process.exit(bad ? 1 : 0);
