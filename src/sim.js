@@ -944,8 +944,6 @@ export class World {
       const R = from.blade.ramp;
       if (R) { dmg *= 1 + R.per * from.stack; if (kind !== 'clash' && dmg >= 8) from.stack = Math.min(R.max, from.stack + 1); }
       if (from.blade.permDmg) dmg *= 1 + from.blade.permDmg * from.perm;
-      const Rp = from.blade.reap;
-      if (Rp && kind === 'clash' && spinRatio(t) < Rp.below) dmg += (Rp.dmg * from.blade.atk) / t.blade.def;
     }
     if (t.charge) dmg *= t.charge.skill.armor ?? 1;
     const B = t.buff > 0 && t.blade.buff;
@@ -974,17 +972,6 @@ export class World {
       if (from.dmark > 0 && kind !== 'deathmark') from.dacc += dmg;
     }
     t.lastHit = { dmg, time: this.time, kind };
-    // Z-DRIVE: the third hit in a row lands harder and sends its owner racing.
-    const Z = foe && from.blade.zdrive;
-    if (Z && kind !== 'wall' && kind !== 'zdrive' && from.stack === 0) {
-      t.tag = Math.min(3, t.tag + 1); t.tagT = 4;
-      if (t.tag >= 3) {
-        t.tag = t.tagT = 0;
-        from.stack = 1; from.stackT = Z.lock; from.haste = Math.max(from.haste, Z.haste);
-        const extra = this.hurt(t, (Z.dmg * from.blade.atk) / t.blade.def, from, 'zdrive');
-        this.emit('strike', { top: t, src: from, skill: SKILLS.timewinder, x: t.x, z: t.z, dmg: extra });
-      }
-    }
     return dmg;
   }
 
@@ -1616,6 +1603,8 @@ export class World {
         case 'parallel':
           if (z.t >= z.T || this.result) { this.endZone(z); break; }
           if (z.t < S.arm) break;
+          // c: it has formed, and said so
+          if (!z.c) { z.c = 1; this.emit('formed', { zone: z, top: t }); }
           if (live && d < z.r) opp.slow = Math.max(opp.slow, 0.3);
           if (targetable(t) && Math.hypot(t.x - z.x, t.z - z.z) < z.r) this.spring(z);
           break;

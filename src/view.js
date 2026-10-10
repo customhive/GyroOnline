@@ -232,6 +232,15 @@ export class View {
         }
         break;
       }
+      // A delayed field has just become live: unmistakably different from before.
+      case 'formed': {
+        const z = e.zone, y = groundY(z.x, z.z), c = this.colorOf(e.top);
+        W.spawn(z.x, y + 0.12, z.z, z.r * 0.2, z.r, 0.35, 0xffffff, 1);
+        W.spawn(z.x, y + 0.14, z.z, z.r, z.r * 1.25, 0.5, c, 0.9);
+        P.burst(z.x, y + 0.3, z.z, 90, c, 12, { flat: true, life: 0.5, gravity: 0, drag: 3 });
+        F.flash(z.x, y + 1, z.z, z.r * 2.4, 0.35, 0xffffff, 1, 200);
+        break;
+      }
       case 'zoneEnd': {
         const z = e.zone;
         if (OBJECTS[z.kind]) {
@@ -1081,10 +1090,19 @@ export class View {
       // Its owner sees it from the start; the other side only just before it forms.
       if (!mine && z.t < S.reveal) return true;
       const formed = z.t >= S.arm;
-      G.ring(z.x, z.z, 0, z.r, c, (formed ? 0.14 : 0.05) * fade);
-      G.ring(z.x, z.z, z.r - 0.13, z.r, formed ? col : c, (formed ? 0.9 : 0.45) * fade);
-      if (!formed) G.ring(z.x, z.z, z.r - 0.45, z.r - 0.3, 0xffffff, 0.6, 0.1, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * (z.t / S.arm));
-      else if (mine) G.ring(z.x, z.z, 0.9, 1.05, 0xffffff, 0.5 + 0.4 * Math.sin(this.time * 10));
+      if (!formed) {
+        // Not live yet: only a thin outline and a clock running round it.
+        G.ring(z.x, z.z, z.r - 0.06, z.r, c, 0.3);
+        G.ring(z.x, z.z, z.r - 0.4, z.r - 0.22, 0xffffff, 0.55, 0.1, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * (z.t / S.arm));
+        return true;
+      }
+      // Live: filled, bright-rimmed and pulsing, with its remaining time draining away.
+      const beat = 0.5 + 0.5 * Math.sin(this.time * 16), left = (z.T - z.t) / (z.T - S.arm);
+      G.ring(z.x, z.z, 0, z.r, 0xffffff, (0.1 + 0.08 * beat) * fade);
+      G.ring(z.x, z.z, 0, z.r, c, 0.16 * fade);
+      G.ring(z.x, z.z, z.r - 0.22, z.r, 0xffffff, 0.95 * fade);
+      G.ring(z.x, z.z, z.r + 0.1, z.r + 0.28, col, 0.9 * fade, 0.1, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * left);
+      for (const k2 of [0.35, 0.7]) G.ring(z.x, z.z, z.r * ((k2 + this.time * 0.9) % 1) - 0.06, z.r * ((k2 + this.time * 0.9) % 1), 0xffffff, 0.35 * fade);
       return true;
     }
     if (z.kind === 'deathbelow') {

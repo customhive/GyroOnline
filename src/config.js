@@ -151,7 +151,7 @@ export const BLADES = {
     bars: { atk: 5, def: 2, sta: 2, spd: 5 },
     store: { taken: 0.25, dealt: 0, max: 120, fade: 0 },
     grey: { rate: 45, far: 10 },
-    desc: '溜めて伸ばす銛で引き寄せ、弱った相手を必殺技で「処刑」する。受けたダメージの25%は「灰色の回転」として残り、加速中か相手から離れている間に戻ってくる。',
+    desc: '溜めて伸ばす銛で引き寄せ、弱った相手を必殺技で「処刑」する。',
   },
   barrel: {
     id: 'barrel', kit: { Q: 'cask', W: 'drunk', E: 'bodyslam', R: 'bigkeg' },
@@ -165,12 +165,10 @@ export const BLADES = {
     id: 'chrono', kit: { Q: 'timewinder', W: 'parallel', E: 'phasedive', R: 'rewind' },
     name: 'クロノ・リワインド', en: 'CHRONO REWIND', type: 'STAMINA', typeJa: 'スタミナ',
     color: 0x4af0e0, css: '#4af0e0', teeth: 4,
-    atk: 1.13, def: 1.0, mass: 0.98, speed: 15, decay: 5.9, spinMax: 1000, cdMul: 1.0, guardMul: 1.0,
+    atk: 1.25, def: 1.04, mass: 0.98, speed: 15, decay: 5.6, spinMax: 1000, cdMul: 1.0, guardMul: 1.0,
     bars: { atk: 3, def: 3, sta: 4, spd: 4 },
     rewind: 4,
-    zdrive: { dmg: 32, haste: 2.5, lock: 4 },
-    reap: { below: 0.3, dmg: 8 },
-    desc: '4秒前の自分がホログラムとして付いて回り、必殺技でそこへ戻れる。体当たりやスキルを3回当てると追加ダメージと加速。回転30%以下の相手への体当たりは威力が上がる。',
+    desc: '行って戻る弾、踏んで起爆する罠、跳んでからのワープ攻撃。必殺技で4秒前の場所へ戻る。',
   },
   iron: {
     id: 'iron', kit: { Q: 'obliterate', W: 'indestructible', E: 'deathgrasp', R: 'realm' },
@@ -711,7 +709,7 @@ export const SKILLS = {
   ghostwater: {
     name: 'ゴーストウォーター', en: 'GHOSTWATER DIVE', aim: 'self', kind: 'buff', icon: 'buff', cd: 10,
     haste: 5,
-    desc: '5秒間加速する。加速している間は「灰色の回転」が戻ってくる。',
+    desc: '5秒間加速する。受けたダメージの一部はゲージに灰色で残っていて、加速中か、相手から離れている間に戻ってくる。',
   },
   undertow: {
     name: '亡者の引き波', en: 'PHANTOM UNDERTOW', aim: 'dash', kind: 'dash', icon: 'dash', cd: 11,
@@ -759,13 +757,13 @@ export const SKILLS = {
   // ---- CHRONO REWIND: undo the last four seconds -----------------------------
   timewinder: {
     name: 'タイムワインダー', en: 'TIMEWINDER', aim: 'line', kind: 'shot', icon: 'orb', cd: 7, tele: 0.35,
-    range: 7, speed: 40, radius: 0.9, dmg: 30, pierce: true, ret: true, backMul: 1.3, crawl: 3, linger: 1.6, field: 2.4, fieldPct: 0.6,
+    range: 7, speed: 40, radius: 0.9, dmg: 46, pierce: true, ret: true, backMul: 1.4, crawl: 3, linger: 1.6, field: 2.4, fieldPct: 0.6,
     desc: '速く飛び、相手に当たるか射程の端で減速フィールドに変わってゆっくり進む。そのあと手元へ戻り、戻りでも当たる。',
   },
   parallel: {
     name: 'パラレルトラップ', en: 'PARALLEL CONVERGENCE', aim: 'ground', icon: 'field', cd: 14,
-    ai: 'ground', range: 12, aoe: 3.6, arm: 3, reveal: 2.5, dur: 5.5, stun: 1.35, shield: 90,
-    desc: '3秒後に領域が現れ、2.5秒残る（相手には直前まで見えない）。中の相手はスロウ。領域が現れてから自分が中にいると爆発し、相手をスタンさせてバリアを得る。',
+    ai: 'ground', range: 12, aoe: 3.6, arm: 3, reveal: 2.5, dur: 4.5, stun: 1.35, shield: 90,
+    desc: '3秒後に領域が現れ、1.5秒残る（相手には直前まで見えない）。中の相手はスロウ。領域が現れてから自分が中にいると爆発し、相手をスタンさせてバリアを得る。',
   },
   phasedive: {
     name: 'フェイズダイブ', en: 'PHASE DIVE', aim: 'dash', kind: 'dash', icon: 'dash', cd: 7, re: 'phasehit',
@@ -774,12 +772,12 @@ export const SKILLS = {
   },
   phasehit: {
     name: 'フェイズダイブ', en: 'PHASE DIVE', aim: 'self', kind: 'strike', hidden: true,
-    need: 'range', grab: 5.2, tp: true, dmg: 38,
+    need: 'range', grab: 5.2, tp: true, dmg: 66,
   },
   rewind: {
     name: 'クロノブレイク', en: 'CHRONOBREAK', aim: 'self', icon: 'star', cd: 2, ult: true,
-    air: 0.35, height: 0, base: 60, aoe: 4.2, dmg: 125, kb: 8,
-    desc: '【必殺技】ホログラム（4秒前の自分）の場所へ無敵で戻り、周囲にダメージを与えて回復する。直前4秒で失った回転が多いほど回復が増える。',
+    air: 0.35, height: 0, base: 80, aoe: 4.2, dmg: 150, kb: 8,
+    desc: '【必殺技】後ろを付いて回る半透明の自分（4秒前の位置）へ無敵で戻り、周囲にダメージを与えて回復する。直前4秒で失った回転が多いほど回復が増える。',
   },
   // ---- IRON REVENANT: every blow is banked -----------------------------------
   obliterate: {

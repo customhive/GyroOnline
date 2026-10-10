@@ -629,6 +629,7 @@ function onEvent(e) {
       break;
     case 'bump': audio.wall(e.power * 0.6, false); break;
     case 'hold': audio.windup(); break;
+    case 'formed': audio.ultReady(); break;
     case 'cast':
       if (e.windup > 0) audio.windup();
       if (e.ult) ui.cutIn(e.base, e.top.blade.css, !mine(e.top));

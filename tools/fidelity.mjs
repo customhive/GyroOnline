@@ -39,16 +39,6 @@ function setup(blade, d = 6, foeBlade = 'gaia') {
 console.log('CHRONO REWIND (Ekko)');
 {
   let { w, me, foe, run, saw } = setup('chrono', 3);
-  const hit = () => w.hurt(foe, 10, me, 'clash');
-  hit(); hit();
-  check(foe.tag === 2, 'P: each hit adds a stack');
-  const before = foe.spin; hit();
-  check(foe.tag === 0 && before - foe.spin > 25 && me.haste > 2, 'P: the third hit deals bonus damage and speeds Ekko up');
-  hit();
-  check(foe.tag === 0, 'P: no new stacks for 4 seconds against the same target');
-  run(4.1); hit();
-  check(foe.tag === 1, 'P: stacks again once the 4 seconds are over');
-
   ({ w, me, foe, run, saw } = setup('chrono', 6));
   w.cast(me, 'Q', foe.x, foe.z);
   run(0.3);
@@ -65,21 +55,20 @@ console.log('CHRONO REWIND (Ekko)');
   run(far / SKILLS.timewinder.speed + 0.1);
   check(w.projectiles[0] && w.projectiles[0].crawl, 'Q: also turns into the field at the end of its range');
 
-  ({ w, me, foe, run, saw } = setup('chrono', 3));
-  foe.spin = foe.spinMax * 0.5; const a = w.hurt(foe, 10, me, 'clash');
-  me.stack = 1; foe.spin = foe.spinMax * 0.25; const b = w.hurt(foe, 10, me, 'clash');
-  check(b > a + 5, 'W passive: body hits on a target under 30% spin deal extra');
-
   ({ w, me, foe, run, saw } = setup('chrono', 8));
   w.cast(me, 'W', foe.x, foe.z);
   run(2.9);
   check(w.zones.length === 1 && foe.slow === 0, 'W: nothing happens for the first 3 seconds');
   run(0.3);
   check(foe.slow > 0, 'W: once formed, the field slows the target inside');
-  run(2.0);
-  check(w.zones.length === 1, 'W: the field stays for 2.5 seconds after forming');
+  check(saw('formed'), 'W: forming is announced');
+  run(1.0);
+  check(w.zones.length === 1, 'W: the field is still there 1.3 seconds after forming');
   me.x = foe.x; me.z = foe.z + 2.6; run(0.05);
   check(w.zones.length === 0 && foe.stun > 1.2 && me.shield > 0, 'W: stepping in detonates it: stun and a shield');
+  ({ w, me, foe, run, saw } = setup('chrono', 8));
+  w.cast(me, 'W', foe.x, foe.z); run(4.6);
+  check(w.zones.length === 0 && foe.stun === 0, 'W: gone 1.5 seconds after forming if nobody steps in');
 
   ({ w, me, foe, run, saw } = setup('chrono', 8));
   w.cast(me, 'E', foe.x, foe.z);
