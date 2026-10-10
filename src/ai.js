@@ -272,7 +272,7 @@ export class CpuBrain {
       const go = (x = me.x, z = me.z) => w.cast(me, k, x, z, S.wind ? S.wind.full : 0);
       const at = (p) => go(p.x, p.z);
       if (guarded && S.kind !== 'buff' && S.kind !== 'field') continue;
-      switch (S.ai || S.kind || S.id) {
+      switch (S.pops ? 'pop' : S.ai || S.kind || S.id) {
         case 'shot':
           if (d < S.range - 1 && want(again ? 0.3 : base.ult ? 0.1 : 0)) return at(this.jitter(intercept(me.x, me.z, foe, me, S.speed, wind)));
           break;
@@ -323,7 +323,8 @@ export class CpuBrain {
         case 'kick': {
           // Toward the nearest stretch of wall.
           const n = Math.hypot(foe.x, foe.z);
-          if (want(0.3)) return n > 1 ? go(me.x + (foe.x / n) * 5, me.z + (foe.z / n) * 5) : go(foe.x, foe.z);
+          // Only worth it when the target would fly outward, toward the wall.
+          if (((foe.x - me.x) * foe.x + (foe.z - me.z) * foe.z > 0 || n < 3) && want(0.3)) return go(foe.x, foe.z);
           break;
         }
         case 'throw': {
@@ -340,8 +341,8 @@ export class CpuBrain {
         case 'rewind':
           if (me.hist.length && me.hist[0].spin - me.spin > 140 && want(0.2)) return go();
           break;
-        case 'caskpop': {
-          const q = w.own(me, 'cask')[0];
+        case 'pop': {
+          const q = w.own(me, S.pops)[0];
           if (q && Math.hypot(q.x - foe.x, q.z - foe.z) < q.r - 0.4) return go();
           break;
         }

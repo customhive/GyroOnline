@@ -69,10 +69,10 @@ export const BLADES = {
     id: 'frost', kit: { Q: 'flashfrost', W: 'icewall', E: 'frostbite', R: 'blizzard' },
     name: 'フロスト・フェニックス', en: 'FROST PHOENIX', type: 'DEFENSE', typeJa: 'ディフェンス',
     color: 0x9fd8ff, css: '#9fd8ff', teeth: 6,
-    atk: 1.05, def: 1.1, mass: 1.15, speed: 12.5, decay: 5.8, spinMax: 1000, cdMul: 1.0, guardMul: 1.0,
+    atk: 1.28, def: 1.15, mass: 1.15, speed: 12.5, decay: 5.5, spinMax: 1000, cdMul: 1.0, guardMul: 1.0,
     bars: { atk: 3, def: 4, sta: 4, spd: 2 },
     egg: { dur: 3, hp: 150, back: 0.3 },
-    desc: '氷の壁と吹雪で動きを縛る。1ラウンドに1度、回転が尽きても卵になり、3秒耐えれば復活する。',
+    desc: '凍らせてから氷柱で砕く。氷の壁と吹雪で動きを縛る。1ラウンドに1度、回転が尽きても卵になり、3秒耐えれば復活する。',
   },
   edge: {
     id: 'edge', kit: { Q: 'brokenwings', W: 'kiburst', E: 'valor', R: 'exile' },
@@ -87,9 +87,10 @@ export const BLADES = {
     id: 'mirage', kit: { Q: 'sigil', W: 'distort', E: 'ethereal', R: 'mimic' },
     name: 'ミラージュ・トリック', en: 'MIRAGE TRICK', type: 'ATTACK', typeJa: 'アタック',
     color: 0xb06bff, css: '#b06bff', teeth: 5,
-    atk: 1.25, def: 0.94, mass: 0.92, speed: 15.5, decay: 6.8, spinMax: 1000, cdMul: 1.0, guardMul: 1.0,
+    atk: 1.48, def: 1.06, mass: 0.92, speed: 15.5, decay: 6.2, spinMax: 1000, cdMul: 1.0, guardMul: 1.0,
     bars: { atk: 4, def: 2, sta: 2, spd: 5 },
     buff: { atk: 1.4 },
+    ghostRet: true,
     desc: '飛び込んでは元の位置へ戻り、直前の技をもう一度使って惑わす。',
   },
   guillo: {
@@ -185,9 +186,10 @@ export const BLADES = {
     id: 'dragon', kit: { Q: 'sonicwave', W: 'safeguard', E: 'tempest', R: 'dragonrage' },
     name: 'ドラゴン・ストライカー', en: 'DRAGON STRIKER', type: 'ATTACK', typeJa: 'アタック',
     color: 0xff5a3c, css: '#ff5a3c', teeth: 3,
-    atk: 1.2, def: 0.98, mass: 1.0, speed: 15.5, decay: 6.9, spinMax: 1000, cdMul: 1.0, guardMul: 1.0,
+    atk: 1.08, def: 0.98, mass: 1.0, speed: 15.5, decay: 6.9, spinMax: 1000, cdMul: 1.0, guardMul: 1.0,
     bars: { atk: 5, def: 3, sta: 2, spd: 5 },
-    desc: '弾を当てて飛びつき、密着した相手を狙った方向へ蹴り飛ばしてリングアウトを狙う。',
+    buff: { leech: 0.26 },
+    desc: '弾を当てて飛びつき、相手の裏へ回り込んで場外へ蹴り出す。',
   },
   boss: {
     id: 'boss', kit: { Q: 'knuckle', W: 'haymaker', E: 'facebreaker', R: 'showstopper' },
@@ -494,28 +496,28 @@ export const SKILLS = {
   },
   // ---- FROST PHOENIX: walls, chill and a second life ----------------------------
   flashfrost: {
-    name: '氷閃', en: 'FLASH FROST', aim: 'line', cd: 8, tele: 0.3, re: 'shatter',
-    range: 14, speed: 13, radius: 1.2, dmg: 32, slow: 1.5, pierce: true,
-    desc: 'ゆっくり進む氷球を撃ち、通過した相手をスロウにする。もう一度押すとその場で炸裂し、周囲をスタン。',
+    name: 'フラッシュフロスト', en: 'FLASH FROST', aim: 'line', cd: 7, tele: 0.3, re: 'shatter',
+    range: 8.65, speed: 9.5, radius: 1.2, dmg: 32, slow: 3, slowPct: 0.3, frost: 3, pierce: true,
+    desc: 'ゆっくり進む氷塊を撃ち、触れた相手をスロウにして凍らせる。もう一度押すとその場で炸裂し、周囲をスタンさせる。',
   },
   shatter: {
-    name: '氷閃・炸裂', en: 'SHATTER', aim: 'self', hidden: true,
-    aoe: 3.3, dmg: 52, stun: 1.1,
+    name: 'フラッシュフロスト・炸裂', en: 'SHATTER', aim: 'self', hidden: true,
+    aoe: 3.3, dmg: 52, stun: 0.9, slow: 3, slowPct: 0.3, frost: 3,
   },
   icewall: {
-    name: '氷壁', en: 'CRYSTALLIZE', aim: 'ground', cd: 14,
-    range: 9, wall: 3.2, aoe: 3.2, dur: 4, solid: true,
-    desc: '狙った地点に氷の壁を4秒作る。コマも飛び道具も通れない。',
+    name: 'アイスウォール', en: 'CRYSTALLIZE', aim: 'ground', cd: 17,
+    range: 10, wall: 5, aoe: 5, dur: 5, solid: true,
+    desc: '狙った地点に幅の広い氷の壁を5秒作る。コマも飛び道具も通れない。相手の真上に置くと押しのける。',
   },
   frostbite: {
-    name: '凍傷', en: 'FROSTBITE', aim: 'line', cd: 4, tele: 0.35,
-    range: 8.5, speed: 30, radius: 0.8, dmg: 40, kb: 3, tumble: 0.1, chill: 2,
-    desc: '短射程の氷弾。スロウ・スタン・打ち上げ中の相手には2倍のダメージ。',
+    name: 'フロストバイト', en: 'FROSTBITE', aim: 'line', cd: 4, tele: 0.35,
+    range: 4.8, speed: 30, radius: 0.8, dmg: 40, kb: 3, tumble: 0.1, frostMul: 2,
+    desc: '短射程の氷柱。凍っている相手には2倍のダメージ。',
   },
   blizzard: {
-    name: '吹雪', en: 'GLACIAL STORM', aim: 'ground', cd: 2, ult: true,
-    range: 10, aoe: 5.6, r0: 2.6, grow: 1.5, dur: 6, dps: 40,
-    desc: '【必殺技】徐々に広がる吹雪を6秒起こす。中の相手はスロウになり、回転を削られ続ける。',
+    name: 'ブリザード', en: 'GLACIAL STORM', aim: 'ground', cd: 2, ult: true,
+    range: 7.5, aoe: 4.6, r0: 2.6, grow: 1.5, dur: 6, dps: 20, frost: 3,
+    desc: '【必殺技】1.5秒かけて広がる吹雪を6秒起こす。中の相手はスロウになり削られ続ける。広がりきると威力が3倍になり、スロウが強まり、相手を凍らせる。',
   },
   // ---- BROKEN EDGE: short dashes, then the finishing cut ------------------------
   brokenwings: {
@@ -544,25 +546,25 @@ export const SKILLS = {
   },
   // ---- MIRAGE TRICK: in, out, and once more ---------------------------------------
   sigil: {
-    name: '悪意の印', en: 'SIGIL OF MALICE', aim: 'line', cd: 4.5, tele: 0.38,
-    range: 13, speed: 36, radius: 0.8, dmg: 38, kb: 3, tumble: 0.1, mark: 3.5, pop: 46,
-    desc: '弾を当てて印を付ける。印は次に自分のスキルが当たると炸裂する。',
+    name: 'シジルマリス', en: 'SIGIL OF MALICE', aim: 'line', cd: 6, tele: 0.38,
+    range: 5.3, speed: 36, radius: 0.8, dmg: 40, kb: 3, tumble: 0.1, mark: 3.5, pop: 46,
+    desc: '弾を当てて3.5秒間の印を付ける。印は次に自分のスキルが当たると炸裂する。',
   },
   distort: {
-    name: 'ゆがみ', en: 'DISTORTION', aim: 'dash', cd: 8, tele: 0.3, re: 'recall',
-    dist: 8, minDist: 3, speed: 38, through: true, aoe: 2.9, dmg: 50, kb: 6, tumble: 0.25, window: 3,
-    desc: '狙った地点へ飛び込み、着地点の周囲にダメージ。3秒以内にもう一度押すと元の位置へ戻る。',
+    name: 'ディストーション', en: 'DISTORTION', aim: 'dash', cd: 10, tele: 0.3, re: 'recall',
+    dist: 6, minDist: 3, speed: 38, through: true, aoe: 2.9, dmg: 50, kb: 6, tumble: 0.25, window: 4,
+    desc: 'その場に鏡像を残して跳び、着地点の周囲にダメージ。4秒以内にもう一度押すと鏡像の場所へ戻る。',
   },
   recall: { name: 'ゆがみ・帰還', en: 'RETURN', aim: 'self', hidden: true },
   ethereal: {
-    name: '幻の鎖', en: 'ETHEREAL CHAINS', aim: 'line', cd: 11, tele: 0.42,
-    range: 11, speed: 32, radius: 0.8, dmg: 24, slow: 1.5, tie: 'CHAINED', dur: 1.5, safe: 6, breakRange: 10.5, pop: 54, root: 1.3,
-    desc: '鎖でつなぐ。1.5秒のあいだ引きちぎられなければ、相手をスタンさせる。',
+    name: 'エーテルチェイン', en: 'ETHEREAL CHAINS', aim: 'line', cd: 11, tele: 0.42,
+    range: 7.55, speed: 32, radius: 0.8, dmg: 24, tie: 'CHAINED', dur: 1.5, safe: 7, breakRange: 9.9, pop: 54, snareT: 0.9,
+    desc: '鎖でつなぐ。1.5秒のあいだ引きちぎられなければ、相手をその場に縛り付ける。',
   },
   mimic: {
     name: '再演', en: 'MIMIC', aim: 'self', cd: 2, ult: true,
     dur: 2.8,
-    desc: '【必殺技】直前に使ったスキルを、威力を40%上げてもう一度使う。',
+    desc: '【必殺技】直前に使ったスキルを、威力を40%上げてもう一度使う。跳躍を再演した場合は、それ専用の鏡像へ戻れる。',
   },
   // ---- GUILLOTINE LORD: bleed them, then end it ------------------------------------
   decimate: {
@@ -737,10 +739,7 @@ export const SKILLS = {
     range: 8.5, aoe: 3.75, dur: 4, ripen: 2, ripeMul: 0.5, endDmg: 44, endSlow: 2, endSlowPct: 0.6, ripeSlowPct: 0.9,
     desc: '樽を置く。置いて2秒かけて威力とスロウ（60%→90%）が増していく。4秒後か、もう一度押したときに爆発する。',
   },
-  caskpop: {
-    name: '起爆', en: 'DETONATE', aim: 'self', hidden: true,
-    
-  },
+  caskpop: { name: '起爆', en: 'DETONATE', aim: 'self', hidden: true, pops: 'cask' },
   drunk: {
     name: '飲みすぎ注意', en: 'DRUNKEN RAGE', aim: 'self', kind: 'buff', icon: 'buff', cd: 5,
     buff: 2.5, empower: 5, bonus: 30, kb: 7,
@@ -804,29 +803,31 @@ export const SKILLS = {
   },
   // ---- DRAGON STRIKER: mark, follow, kick out --------------------------------
   sonicwave: {
-    name: '響波', en: 'SONIC WAVE', aim: 'line', kind: 'shot', icon: 'shot', cd: 7,
-    tele: 0.4, re: 'resonate', reOnHit: 3, range: 13, speed: 36, radius: 0.8, dmg: 32,
-    desc: '弾を撃つ。当たったら3秒以内にもう一度押すと、相手へ一瞬で飛びつく。',
+    name: '響掌', en: 'SONIC WAVE', aim: 'line', kind: 'shot', icon: 'shot', cd: 6,
+    tele: 0.4, re: 'resonate', reOnHit: 3, range: 9.3, speed: 36, radius: 0.8, dmg: 34,
+    desc: '衝撃波を飛ばす。当たったら3秒以内にもう一度押すと、相手へ飛びついて殴る（相手の回転が少ないほど強い）。',
   },
   resonate: {
     name: '共鳴撃', en: 'RESONATING STRIKE', aim: 'self', kind: 'strike', hidden: true,
-    tp: true, dmg: 40, exec: 0.6,
+    tp: true, dmg: 40, exec: 1.0,
   },
   safeguard: {
-    name: '鉄の構え', en: 'SAFEGUARD', aim: 'self', kind: 'buff', icon: 'shield', cd: 9,
-    shield: 60, hold: 2, haste: 2,
-    desc: '2秒間バリアを張り、加速する。',
+    name: '守りの型', en: 'SAFEGUARD', aim: 'self', kind: 'buff', icon: 'shield', cd: 7, re: 'ironwill',
+    shield: 70, hold: 2, window: 3,
+    desc: '2秒間バリアを張る。3秒以内にもう一度押すと、4秒間、与えたダメージの26%を回転として取り戻す。',
   },
   tempest: {
-    name: '地裂', en: 'TEMPEST', aim: 'self', kind: 'burst', icon: 'burst', cd: 7,
-    aoe: 4, dmg: 34, slow: 1.8,
-    desc: '周囲に衝撃波を出してスロウにする。',
+    name: '破風', en: 'TEMPEST', aim: 'self', kind: 'burst', icon: 'burst', cd: 8, re: 'cripplekick',
+    aoe: 5.1, dmg: 36, reHit: 3,
+    desc: '周囲に衝撃波を出す。当たったら3秒以内にもう一度押すと、相手を4秒間75%のスロウにする。',
   },
   dragonrage: {
-    name: '龍の怒り', en: "DRAGON'S RAGE", aim: 'line', kind: 'kick', icon: 'beam', cd: 2, ult: true,
-    need: 'range', grab: 3.8, range: 6, radius: 1.2, dmg: 100, kb: 26, launch: 2.2,
-    desc: '【必殺技】密着した相手を、狙った方向へ場外まで蹴り飛ばす。',
+    name: '龍の怒り', en: "DRAGON'S RAGE", aim: 'self', kind: 'kick', icon: 'beam', cd: 2, ult: true,
+    need: 'range', grab: 5, dmg: 85, kb: 24, launch: 2.2,
+    desc: '【必殺技】密着した相手を、自分から見て向こう側へ場外まで蹴り飛ばす。どこへ飛ばすかは自分の立ち位置で決まる。',
   },
+  ironwill: { name: '鉄の意志', en: 'IRON WILL', aim: 'self', kind: 'buff', hidden: true, dur: 4 },
+  cripplekick: { name: '縛脚', en: 'CRIPPLE', aim: 'self', kind: 'strike', hidden: true, need: 'range', grab: 6.3, dmg: 0, slow: 4, slowPct: 0.75 },
   // ---- BRAWLER KING: take it, then give it back ------------------------------
   knuckle: {
     name: '拳闘', en: 'KNUCKLE DOWN', aim: 'self', kind: 'buff', icon: 'buff', cd: 6,
@@ -892,25 +893,26 @@ export const SKILLS = {
   },
   // ---- PRISM RADIANCE: bind, then burn a line across the arena ---------------
   binding: {
-    name: '光の縛め', en: 'LIGHT BINDING', aim: 'line', kind: 'shot', icon: 'shot', cd: 6,
-    tele: 0.45, range: 13, speed: 30, radius: 0.8, dmg: 40, stun: 1.2,
-    desc: '当たった相手を1.2秒スタンさせる弾。',
+    name: 'ライトバインド', en: 'LIGHT BINDING', aim: 'line', kind: 'shot', icon: 'shot', cd: 10,
+    tele: 0.45, range: 10, speed: 30, radius: 0.8, dmg: 44, snare: 1.2,
+    desc: '当たった相手を1.2秒、その場に縛り付ける光の弾。',
   },
   barrier: {
-    name: '虹の障壁', en: 'PRISMATIC BARRIER', aim: 'self', kind: 'buff', icon: 'shield', cd: 9,
-    shield: 90, hold: 2.5,
-    desc: '2.5秒間のバリアを張る。',
+    name: 'プリズムバリア', en: 'PRISMATIC BARRIER', aim: 'line', kind: 'shot', icon: 'shield', cd: 10,
+    range: 9, speed: 16, radius: 0.7, dmg: 0, friendly: true, ret: true, shieldAdd: 50, shieldMax: 100, hold: 2.5,
+    desc: '杖を投げる。投げたときと、戻ってきた杖を受け取ったときの2回、バリアが重なる。',
   },
   singularity: {
-    name: '光の特異点', en: 'LUCENT SINGULARITY', aim: 'ground', kind: 'field', icon: 'field', cd: 5.5,
-    tele: 0.1, range: 10, aoe: 3.2, dur: 1.1, slowIn: true, endDmg: 66, endSlow: 1,
-    desc: '中の相手をスロウにする光球を置く。1.3秒後に炸裂する。',
+    name: 'シンギュラリティ', en: 'LUCENT SINGULARITY', aim: 'ground', kind: 'field', icon: 'field', cd: 8, re: 'lightpop',
+    tele: 0.1, range: 11, aoe: 3.4, dur: 5, slowIn: true, slowPct: 0.45, endDmg: 66, endSlow: 1, endSlowPct: 0.45,
+    desc: '光の球を5秒置く。中の相手は45%のスロウ。もう一度押すか、時間が来ると炸裂する。',
   },
   finalspark: {
-    name: '終極の閃光', en: 'FINAL SPARK', aim: 'line', kind: 'beam', icon: 'beam', cd: 2, ult: true,
-    tele: 0.1, charge: 0.6, root: true, range: 30, radius: 1.4, dmg: 180,
-    desc: '【必殺技】少し溜めて、アリーナを端から端まで貫く光線を放つ。',
+    name: 'ファイナルスパーク', en: 'FINAL SPARK', aim: 'line', kind: 'beam', icon: 'beam', cd: 2, ult: true,
+    tele: 0.1, charge: 1, root: true, range: 33, radius: 1.4, dmg: 170, litBonus: 0.25,
+    desc: '【必殺技】1秒構えて、アリーナを端から端まで貫く光線を放つ。直前にスキルを当てていた相手には威力が上がる。',
   },
+  lightpop: { name: '起爆', en: 'DETONATE', aim: 'self', hidden: true, pops: 'singularity' },
   // ---- VISION PAINTER: fire, a spring, and dread -----------------------------
   fireball: {
     name: '破滅の炎', en: 'DEVASTATING FIRE', aim: 'line', kind: 'shot', icon: 'shot', cd: 3.2,

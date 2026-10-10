@@ -25,9 +25,9 @@ for (const k of KEYS) for (const i of [0, 1]) check(a.canCast(a.tops[i], k) === 
 // second world through the codec and compared field by field. A reader that
 // falls out of step with the writer shows up at once as garbage.
 const near = (x, y, tol) => Math.abs(x - y) <= tol;
-const TOP = { x: 0.01, z: 0.01, vx: 0.01, vz: 0.01, spin: 0.03, tumble: 0.011, launch: 0.011, guard: 0.011, slow: 0.011, empower: 0.021, up: 0.011, ground: 0.011,
+const TOP = { x: 0.01, z: 0.01, vx: 0.01, vz: 0.01, spin: 0.03, tumble: 0.011, launch: 0.011, guard: 0.011, slow: 0.021, empower: 0.021, up: 0.011, ground: 0.011,
   mark: 0.021, scar: 0.013, poison: 0.011, bleed: 0, last: 0, bleedT: 0.026, shield: 1, shieldT: 0.021, buff: 0.051, stack: 0, stackT: 0.051, dmark: 0.017, dacc: 0.021,
-  egg: 0.017, eggHp: 1, projN: 0, zoneN: 0, haste: 0.021, stun: 0.011, snare: 0.011, slowK: 0.006, charm: 0.011, pin: 0.011, store: 0.51, tag: 0, tagT: 0.041, perm: 0, charmDir: 0 };
+  egg: 0.017, eggHp: 1, projN: 0, zoneN: 0, haste: 0.021, stun: 0.011, snare: 0.011, frost: 0.021, slowK: 0.006, charm: 0.011, pin: 0.011, store: 0.51, tag: 0, tagT: 0.041, perm: 0, charmDir: 0 };
 const ids = Object.keys(BLADES);
 let states = 0, biggest = 0, events = 0;
 ids.forEach((id, n) => {
@@ -63,7 +63,7 @@ ids.forEach((id, n) => {
       for (const f in TOP) check(near(f === 'spin' ? Math.max(0, t[f]) : t[f], o[f], TOP[f]), `${tag} top${s}.${f}: ${t[f]} -> ${o[f]}`);
       for (const k of KEYS) { check(near(t.cd[k], o.cd[k], 0.001), `${tag} top${s}.cd.${k}`); check(near(t.re[k], o.re[k], 0.051), `${tag} top${s}.re.${k}: ${t.re[k]} -> ${o.re[k]}`); }
       check(t.toggle === o.toggle && t.eggUsed === o.eggUsed, `${tag} top${s} flags`);
-      for (const f of ['cmd', 'dash', 'blink', 'air', 'out', 'charge', 'orbs', 'tether', 'chan', 'ret', 'hold']) check(!!t[f] === !!o[f], `${tag} top${s}.${f} presence`);
+      for (const f of ['cmd', 'dash', 'blink', 'air', 'out', 'charge', 'orbs', 'tether', 'chan', 'ret', 'ret2', 'hold']) check(!!t[f] === !!o[f], `${tag} top${s}.${f} presence`);
       for (const f of ['dash', 'blink', 'air', 'charge', 'tether', 'chan']) if (t[f] && o[f]) check(t[f].skill === o[f].skill, `${tag} top${s}.${f}.skill`);
       if (t.dash && o.dash) check(t.dash.hit === o.dash.hit && near(t.dash.t, o.dash.t, 0.005), `${tag} top${s}.dash`);
       if (t.air && o.air) check(t.air.by === o.air.by && near(t.air.tx, o.air.tx, 0.01), `${tag} top${s}.air`);

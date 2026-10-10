@@ -714,6 +714,8 @@ export class View {
         const v = this.tops[t.side], spots = [];
         for (const z of w.zones) if (z.skill.ghost && z.owner === t && !z.dead) spots.push(z);
         for (const p of w.projectiles) if (p.skill.ghost && p.owner === t) spots.push(p);
+        // The place a jump can still be undone to.
+        if (t.blade.ghostRet) { if (t.ret) spots.push(t.ret); if (t.ret2) spots.push(t.ret2); }
         const first = t.blade.rewind ? 1 : 0;
         spots.forEach((s, i) => { const g = this.ghost(v, first + i, t); g.group.visible = true; g.group.position.set(s.x, groundY(s.x, s.z), s.z); g.spin.rotation.y -= 30 * dt; });
         for (let i = first + spots.length; i < v.ghosts.length; i++) if (v.ghosts[i]) v.ghosts[i].group.visible = false;
@@ -806,6 +808,7 @@ export class View {
     v.blurMat.opacity = (0.05 + 0.2 * sr) * (1 - v.fall);
     v.wobble += (2.4 + 7 * (1 - sr)) * dt;
     let amp = egg ? 0 : 0.03 + 0.4 * Math.pow(1 - sr, 2.2) + (t.tumble > 0 || t.up > 0 || t.stun > 0 ? 0.14 : 0);
+    if (t.frost > 0) this.ground.ring(t.x, t.z, 0, 1.5, ICE, 0.22);
     if (t.snare > 0) this.ground.ring(t.x, t.z, 1.5, 1.75, 0xffffff, 0.5 + 0.3 * Math.sin(this.time * 14));
     amp = amp * (1 - v.fall) + 0.62 * v.fall;
     if (t.out) {

@@ -331,5 +331,90 @@ console.log('NINE TAIL CHARM (Ahri)');
   check(uses === 3, 'R: three leaps on one charge');
 }
 
+console.log('FROST PHOENIX (Anivia)');
+{
+  let { w, me, foe, run, saw } = setup('frost', 5);
+  const cold = (() => { const s = setup('frost', 5); s.w.cast(s.me, 'E', s.foe.x, s.foe.z); const f = s.foe.spin; s.run(0.3); return f - s.foe.spin; })();
+  w.cast(me, 'Q', foe.x, foe.z); run(0.45);
+  check(foe.frost > 2 && foe.slowK === 0.3, 'Q: touching the ice slows and ices the target over');
+  w.cast(me, 'Q', me.x, me.z); run(0.05);
+  check(foe.stun > 0.8 && !w.projectiles.length, 'Q again: it shatters on the spot and stuns for 0.9 seconds');
+  me.cd.E = 0; w.cast(me, 'E', foe.x, foe.z); const f1 = foe.spin; run(0.3);
+  check(f1 - foe.spin > cold * 1.8, `E: twice the damage on an iced target (${cold.toFixed(0)} -> ${(f1 - foe.spin).toFixed(0)})`);
+  ({ w, me, foe, run, saw } = setup('frost', 5));
+  foe.slow = 2; w.cast(me, 'E', foe.x, foe.z); const f2 = foe.spin; run(0.3);
+  check(f2 - foe.spin < cold * 1.2, 'E: a plain slow is not enough to double it');
+  ({ w, me, foe, run, saw } = setup('frost', 6));
+  w.cast(me, 'R', foe.x, foe.z); run(1.0);
+  check(foe.frost === 0 && foe.slowK === 0.4, 'R: while it grows, a 40% slow and no ice');
+  const fa = foe.spin; run(0.4); const early = fa - foe.spin; run(0.5); const fb = foe.spin; run(0.4);
+  check(foe.frost > 0 && foe.slowK === 0.6 && fb - foe.spin > early * 2, 'R: fully grown it ices, slows 60% and cuts three times as deep');
+}
+
+console.log('MIRAGE TRICK (LeBlanc)');
+{
+  let { w, me, foe, run, saw } = setup('mirage', 12);
+  const home = { x: me.x, z: me.z };
+  w.cast(me, 'W', foe.x, foe.z); setup.last.drift(0.25);
+  check(Math.abs(home.z - me.z - 6) < 1.5 && me.ret && me.re.W > 3.5, 'W: a 6 leap, leaving a way back for 4 seconds');
+  w.cast(me, 'W', me.x, me.z);
+  check(Math.hypot(me.x - home.x, me.z - home.z) < 0.01 && !me.ret, 'W again: back to where the image was left');
+  ({ w, me, foe, run, saw } = setup('mirage', 22));
+  w.cast(me, 'W', foe.x, foe.z); setup.last.drift(0.25);
+  const mid = { x: me.x, z: me.z };
+  w.cast(me, 'R', foe.x, foe.z); setup.last.drift(0.25);
+  check(me.ret && me.ret2 && me.re.R > 3.5, 'R after W: a second jump with its own way back');
+  w.cast(me, 'R', me.x, me.z);
+  check(Math.hypot(me.x - mid.x, me.z - mid.z) < 0.01 && me.ret, 'R again: back to the second image, the first still standing');
+  ({ w, me, foe, run, saw } = setup('mirage', 7));
+  w.cast(me, 'E', foe.x, foe.z); run(0.3);
+  check(!!me.tether, 'E: the chain connects');
+  run(1.5);
+  check(foe.snare > 0.5 && foe.stun === 0, 'E: held for 1.5 seconds, it roots the target (a snare, not a stun)');
+}
+
+console.log('PRISM RADIANCE (Lux)');
+{
+  let { w, me, foe, run, saw } = setup('prism', 7);
+  w.cast(me, 'Q', foe.x, foe.z); run(0.3);
+  check(foe.snare > 0.9 && foe.snare <= 1.2 && foe.stun === 0, 'Q: roots for 1.2 seconds');
+  ({ w, me, foe, run, saw } = setup('prism', 20));
+  w.cast(me, 'W', foe.x, foe.z);
+  check(me.shield === 50, 'W: a shield as the wand leaves');
+  run(1.6);
+  check(me.shield === 100 && !w.projectiles.length && setup.last.untouched(), 'W: a second layer when the wand comes back; it harms nobody');
+  ({ w, me, foe, run, saw } = setup('prism', 7));
+  w.cast(me, 'E', foe.x, foe.z); run(0.3);
+  check(foe.slowK === 0.45 && me.re.E > 4, 'E: a 45% slow inside, and it waits');
+  const f0 = foe.spin; w.cast(me, 'E', me.x, me.z); run(0.05);
+  check(f0 - foe.spin > 40 && !w.zones.length, 'E again: it goes off at once');
+  const beam = (lit) => { const s = setup('prism', 9); if (lit) s.w.hurt(s.foe, 1, s.me, 'x'); const f = s.foe.spin; s.w.cast(s.me, 'R', s.foe.x, s.foe.z); s.run(1.05); return f - s.foe.spin; };
+  const plain = beam(false), lit = beam(true);
+  check(lit > plain * 1.2, `R: a second of lining up, then harder on a target just hit by a skill (${plain.toFixed(0)} -> ${lit.toFixed(0)})`);
+}
+
+console.log('DRAGON STRIKER (Lee Sin)');
+{
+  let { w, me, foe, run, saw } = setup('dragon', 8);
+  w.cast(me, 'Q', foe.x, foe.z); run(0.3);
+  check(me.re.Q > 2.5, 'Q: a hit opens the second strike for 3 seconds');
+  w.cast(me, 'Q', me.x, me.z);
+  check(Math.hypot(me.x - foe.x, me.z - foe.z) < 3, 'Q again: Lee arrives beside the target');
+  ({ w, me, foe, run, saw } = setup('dragon', 8));
+  w.cast(me, 'W', me.x, me.z);
+  check(me.shield === 70 && me.re.W > 2.9, 'W: a 2-second shield, and a follow-up for 3 seconds');
+  w.cast(me, 'W', me.x, me.z); me.spin = 500; w.hurt(foe, 100, me, 'x');
+  check(me.buff > 3.9 && me.spin > 520, 'W again: 26% of damage dealt comes back for 4 seconds');
+  ({ w, me, foe, run, saw } = setup('dragon', 4));
+  w.cast(me, 'E', me.x, me.z);
+  check(me.re.E > 2.9 && foe.slow === 0, 'E: the blast opens the cripple, and does not slow by itself');
+  w.cast(me, 'E', me.x, me.z);
+  check(foe.slowK === 0.75 && foe.slow > 3.9, 'E again: a 75% slow for 4 seconds');
+  ({ w, me, foe, run, saw } = setup('dragon', 3));
+  me.x = 2.6; me.z = foe.z; foe.x = 0;
+  w.cast(me, 'R', 99, 99);
+  check(foe.vx < -8 && Math.abs(foe.vz) < 1, 'R: kicks straight away from Lee, whatever the cursor says');
+}
+
 console.log(bad ? `\n${bad} of ${n} checks failed` : `\nall ${n} checks passed`);
 process.exit(bad ? 1 : 0);

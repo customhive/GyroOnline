@@ -36,6 +36,8 @@ export function makeTop(side, blade) {
     slowK: 0,              // how much of its speed a slow takes (0 = the usual 40%)
     ground: 0,             // stuck in adhesive: slower still, no dashes
     mark: 0, scar: 0, poison: 0, bleed: 0, bleedT: 0,
+    frost: 0,              // iced over: FROSTBITE bites twice as deep
+    ret2: null,            // a second place to return to, left by a mimicked jump
     shield: 0, shieldT: 0, buff: 0,
     stack: 0, stackT: 0,   // per-blade counter: wind stacks, shots fired, dashes chained
     last: 0,               // key index of the last basic skill used (for MIMIC)
@@ -258,7 +260,8 @@ export class World {
       t.spin = t.spinMax;
       t.cmd = t.cast = t.dash = t.air = t.out = t.blink = t.charge = t.orbs = t.tether = t.chan = t.ret = t.hold = null;
       t.tumble = t.launch = t.guard = t.slow = t.hitCd = t.empower = 0;
-      t.up = t.ground = t.mark = t.scar = t.poison = t.bleed = t.bleedT = t.shield = t.shieldT = t.buff = 0;
+      t.up = t.ground = t.mark = t.scar = t.poison = t.bleed = t.bleedT = t.shield = t.shieldT = t.buff = t.frost = 0;
+      t.ret2 = null;
       t.stack = t.stackT = t.last = t.dmark = t.dacc = t.egg = t.eggHp = t.dot = t.dotT = t.drop = 0;
       t.haste = t.charm = t.pin = t.store = t.tag = t.tagT = t.histT = t.stun = t.snare = t.slowK = 0;
       t.hist = [];
@@ -287,6 +290,7 @@ export class World {
   aimSkill(t, key) {
     const S = skillOf(t, key);
     if (S.re && t.re[key] > 0) return SKILLS[S.re];
+    if (S.id === 'mimic' && t.re[key] > 0) return SKILLS.recall;
     if (S.id === 'mimic') return SKILLS[t.blade.kit[KEYS[t.last]]];
     if (S.id === 'galeq' && t.stack >= S.stacks) return SKILLS.tornado;
     return S;
@@ -295,7 +299,7 @@ export class World {
   // Off cooldown (within `slack` seconds) and, for an ultimate, charged.
   ready(t, key, slack = 0) {
     const S = skillOf(t, key);
-    if (S.re && t.re[key] > 0) return true;
+    if ((S.re || S.id === 'mimic') && t.re[key] > 0) return true;
     return t.cd[key] <= slack && (!S.ult || t.ult >= 100);
   }
 
@@ -357,7 +361,7 @@ export class World {
     const held = t.hold && t.hold.key === key ? t.hold.t : wound;
     const reach = this.holdRange(t, key);
     t.hold = null;
-    const re = !!(base.re && t.re[key] > 0);
+    const re = !!((base.re || base.id === 'mimic') && t.re[key] > 0);
     if (re) {
       t.re[key] = 0;
     } else {
@@ -557,17 +561,21 @@ export class World {
         this.emit('buff', { top: t, skill: S });
         break;
       case 'distort':
-        t.ret = { x: t.x, z: t.z };
+        // A mimicked jump keeps its own way back, apart from the real one's.
+        if (skillOf(t, c.key).id === 'mimic') t.ret2 = { x: t.x, z: t.z }; else t.ret = { x: t.x, z: t.z };
         t.re[c.key] = S.window;
         this.startDash(t, S, c.dx, c.dz, clamp(c.dist, S.minDist, S.dist));
         break;
-      case 'recall':
-        if (t.ret) {
+      case 'recall': {
+        const two = skillOf(t, c.key).id === 'mimic', back = two ? t.ret2 : t.ret;
+        if (back) {
           const fx = t.x, fz = t.z;
-          t.x = t.ret.x; t.z = t.ret.z; t.vx = t.vz = 0; t.cmd = null; t.ret = null;
+          t.x = back.x; t.z = back.z; t.vx = t.vz = 0; t.cmd = null;
+          if (two) t.ret2 = null; else t.ret = null;
           this.emit('warp', { top: t, fx, fz });
         }
         break;
+      }
       case 'shift': {
         let best = null, bd = 1e9;
         for (const q of this.own(t, 'arise')) { const d = Math.hypot(q.x - t.x, q.z - t.z); if (d < bd) { bd = d; best = q; } }
@@ -787,8 +795,8 @@ export class World {
         this.emit('leap', { top: t, tx: old.x, tz: old.z, T: S.air, skill: S });
         break;
       }
-      case 'caskpop': {
-        const q = this.own(t, 'cask')[0];
+      case 'caskpop': case 'lightpop': {
+        const q = this.own(t, S.pops)[0];
         if (q) q.T = q.t; // goes off now, with whatever it has ripened to
         break;
       }
@@ -830,6 +838,7 @@ export class World {
     if (S.haste) t.haste = S.haste;
     if (S.buff) t.buff = S.buff;
     if (S.shield) { t.shield = S.shield; t.shieldT = S.hold; }
+    if (S.shieldAdd) this.shieldUp(t, S);
     switch (S.kind) {
       case 'shot':
         // Some shots are let go only after standing still to line them up.
@@ -866,6 +875,7 @@ export class World {
       case 'burst': {
         const hit = this.burst(t, S, t.x, t.z, S.aoe);
         if (hit && S.pullIn && opp.guard <= 0) this.pull(opp, t, S.pullIn);
+        if (hit && S.reHit) t.re[c.key] = S.reHit;
         break;
       }
       case 'cone': {
@@ -883,6 +893,7 @@ export class World {
         break;
       }
       case 'buff':
+        if (S.re) t.re[c.key] = S.window;
         if (S.dur) t.buff = S.dur;
         if (S.empower) t.empower = S.empower;
         if (S.heal) this.mend(t, S.heal * (t.spinMax - t.spin) + (S.flat || 0));
@@ -904,9 +915,10 @@ export class World {
         this.emit('charge', { top: t, T: S.charge, skill: S });
         break;
       case 'kick': {
-        // Sent flying the way the kick was aimed, not just away.
+        // Straight away from the kicker: where it stands decides where the target goes.
+        const kx = opp.x - t.x, kz = opp.z - t.z, kd = Math.hypot(kx, kz) || 1;
         const dmg = this.hurt(opp, (S.dmg * (opp.guard > 0 ? 0.4 : 1) * t.blade.atk) / opp.blade.def, t, S.id);
-        this.knock(opp, c.dx, c.dz, S.kb, 0.7, S.launch);
+        this.knock(opp, kx / kd, kz / kd, S.kb, 0.7, S.launch);
         t.stats.skillHits++;
         this.emit('strike', { top: opp, src: t, skill: S, x: opp.x, z: opp.z, dmg, big: true });
         break;
@@ -980,6 +992,8 @@ export class World {
       if (from.dmark > 0 && kind !== 'deathmark') from.dacc += dmg;
     }
     t.lastHit = { dmg, time: this.time, kind };
+    const L = foe && from.buff > 0 && from.blade.buff && from.blade.buff.leech;
+    if (L) from.spin = Math.min(from.spinMax, from.spin + dmg * L);
     return dmg;
   }
 
@@ -1029,6 +1043,13 @@ export class World {
     this.emit('say', { top: v, text: 'STUN', tone: 'red' });
   }
 
+  // Adds to a shield that builds up in steps.
+  shieldUp(t, S) {
+    t.shield = Math.min(S.shieldMax, t.shield + S.shieldAdd);
+    t.shieldT = S.hold;
+    this.emit('buff', { top: t, skill: S });
+  }
+
   // Rooted to the spot: no moving and no dashing, but skills still work.
   snare(v, T) {
     if (fixed(v)) return;
@@ -1071,6 +1092,7 @@ export class World {
       else this.knock(v, dx, dz, S.kb, S.tumble ?? 0.35, S.launch ?? 1.5);
     }
     if (S.snare) this.snare(v, S.snare);
+    if (S.frost) v.frost = Math.max(v.frost, S.frost);
     if (S.up) this.lift(v, S.up);
     if (S.slow) this.slowBy(v, S.slow, S.slowPct);
     if (S.bleed) this.bleed(v, S.bleed);
@@ -1135,6 +1157,7 @@ export class World {
     t.slow = Math.max(0, t.slow - dt);
     if (t.slow <= 0) t.slowK = 0;
     t.stun = Math.max(0, t.stun - dt);
+    t.frost = Math.max(0, t.frost - dt);
     t.snare = Math.max(0, t.snare - dt);
     t.hitCd = Math.max(0, t.hitCd - dt);
     t.empower = Math.max(0, t.empower - dt);
@@ -1325,7 +1348,7 @@ export class World {
       const rx = opp.x - t.x, rz = opp.z - t.z, along = rx * dx + rz * dz, side = Math.abs(-rx * dz + rz * dx);
       if (targetable(opp) && along > -1 && along < S.range && side < S.radius + opp.radius * 0.6) {
         const g = opp.guard > 0 ? 0.3 : 1;
-        hit = this.hurt(opp, (S.dmg * g * t.blade.atk) / opp.blade.def, t, S.id);
+        hit = this.hurt(opp, (S.dmg * (S.litBonus && opp.scar > 0 ? 1 + S.litBonus : 1) * g * t.blade.atk) / opp.blade.def, t, S.id);
         if (g === 1) this.affect(t, opp, S, dx, dz);
         t.stats.skillHits++;
       }
@@ -1433,6 +1456,7 @@ export class World {
       if (!gone) {
         const dmg = this.hurt(opp, (S.pop * t.blade.atk) / opp.blade.def, t, S.id);
         if (S.root) this.stun(opp, S.root);
+        if (S.snareT) this.snare(opp, S.snareT);
         if (S.yank) this.pull(opp, t, S.yank);
         this.emit('strike', { top: opp, src: t, skill: S, x: opp.x, z: opp.z, dmg });
       }
@@ -1519,8 +1543,11 @@ export class World {
           initZone(z); // keeps spreading
           if (z.t >= z.T || this.result) { this.endZone(z); break; }
           if (live && d < z.r + opp.radius * 0.3) {
-            opp.slow = Math.max(opp.slow, 0.3);
-            this.dot(opp, (S.dps * dt * t.blade.atk) / opp.blade.def, t);
+            // Fully grown it cuts three times as deep, slows harder and ices over.
+            const full = z.t >= S.grow;
+            this.slowBy(opp, full ? 1.5 : 1, full ? 0.6 : 0.4);
+            if (full) opp.frost = Math.max(opp.frost, S.frost);
+            this.dot(opp, (S.dps * (full ? 3 : 1) * dt * t.blade.atk) / opp.blade.def, t);
           }
           break;
         case 'poison':
@@ -1700,7 +1727,7 @@ export class World {
       return;
     }
     if (inside) {
-      if (S.slowIn) opp.slow = Math.max(opp.slow, 0.3);
+      if (S.slowIn) this.slowBy(opp, 0.3, S.slowPct);
       if (S.dps) this.dot(opp, (S.dps * dt * t.blade.atk) / opp.blade.def, t);
       if (S.pullIn && d > 0.3) this.push(opp, (z.x - opp.x) / d, (z.z - opp.z) / d, S.pullIn * dt);
       // No dashing through a planted guard.
@@ -1942,7 +1969,7 @@ export class World {
   projHit(p, v) {
     const o = p.owner, S = p.skill;
     let k = 1;
-    if (S.chill && (v.slow > 0 || v.tumble > 0 || v.stun > 0 || v.up > 0)) k = S.chill;
+    if (S.frostMul && v.frost > 0) k = S.frostMul;
     // Finishers bite harder the less spin the target has left.
     if (S.exec) k *= 1 + S.exec * (1 - spinRatio(v));
     if (S.far) k *= 1 + S.far * clamp((S.range - p.left) / S.range, 0, 1);
@@ -1981,7 +2008,7 @@ export class World {
       if (p.back) {
         // On its way home: it steers at its owner and is caught on arrival.
         const o = p.owner, hx = o.x - p.x, hz = o.z - p.z, hd = Math.hypot(hx, hz);
-        if (hd < 1.3 || o.out) { p.dead = true; continue; }
+        if (hd < 1.3 || o.out) { p.dead = true; if (S.shieldAdd && !o.out) this.shieldUp(o, S); continue; }
         p.dx = hx / hd; p.dz = hz / hd;
       }
       p.x += p.dx * st; p.z += p.dz * st; p.left -= st;
@@ -1993,7 +2020,7 @@ export class World {
         p.dead = true;
         if (S.re) this.unre(p.owner, S.id);
         this.emit('projEnd', { proj: p, x: p.x, z: p.z });
-      } else if (!this.result && !p.hit && targetable(v) && Math.hypot(v.x - p.x, v.z - p.z) < p.r + v.radius) {
+      } else if (!this.result && !p.hit && !S.friendly && targetable(v) && Math.hypot(v.x - p.x, v.z - p.z) < p.r + v.radius) {
         if (v.guard > 0) {
           // Guard sends it straight back.
           p.owner = v; p.dx = -p.dx; p.dz = -p.dz; p.left = S.range; p.dmg *= 1.2;

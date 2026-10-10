@@ -8,14 +8,14 @@
 import { SKILLS, KEYS } from './config.js';
 import { initZone } from './sim.js';
 
-export const PROTOCOL = 8;
+export const PROTOCOL = 9;
 export const PKT_SNAPSHOT = 1, PKT_PING = 2, PKT_PONG = 3;
 
 const SKILL_IDS = Object.keys(SKILLS);
 const KINDS = ['over', 'burst', 'spin', 'time'];
 const POS = 2000, VEL = 400, DIR = 30000;
 const F_CMD = 1, F_DASH = 2, F_BLINK = 4, F_AIR = 8, F_OUT = 16, F_CHARGE = 32, F_ORBS = 64, F_TETHER = 128;
-const G_TOGGLE = 1, G_EGGUSED = 2, G_CHAN = 4, G_RET = 8, G_DASHHIT = 16, G_FEAR = 32, G_HOLD = 64;
+const G_TOGGLE = 1, G_EGGUSED = 2, G_CHAN = 4, G_RET = 8, G_DASHHIT = 16, G_FEAR = 32, G_HOLD = 64, G_RET2 = 128;
 const TAU = Math.PI * 2;
 // The gauge travels as one byte. "Full" gets a value of its own: scaling 100
 // into a byte and back lands a hair under 100, and the skill needs exactly 100.
@@ -45,17 +45,17 @@ class Reader {
 function writeTop(w, t) {
   w.i16(t.x * POS); w.i16(t.z * POS); w.i16(t.vx * VEL); w.i16(t.vz * VEL);
   w.u16(t.spin * 50); w.u8(t.ult >= 100 ? ULT_FULL : Math.min(ULT_FULL - 1, Math.floor(t.ult * 2.5)));
-  w.u8(t.tumble * 100); w.u8(t.launch * 100); w.u8(t.guard * 100); w.u8(t.slow * 100); w.u8(t.hitCd * 1000); w.u8(t.empower * 50);
+  w.u8(t.tumble * 100); w.u8(t.launch * 100); w.u8(t.guard * 100); w.u8(t.slow * 50); w.u8(t.hitCd * 1000); w.u8(t.empower * 50);
   w.f32(t.phase);
   for (const k of KEYS) w.u16(t.cd[k] * 1000);
   w.u16(t.projN); w.u16(t.zoneN);
-  w.u8(t.up * 100); w.u8(t.ground * 100); w.u8(t.mark * 50); w.u8(t.scar * 80); w.u8(t.poison * 100);
+  w.u8(t.frost * 50); w.u8(t.up * 100); w.u8(t.ground * 100); w.u8(t.mark * 50); w.u8(t.scar * 80); w.u8(t.poison * 100);
   w.u8(t.bleed | (t.last << 4)); w.u8(t.bleedT * 25); w.u8(t.shield); w.u8(t.shieldT * 50); w.u8(t.buff * 20);
   w.u8(t.stack); w.u8(t.stackT * 20); w.u8(t.dmark * 60); w.u16(t.dacc * 50); w.u8(t.egg * 60); w.u8(t.eggHp);
   for (const k of KEYS) w.u8(Math.ceil(t.re[k] * 20)); // rounded up: an open window must not arrive closed
   w.u8(Math.ceil(t.stun * 100)); w.u8(Math.ceil(t.snare * 100)); w.u8(t.slowK * 100);
   w.u8(t.haste * 50); w.u8(Math.ceil(t.charm * 100)); w.u8(t.pin * 100); w.u8(t.store); w.u8(t.tag); w.u8(t.tagT * 25); w.u8(t.perm);
-  w.u8((t.toggle ? G_TOGGLE : 0) | (t.eggUsed ? G_EGGUSED : 0) | (t.chan ? G_CHAN : 0) | (t.ret ? G_RET : 0) | (t.dash && t.dash.hit ? G_DASHHIT : 0) | (t.charmDir < 0 ? G_FEAR : 0) | (t.hold ? G_HOLD : 0));
+  w.u8((t.toggle ? G_TOGGLE : 0) | (t.eggUsed ? G_EGGUSED : 0) | (t.chan ? G_CHAN : 0) | (t.ret ? G_RET : 0) | (t.dash && t.dash.hit ? G_DASHHIT : 0) | (t.charmDir < 0 ? G_FEAR : 0) | (t.hold ? G_HOLD : 0) | (t.ret2 ? G_RET2 : 0));
   w.u8((t.cmd ? F_CMD : 0) | (t.dash ? F_DASH : 0) | (t.blink ? F_BLINK : 0) | (t.air ? F_AIR : 0) | (t.out ? F_OUT : 0)
     | (t.charge ? F_CHARGE : 0) | (t.orbs ? F_ORBS : 0) | (t.tether ? F_TETHER : 0));
   if (t.cmd) { w.i16(t.cmd.x * POS); w.i16(t.cmd.z * POS); w.u8(t.cmd.t * 100); }
@@ -67,6 +67,7 @@ function writeTop(w, t) {
   if (t.tether) { const h = t.tether; w.u8(skillNo(h.skill)); w.u8(h.t * 80); w.u16(h.acc * 100); w.u8(h.tick * 200); }
   if (t.chan) { const c = t.chan; w.u8(c.t * 60); w.u8(c.n); w.i16(c.dx * DIR); w.i16(c.dz * DIR); }
   if (t.ret) { w.i16(t.ret.x * POS); w.i16(t.ret.z * POS); }
+  if (t.ret2) { w.i16(t.ret2.x * POS); w.i16(t.ret2.z * POS); }
   if (t.hold) { w.u8(KEYS.indexOf(t.hold.key)); w.u8(t.hold.t * 50); }
 }
 
@@ -85,11 +86,11 @@ function readTop(r, t) {
   t.spin = r.u16() / 50;
   const ult = r.u8();
   t.ult = ult === ULT_FULL ? 100 : ult / 2.5;
-  t.tumble = r.u8() / 100; t.launch = r.u8() / 100; t.guard = r.u8() / 100; t.slow = r.u8() / 100; t.hitCd = r.u8() / 1000; t.empower = r.u8() / 50;
+  t.tumble = r.u8() / 100; t.launch = r.u8() / 100; t.guard = r.u8() / 100; t.slow = r.u8() / 50; t.hitCd = r.u8() / 1000; t.empower = r.u8() / 50;
   t.phase = r.f32();
   for (const k of KEYS) t.cd[k] = r.u16() / 1000;
   t.projN = r.u16(); t.zoneN = r.u16();
-  t.up = r.u8() / 100; t.ground = r.u8() / 100; t.mark = r.u8() / 50; t.scar = r.u8() / 80; t.poison = r.u8() / 100;
+  t.frost = r.u8() / 50; t.up = r.u8() / 100; t.ground = r.u8() / 100; t.mark = r.u8() / 50; t.scar = r.u8() / 80; t.poison = r.u8() / 100;
   const bl = r.u8();
   t.bleed = bl & 15; t.last = bl >> 4;
   t.bleedT = r.u8() / 25; t.shield = r.u8(); t.shieldT = r.u8() / 50; t.buff = r.u8() / 20;
@@ -120,6 +121,7 @@ function readTop(r, t) {
   if (f & F_TETHER) { const skill = skillAt(r.u8()); t.tether = { t: r.u8() / 80, T: skill.dur, skill, acc: r.u16() / 100, tick: r.u8() / 200 }; } else t.tether = null;
   t.chan = g & G_CHAN ? { t: r.u8() / 60, n: r.u8(), ...readDir(r), skill: SKILLS.curtaincall } : null;
   t.ret = g & G_RET ? { x: r.i16() / POS, z: r.i16() / POS } : null;
+  t.ret2 = g & G_RET2 ? { x: r.i16() / POS, z: r.i16() / POS } : null;
   t.hold = g & G_HOLD ? { key: KEYS[r.u8() & 3], t: r.u8() / 50 } : null;
 }
 
