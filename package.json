@@ -1,11 +1,11 @@
 {
   "name": "gyro-clash-online",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "private": true,
   "type": "module",
   "scripts": {
-    "build": "esbuild src/main.js --bundle --format=iife --minify --target=es2020 --outfile=game.js",
-    "dev": "esbuild src/main.js --bundle --format=iife --sourcemap --target=es2020 --outfile=game.js --watch",
+    "build": "node tools/build.mjs",
+    "dev": "node tools/build.mjs --watch",
     "serve": "node serve.cjs",
     "simtest": "node tools/simtest.mjs",
     "codectest": "node tools/codectest.mjs"

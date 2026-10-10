@@ -225,6 +225,7 @@ kbd { flex: none; width: 28px; height: 28px; display: grid; place-items: center;
 .plain:hover { border-color: var(--cyan); }
 #netstat { align-self: center; padding: 0 10px; height: 30px; line-height: 30px; font-size: 12px; letter-spacing: 0.06em; color: #9dffc0; background: rgba(10, 15, 30, 0.7); border: 1px solid var(--line); font-variant-numeric: tabular-nums; }
 #netstat.bad { color: #ff9a6a; border-color: #ff9a6a; }
+#version { position: fixed; left: 12px; bottom: 10px; z-index: 30; font-size: 11px; letter-spacing: 0.06em; color: var(--dim); opacity: 0.75; pointer-events: none; font-variant-numeric: tabular-nums; text-shadow: 0 1px 3px #000; }
 #toast { position: fixed; left: 50%; top: 96px; z-index: 40; transform: translateX(-50%); padding: 10px 22px; font-size: 14px; letter-spacing: 0.06em; background: var(--panel); border: 1px solid var(--gold); color: var(--gold); opacity: 0; pointer-events: none; }
 #toast.show { animation: toast 3.2s ease-out forwards; }
 @keyframes toast { 0% { opacity: 0; transform: translate(-50%, -10px); } 8%, 80% { opacity: 1; transform: translate(-50%, 0); } 100% { opacity: 0; } }

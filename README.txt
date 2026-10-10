@@ -43,7 +43,7 @@ GYRO CLASH のオンライン対戦版。ブラウザ同士が直接つながる
 
 ■ 開発
   npm install           依存（three, peerjs, esbuild）
-  npm run build         src/ → game.js
+  npm run build         src/ → game.js（画面左下の版表記 = package.json の version ＋ ビルド日時 を埋め込む）
   npm run dev           監視ビルド
   node serve.cjs        http://127.0.0.1:4181
   npm run simtest       描画なしのバランス確認

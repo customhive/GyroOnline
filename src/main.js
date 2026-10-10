@@ -16,6 +16,8 @@ import { groundY } from './fx.js';
 import { Net, cleanCode } from './net.js';
 import { PROTOCOL, PKT_SNAPSHOT, encodeSnapshot, applySnapshot, snapshotHeader, packEvent, reviveEvent, packetType } from './netcode.js';
 
+// Filled in by tools/build.mjs.
+const VERSION = `v${__VERSION__} · ${__BUILD__}`;
 const STEP = 1 / 120;
 // Seconds the CPU telegraphs each aimed skill before it fires.
 const CPU_WINDUP = { sonic: 0.42, anchor: 0.45, blitz: 0.48, flare: 0.36, quake: 0.2 };
@@ -311,7 +313,7 @@ function netStatus(state, detail) {
 function netOpen() {
   const lb = game.lobby;
   lb.status = 'connected';
-  game.net.send({ t: 'hello', v: PROTOCOL, blade: lb.me.blade, ready: lb.me.ready });
+  game.net.send({ t: 'hello', v: PROTOCOL, build: VERSION, blade: lb.me.blade, ready: lb.me.ready });
   if (game.state === 'lobby') ui.showLobby(lb);
 }
 
@@ -344,6 +346,8 @@ function netMessage(m) {
   switch (m.t) {
     case 'hello':
       if (m.v !== PROTOCOL) { netStatus('failed', 'version'); game.net.leave(); return; }
+      // Compatible, but not the same build: worth knowing when something looks off.
+      if (typeof m.build === 'string' && m.build !== VERSION) ui.toast(`相手は別の版です（${m.build.slice(0, 40)}）`);
     // falls through
     case 'lobby':
       if (!BLADES[m.blade]) return;
@@ -837,6 +841,7 @@ window.addEventListener('pagehide', () => { if (game.net) game.net.leave(); });
 
 toTitle();
 ui.setMuted(false);
+document.getElementById('version').textContent = VERSION;
 // Test hook: lets a script drive frames by hand and inspect the match.
 window.__gc = { game, view, ui, audio, frame, startMatch: startCpuMatch, openRoom, joinRoom, BLADES };
 const room = cleanCode(params.get('room'));
