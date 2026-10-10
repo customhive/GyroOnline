@@ -639,6 +639,11 @@ function onEvent(e) {
       if (e.big) ui.flash(e.src.blade.css, 0.3);
       break;
     case 'say': popAt(e.top, e.text, 'word ' + (e.tone || '')); break;
+    case 'beam':
+      audio.meteor();
+      if (e.skill.ult) ui.flash('#fff', 0.45);
+      if (e.hit) { dmgPop(e.target, e.hit); game.hitstop = e.skill.ult ? 0.2 : 0.1; }
+      break;
     case 'dot': dmgPop(e.top, e.dmg); break;
     case 'warp': audio.blink(); break;
     case 'buff':

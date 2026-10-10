@@ -17,7 +17,7 @@ const toWall = (x, z, dx, dz) => {
 };
 const v3 = new THREE.Vector3();
 // Zones that stand on the floor as an object, not only as a decal.
-const OBJECTS = { shadow: 'clone', arise: 'clone', turret: 'turret', icewall: 'wall', windwall: 'wall', divide: 'wall' };
+const OBJECTS = { shadow: 'clone', arise: 'clone', turret: 'turret', keg: 'keg', icewall: 'wall', windwall: 'wall', divide: 'wall' };
 const TOXIC = 0x9dff3a, BLOOD = 0xff3040, ICE = 0xcfefff;
 
 export class View {
@@ -63,6 +63,7 @@ export class View {
     this.orbGeo = new THREE.SphereGeometry(0.42, 16, 12);
     this.orbMat = new THREE.MeshBasicMaterial({ color: 0xfff3c4 });
     this.cones = [];
+    this.beams = [];
     this.objs = new Map();   // zone id -> its model
     this.spare = [];         // clone models waiting to be reused
     this.wallGeo = new THREE.BoxGeometry(1, 1, 1).translate(0, 0.5, 0);
@@ -114,6 +115,7 @@ export class View {
     this.markers.length = 0;
     this.scorch.length = 0;
     this.cones.length = 0;
+    this.beams.length = 0;
     this.clearObjects();
     this.focus = null;
     for (const v of this.tops) { v.trail.reset(); v.fall = 0; v.shieldAlpha = 0; v.group.visible = true; }
@@ -221,7 +223,7 @@ export class View {
           W.spawn(z.x, y + 0.12, z.z, 0.3, z.r * 0.6, 0.4, c, 1);
           P.burst(z.x, y + 0.3, z.z, 80, c, 9, { flat: true, life: 0.6, gravity: -5, drag: 2.5 });
           F.flash(z.x, y + 1, z.z, 9, 0.4, c, 0.9, 120);
-        } else if (z.kind !== 'quake' && z.kind !== 'grenade' && z.kind !== 'lotus') {
+        } else if (z.kind !== 'quake' && z.kind !== 'grenade' && z.kind !== 'lotus' && z.skill.kind !== 'blast') {
           // Something set down on the floor.
           W.spawn(z.x, y + 0.1, z.z, 0.4, Math.max(2, z.r), 0.4, c, 0.9);
           P.burst(z.x, y + 0.4, z.z, 40, c, 8, { up: 1, life: 0.5, gravity: 4 });
@@ -302,6 +304,17 @@ export class View {
         W.spawn(t.x, y + 0.1, t.z, 6, 1, 0.5, c, 0.9);
         F.flash(t.x, y + 1, t.z, 10, 0.4, c, 1, 200);
         this.stage.pulseRim(c, 0.8);
+        break;
+      }
+      // A line that hits everything on it at once.
+      case 'beam': {
+        const S = e.skill, c = this.colorOf(e.top), big = !!S.ult;
+        const len = Math.min(S.range, toWall(e.x, e.z, e.dx, e.dz));
+        this.beams.push({ x: e.x, z: e.z, dx: e.dx, dz: e.dz, len, hw: S.radius, color: c, t: 0, T: big ? 0.55 : 0.35 });
+        for (let i = 0; i < (big ? 160 : 60); i++) { const k = Math.random() * len; P.emit(e.x + e.dx * k + (Math.random() - 0.5) * S.radius * 2, groundY(e.x + e.dx * k, e.z + e.dz * k) + 0.4 + Math.random(), e.z + e.dz * k + (Math.random() - 0.5) * S.radius * 2, e.dx * 6, 2 + Math.random() * 5, e.dz * 6, 0.5, 0.3, Math.random() < 0.4 ? 0xffffff : c, 4, 1); }
+        F.flash(e.x + e.dx * 2, groundY(e.x, e.z) + 1, e.z + e.dz * 2, big ? 16 : 8, 0.4, c, 1, big ? 420 : 160);
+        if (big) { this.stage.pulseRim(c, 1); this.punch = 1; }
+        this.addShake(big ? 0.9 : 0.4);
         break;
       }
       case 'egg': case 'rebirth': {
@@ -453,7 +466,7 @@ export class View {
         P.burst(t.x, y + 0.5, t.z, 120, c, 14, { up: 1, bias: 0.4, dy: 1, life: 0.8, gravity: 2 });
         F.flash(t.x, y + 1, t.z, 9, 0.35, c, 1, 200);
         this.addShake(0.3);
-        this.telegraphs.push({ top: t, key: 'R', skill: SKILLS.meteor, t: 0, T: e.T, ax: e.tx, az: e.tz });
+        if (!e.skill || e.skill.dmg) this.telegraphs.push({ top: t, key: 'R', skill: e.skill || SKILLS.meteor, t: 0, T: e.T, ax: e.tx, az: e.tz });
         break;
       }
       case 'meteor': {
@@ -564,6 +577,9 @@ export class View {
         o.top.spin.rotation.y -= 34 * dt;
         o.top.blur.rotation.z += 11 * dt;
         o.group.rotation.set(0.05 * Math.cos(this.time * 3 + z.id), 0, 0.05 * Math.sin(this.time * 3 + z.id));
+      } else if (kind === 'keg') {
+        o.group.scale.setScalar(1.25);
+        o.mat.color.set(c).multiplyScalar(0.8 + 0.3 * Math.sin(this.time * 6 + z.id));
       } else if (kind === 'turret') {
         const foe = this.world.other(z.owner);
         o.group.rotation.y = Math.atan2(-(foe.z - z.z), foe.x - z.x);
@@ -604,6 +620,12 @@ export class View {
       return { kind, group: top.group, top };
     }
     const group = new THREE.Group();
+    if (kind === 'keg') {
+      const mat = new THREE.MeshBasicMaterial({ color: c });
+      group.add(new THREE.Mesh(this.turretGeo[0], this.turretMat), new THREE.Mesh(this.turretGeo[1], mat));
+      this.scene.add(group);
+      return { kind, group, mat };
+    }
     if (kind === 'turret') {
       const head = new THREE.MeshBasicMaterial({ color: c });
       group.add(new THREE.Mesh(this.turretGeo[0], this.turretMat), new THREE.Mesh(this.turretGeo[1], head), new THREE.Mesh(this.turretGeo[2], this.turretMat));
@@ -653,7 +675,7 @@ export class View {
         v.group.position.set(p.x, y, p.z);
         if (p.skill.chain) this.chain(p.owner.x, p.owner.z, p.x, p.z, this.colorOf(p.owner), 1);
         // Where a recast would go off.
-        if (p.skill.re) { const A = SKILLS[p.skill.re].aoe; G.ring(p.x, p.z, A - 0.1, A, this.dangerOf(p.owner), 0.55); G.ring(p.x, p.z, 0, A, this.dangerOf(p.owner), 0.06); }
+        if (p.skill.re && SKILLS[p.skill.re].aoe) { const A = SKILLS[p.skill.re].aoe; G.ring(p.x, p.z, A - 0.1, A, this.dangerOf(p.owner), 0.55); G.ring(p.x, p.z, 0, A, this.dangerOf(p.owner), 0.06); }
         v.group.children[1].rotation.x += dt * 22;
         if (dt > 0) for (let i = 0; i < 3; i++) {
           P.emit(p.x - p.dx * Math.random() * 1.2 + (Math.random() - 0.5) * 0.9, y + (Math.random() - 0.5) * 0.8, p.z - p.dz * Math.random() * 1.2 + (Math.random() - 0.5) * 0.9,
@@ -727,7 +749,7 @@ export class View {
       }
     }
     if (t.out) lift = heightAt(ARENA.R) - gy + t.out.y;
-    else if (t.air) lift = Math.sin(Math.PI * Math.min(1, t.air.t / t.air.T)) * t.air.skill.height;
+    else if (t.air) lift = Math.sin(Math.PI * Math.min(1, t.air.t / t.air.T)) * (t.air.skill.height ?? 5);
     // Knocked up: it hangs in the air until the timer runs out.
     v.hover += ((t.up > 0 ? 1 : 0) - v.hover) * Math.min(1, rdt * 16);
     lift += v.drop + v.hover * (2.1 + 0.25 * Math.sin(this.time * 11));
@@ -786,6 +808,8 @@ export class View {
     if (t.poison > 0 && Math.random() < 0.5) mote(TOXIC, 1.5, 1);
     if (t.buff > 0 && Math.random() < 0.5) mote(c, 3, 1);
     if (t.toggle && Math.random() < 0.7) mote(TOXIC, 0.5, 1);
+    if (t.haste > 0 && Math.random() < 0.5) mote(0xffffff, 2, 1);
+    if (t.charm > 0) mote(t.charmDir > 0 ? 0xff7ad0 : 0x9a6aff, 2, 2);
     if (t.blink) {
       for (let i = 0; i < 8; i++) P.emit(t.x + (Math.random() - 0.5) * 1.2, gy + 0.3 + Math.random() * 1.2, t.z + (Math.random() - 0.5) * 1.2, 0, Math.random(), 0, 0.4, 0.4, Math.random() < 0.3 ? 0xffffff : c, 0, 2);
       return;
@@ -834,7 +858,7 @@ export class View {
     for (const z of w.zones) {
       const k = Math.min(1, z.t / z.T);
       if (this.drawZone(z, k, dt)) continue;
-      if (z.kind === 'quake' || z.kind === 'grenade') {
+      if (z.kind === 'quake' || z.kind === 'grenade' || z.skill.kind === 'blast') {
         const col = this.dangerOf(z.owner), pulse = 0.5 + 0.5 * Math.sin(this.time * 20);
         G.ring(z.x, z.z, 0, z.r, col, 0.1 + 0.08 * pulse);
         G.ring(z.x, z.z, 0, z.r * k, col, 0.26);
@@ -859,7 +883,13 @@ export class View {
     }
     for (const t of w.tops) {
       const v = this.tops[t.side], c = this.colorOf(t), gy = groundY(t.x, t.z);
-      if (t.charge) {
+      if (t.charge && t.charge.skill.kind === 'beam') {
+        // The lane a beam is about to fill.
+        const S = t.charge.skill, ch = t.charge, k = Math.min(1, ch.t / ch.T), col = this.dangerOf(t);
+        const len = Math.min(S.range, toWall(t.x, t.z, ch.dx, ch.dz));
+        G.lane(t.x, t.z, ch.dx, ch.dz, len, S.radius, col, 0.1 + 0.06 * Math.sin(this.time * 22), 0.85);
+        G.rect(t.x, t.z, ch.dx, ch.dz, len, S.radius * k, col, 0.28);
+      } else if (t.charge) {
         const S = t.charge.skill, k = Math.min(1, t.charge.t / t.charge.T), col = this.dangerOf(t);
         const pulse = 0.5 + 0.5 * Math.sin(this.time * 22), in0 = S.inner || 0;
         G.ring(t.x, t.z, in0, S.aoe, col, 0.08 + 0.07 * pulse);
@@ -909,6 +939,7 @@ export class View {
         G.ring(foe.x, foe.z, 2.0, 2.2, BLOOD, 0.9, 0.1, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * k);
       }
       if (foe.mark > 0) G.ring(foe.x, foe.z, 1.6, 1.85, c, 0.6 + 0.3 * Math.sin(this.time * 12));
+      for (let i = 0; i < foe.tag; i++) { const a = -Math.PI / 2 + (i - (foe.tag - 1) / 2) * 0.42; G.ring(foe.x + Math.cos(a) * 2.1, foe.z + Math.sin(a) * 2.1, 0, 0.2, 0xffffff, 0.95, 0.12); }
       if (foe.bleed > 0) for (let i = 0; i < foe.bleed; i++) { const a = -Math.PI / 2 + (i - (foe.bleed - 1) / 2) * 0.42; G.ring(foe.x + Math.cos(a) * 2.1, foe.z + Math.sin(a) * 2.1, 0, 0.2, BLOOD, 0.95, 0.12); }
       // Where a return trip would end.
       if (t.ret && t.side === this.playerSide) { G.ring(t.ret.x, t.ret.z, 1.1, 1.25, c, 0.7); G.ring(t.ret.x, t.ret.z, 0, 1.1, c, 0.1); }
@@ -919,6 +950,12 @@ export class View {
       if (k < 1) G.sector(cn.x, cn.z, cn.dx, cn.dz, cn.skill.range, cn.skill.half, cn.color, 0.5 * (1 - k) * (1 - k), 0.9 * (1 - k));
     }
     if (this.cones.length && this.cones[0].t > this.cones[0].T) this.cones.shift();
+    for (const b of this.beams) {
+      b.t += dt;
+      const k = b.t / b.T;
+      if (k < 1) { G.rect(b.x, b.z, b.dx, b.dz, b.len, b.hw * (1 - 0.5 * k), b.color, 0.6 * (1 - k), 0.14); G.rect(b.x, b.z, b.dx, b.dz, b.len, b.hw * 0.35 * (1 - k), 0xffffff, 0.9 * (1 - k), 0.16); }
+    }
+    if (this.beams.length && this.beams[0].t > this.beams[0].T) this.beams.shift();
   }
 
   // Floor decals for the zones the newer blades place. Returns false for the
@@ -982,6 +1019,24 @@ export class View {
         if (w.moving) G.lane(w.x, w.z, w.nx, w.nz, S.travel - Math.min(z.t * S.speed, S.travel), S.wall, col, 0.08, 0.7);
         return true;
       }
+    }
+    if (z.kind === 'feather') { G.ring(z.x, z.z, 0, 0.3, c, 0.95 * fade, 0.12); G.ring(z.x, z.z, 0.5, 0.6, c, 0.45 * fade); return true; }
+    if (z.kind === 'keg') { G.ring(z.x, z.z, S.aoe - 0.06, S.aoe, col, mine ? 0.35 : 0.2); G.ring(z.x, z.z, 1.3, 1.45, col, 0.7); return true; }
+    if (z.kind === 'purgatory') {
+      G.ring(z.x, z.z, 0, z.r, 0xffffff, 0.05 * fade); G.ring(z.x, z.z, z.r - 0.14, z.r, col, 0.85 * fade);
+      for (const [dx, dz] of [[1, 0], [0, 1]]) G.rect(z.x - dx * 1.2, z.z - dz * 1.2, dx, dz, 2.4, 0.16, 0xffffff, 0.9 * fade, 0.12);
+      timer();
+      return true;
+    }
+    if (S.kind === 'field') {
+      if (S.cage) { G.ring(z.x, z.z, z.r - 0.28, z.r + 0.28, col, (z.t > S.arm ? 0.85 : 0.35) * fade); G.ring(z.x, z.z, 0, z.r, c, 0.04 * fade); timer(); return true; }
+      G.ring(z.x, z.z, 0, z.r, S.regen ? HEAL : c, (S.follow ? 0.06 : 0.1) * fade);
+      G.ring(z.x, z.z, z.r - 0.13, z.r, S.regen ? c : col, 0.85 * fade);
+      // One that ends in a blast fills up as the moment comes.
+      if (S.endDmg) G.ring(z.x, z.z, 0, z.r * k, col, 0.2);
+      if (!S.follow) timer();
+      if (dt > 0 && (S.dps || S.regen) && Math.random() < 0.5) speck(S.regen ? HEAL : c, 2 + Math.random() * 3, -1);
+      return true;
     }
     return false;
   }

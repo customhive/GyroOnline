@@ -8,14 +8,14 @@
 import { SKILLS, KEYS } from './config.js';
 import { initZone } from './sim.js';
 
-export const PROTOCOL = 4;
+export const PROTOCOL = 5;
 export const PKT_SNAPSHOT = 1, PKT_PING = 2, PKT_PONG = 3;
 
 const SKILL_IDS = Object.keys(SKILLS);
 const KINDS = ['over', 'burst', 'spin', 'time'];
 const POS = 2000, VEL = 400, DIR = 30000;
 const F_CMD = 1, F_DASH = 2, F_BLINK = 4, F_AIR = 8, F_OUT = 16, F_CHARGE = 32, F_ORBS = 64, F_TETHER = 128;
-const G_TOGGLE = 1, G_EGGUSED = 2, G_CHAN = 4, G_RET = 8, G_DASHHIT = 16;
+const G_TOGGLE = 1, G_EGGUSED = 2, G_CHAN = 4, G_RET = 8, G_DASHHIT = 16, G_FEAR = 32;
 const TAU = Math.PI * 2;
 // The gauge travels as one byte. "Full" gets a value of its own: scaling 100
 // into a byte and back lands a hair under 100, and the skill needs exactly 100.
@@ -50,17 +50,18 @@ function writeTop(w, t) {
   for (const k of KEYS) w.u16(t.cd[k] * 1000);
   w.u16(t.projN); w.u16(t.zoneN);
   w.u8(t.up * 100); w.u8(t.ground * 100); w.u8(t.mark * 50); w.u8(t.scar * 80); w.u8(t.poison * 100);
-  w.u8(t.bleed | (t.last << 4)); w.u8(t.bleedT * 25); w.u8(t.shield); w.u8(t.shieldT * 80); w.u8(t.buff * 20);
+  w.u8(t.bleed | (t.last << 4)); w.u8(t.bleedT * 25); w.u8(t.shield); w.u8(t.shieldT * 50); w.u8(t.buff * 20);
   w.u8(t.stack); w.u8(t.stackT * 30); w.u8(t.dmark * 60); w.u16(t.dacc * 50); w.u8(t.egg * 60); w.u8(t.eggHp);
   for (const k of KEYS) w.u8(Math.ceil(t.re[k] * 20)); // rounded up: an open window must not arrive closed
-  w.u8((t.toggle ? G_TOGGLE : 0) | (t.eggUsed ? G_EGGUSED : 0) | (t.chan ? G_CHAN : 0) | (t.ret ? G_RET : 0) | (t.dash && t.dash.hit ? G_DASHHIT : 0));
+  w.u8(t.haste * 50); w.u8(Math.ceil(t.charm * 100)); w.u8(t.pin * 100); w.u8(t.store); w.u8(t.tag); w.u8(t.tagT * 25); w.u8(t.perm);
+  w.u8((t.toggle ? G_TOGGLE : 0) | (t.eggUsed ? G_EGGUSED : 0) | (t.chan ? G_CHAN : 0) | (t.ret ? G_RET : 0) | (t.dash && t.dash.hit ? G_DASHHIT : 0) | (t.charmDir < 0 ? G_FEAR : 0));
   w.u8((t.cmd ? F_CMD : 0) | (t.dash ? F_DASH : 0) | (t.blink ? F_BLINK : 0) | (t.air ? F_AIR : 0) | (t.out ? F_OUT : 0)
     | (t.charge ? F_CHARGE : 0) | (t.orbs ? F_ORBS : 0) | (t.tether ? F_TETHER : 0));
   if (t.cmd) { w.i16(t.cmd.x * POS); w.i16(t.cmd.z * POS); w.u8(t.cmd.t * 100); }
   for (const d of [t.dash, t.blink]) if (d) { w.u8(skillNo(d.skill)); w.i16(d.dx * DIR); w.i16(d.dz * DIR); w.u8(d.t * 250); }
-  if (t.air) { const a = t.air; w.u8(skillNo(a.skill) | (a.by << 7)); w.u8(a.t * 200); w.i16(a.sx * POS); w.i16(a.sz * POS); w.i16(a.tx * POS); w.i16(a.tz * POS); }
+  if (t.air) { const a = t.air; w.u8(skillNo(a.skill)); w.u8(a.by); w.u8(a.t * 200); w.i16(a.sx * POS); w.i16(a.sz * POS); w.i16(a.tx * POS); w.i16(a.tz * POS); }
   if (t.out) { w.u8(t.out.t * 50); w.i16(t.out.y * 100); w.i16(t.out.vy * 100); }
-  if (t.charge) { w.u8(skillNo(t.charge.skill)); w.u8(t.charge.t * 200); }
+  if (t.charge) { const c = t.charge; w.u8(skillNo(c.skill)); w.u8(c.t * 200); w.i16((c.dx || 0) * DIR); w.i16((c.dz || 0) * DIR); }
   if (t.orbs) { const o = t.orbs; w.u8(o.alive); w.u8(o.t * 40); w.u16((((o.ang % TAU) + TAU) % TAU) * 10000); w.u8(o.cd * 200); }
   if (t.tether) { const h = t.tether; w.u8(skillNo(h.skill)); w.u8(h.t * 80); w.u16(h.acc * 100); w.u8(h.tick * 200); }
   if (t.chan) { const c = t.chan; w.u8(c.t * 60); w.u8(c.n); w.i16(c.dx * DIR); w.i16(c.dz * DIR); }
@@ -89,11 +90,12 @@ function readTop(r, t) {
   t.up = r.u8() / 100; t.ground = r.u8() / 100; t.mark = r.u8() / 50; t.scar = r.u8() / 80; t.poison = r.u8() / 100;
   const bl = r.u8();
   t.bleed = bl & 15; t.last = bl >> 4;
-  t.bleedT = r.u8() / 25; t.shield = r.u8(); t.shieldT = r.u8() / 80; t.buff = r.u8() / 20;
+  t.bleedT = r.u8() / 25; t.shield = r.u8(); t.shieldT = r.u8() / 50; t.buff = r.u8() / 20;
   t.stack = r.u8(); t.stackT = r.u8() / 30; t.dmark = r.u8() / 60; t.dacc = r.u16() / 50; t.egg = r.u8() / 60; t.eggHp = r.u8();
   for (const k of KEYS) t.re[k] = r.u8() / 20;
+  t.haste = r.u8() / 50; t.charm = r.u8() / 100; t.pin = r.u8() / 100; t.store = r.u8(); t.tag = r.u8(); t.tagT = r.u8() / 25; t.perm = r.u8();
   const g = r.u8();
-  t.toggle = !!(g & G_TOGGLE); t.eggUsed = !!(g & G_EGGUSED);
+  t.toggle = !!(g & G_TOGGLE); t.eggUsed = !!(g & G_EGGUSED); t.charmDir = g & G_FEAR ? -1 : 1;
   const f = r.u8();
   t.cast = null;
   t.cmd = f & F_CMD ? { x: r.i16() / POS, z: r.i16() / POS, t: r.u8() / 100 } : null;
@@ -101,11 +103,11 @@ function readTop(r, t) {
   if (t.dash) t.dash.hit = !!(g & G_DASHHIT);
   t.blink = f & F_BLINK ? readDash(r) : null;
   if (f & F_AIR) {
-    const b = r.u8(), skill = skillAt(b & 127);
-    t.air = { skill, by: b >> 7, t: r.u8() / 200, T: skill.air, sx: r.i16() / POS, sz: r.i16() / POS, tx: r.i16() / POS, tz: r.i16() / POS };
+    const skill = skillAt(r.u8());
+    t.air = { skill, by: r.u8() & 1, t: r.u8() / 200, T: skill.air, sx: r.i16() / POS, sz: r.i16() / POS, tx: r.i16() / POS, tz: r.i16() / POS };
   } else t.air = null;
   t.out = f & F_OUT ? { t: r.u8() / 50, y: r.i16() / 100, vy: r.i16() / 100 } : null;
-  if (f & F_CHARGE) { const skill = skillAt(r.u8()); t.charge = { t: r.u8() / 200, T: skill.charge, skill }; } else t.charge = null;
+  if (f & F_CHARGE) { const skill = skillAt(r.u8()); t.charge = { t: r.u8() / 200, T: skill.charge, skill, ...readDir(r) }; } else t.charge = null;
   if (f & F_ORBS) {
     const alive = r.u8();
     let n = 0;
@@ -126,12 +128,12 @@ export function encodeSnapshot(world, meta) {
   for (const t of world.tops) writeTop(w, t);
   w.u8(world.projectiles.length);
   for (const p of world.projectiles) {
-    w.u16(p.id); w.u8(p.owner.side | (skillNo(p.skill) << 1)); w.u8(p.hit ? 1 : 0);
+    w.u16(p.id); w.u8(skillNo(p.skill)); w.u8(p.owner.side | (p.hit ? 2 : 0) | (p.back ? 4 : 0));
     w.i16(p.x * POS); w.i16(p.z * POS); w.i16(p.dx * DIR); w.i16(p.dz * DIR); w.u16(p.left * 1000); w.u16(p.dmg * 100);
   }
   w.u8(world.zones.length);
   for (const z of world.zones) {
-    w.u16(z.id); w.u8(z.owner.side | (skillNo(z.skill) << 1));
+    w.u16(z.id); w.u8(skillNo(z.skill)); w.u8(z.owner.side);
     w.i16(z.x * POS); w.i16(z.z * POS); w.i16(z.dx * POS); w.i16(z.dz * POS); w.u16(z.t * 1000); w.u16(z.a * 100); w.u8(z.b * 50); w.u8(z.c);
   }
   return w.done();
@@ -160,22 +162,22 @@ export function applySnapshot(world, buf) {
   const n = r.u8();
   world.projectiles = [];
   for (let i = 0; i < n; i++) {
-    const id = r.u16(), b = r.u8();
+    const id = r.u16(), sk = r.u8(), b = r.u8();
     const p = old.get(id) || { id, dead: false };
-    p.owner = world.tops[b & 1]; p.skill = skillAt(b >> 1); p.hit = !!r.u8();
+    p.owner = world.tops[b & 1]; p.skill = skillAt(sk); p.hit = !!(b & 2); p.back = !!(b & 4);
     p.x = r.i16() / POS; p.z = r.i16() / POS;
     Object.assign(p, readDir(r));
     p.left = r.u16() / 1000; p.dmg = r.u16() / 100;
-    p.speed = p.skill.speed; p.r = p.skill.radius; p.dead = false;
+    p.speed = p.skill.speed * (p.back ? 1.3 : 1); p.r = p.skill.radius; p.dead = false;
     world.projectiles.push(p);
   }
   const zones = new Map(world.zones.map((z) => [z.id, z]));
   const zn = r.u8();
   world.zones = [];
   for (let i = 0; i < zn; i++) {
-    const id = r.u16(), b = r.u8();
+    const id = r.u16(), sk = r.u8(), b = r.u8();
     const z = zones.get(id) || { id };
-    z.kind = SKILL_IDS[b >> 1]; z.owner = world.tops[b & 1]; z.dead = false;
+    z.kind = SKILL_IDS[sk]; z.owner = world.tops[b & 1]; z.dead = false;
     z.x = r.i16() / POS; z.z = r.i16() / POS; z.dx = r.i16() / POS; z.dz = r.i16() / POS;
     z.t = r.u16() / 1000; z.a = r.u16() / 100; z.b = r.u8() / 50; z.c = r.u8();
     world.zones.push(initZone(z));

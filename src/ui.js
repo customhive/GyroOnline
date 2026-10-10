@@ -69,6 +69,29 @@ const ICONS = {
   shift: svg('<circle cx="38" cy="24" r="7" stroke-width="3" stroke-dasharray="4 3"/><path d="M4 24h24" stroke-width="5"/><path d="M20 15l10 9-10 9" stroke-width="5"/>'),
   divide: svg('<path d="M10 6v36M18 6v36M26 6v36" stroke-width="5"/><path d="M32 24h12M38 17l7 7-7 7" stroke-width="4"/>'),
 };
+// Stock glyphs for skills that name one with `icon` instead of having their own drawing.
+const GLYPHS = {
+  shot: svg('<path d="M4 24h26" stroke-width="5"/><path d="M28 13l14 11-14 11z" fill="currentColor" stroke="none"/><path d="M6 14h10M6 34h10" stroke-width="2.5" opacity=".5"/>'),
+  beam: svg('<path d="M3 24h42" stroke-width="8"/><path d="M3 14h42M3 34h42" stroke-width="2" opacity=".5"/>'),
+  orb: svg('<circle cx="26" cy="24" r="11" fill="currentColor" stroke="none"/><path d="M4 16c8-8 18-8 26-2M4 32c8 8 18 8 26 2" stroke-width="2.5" opacity=".6"/>'),
+  dash: svg('<path d="M6 9l15 15L6 39M20 9l15 15-15 15" stroke-width="5"/><path d="M36 15l7 9-7 9" stroke-width="3.5" opacity=".5"/>'),
+  blink: svg('<circle cx="34" cy="24" r="9" fill="currentColor" stroke="none"/><circle cx="16" cy="24" r="9" stroke-width="3" stroke-dasharray="4 4" opacity=".55"/>'),
+  blast: svg('<circle cx="24" cy="24" r="8" fill="currentColor" stroke="none"/><circle cx="24" cy="24" r="16" stroke-width="3"/><path d="M24 2v6M24 40v6M2 24h6M40 24h6" stroke-width="3.5" opacity=".7"/>'),
+  burst: svg('<circle cx="24" cy="24" r="6" fill="currentColor" stroke="none"/><path d="M24 3v10M24 35v10M3 24h10M35 24h10M9 9l7 7M32 32l7 7M39 9l-7 7M16 32l-7 7" stroke-width="4"/>'),
+  field: svg('<circle cx="24" cy="24" r="19" stroke-width="3" stroke-dasharray="6 5"/><circle cx="24" cy="24" r="9" fill="currentColor" stroke="none" opacity=".7"/>'),
+  cone: svg('<path d="M6 24L42 6v36z" fill="currentColor" stroke="none" opacity=".4"/><path d="M6 24L42 6M6 24l36 18" stroke-width="3"/>'),
+  buff: svg('<path d="M24 4l14 14H29v14H19V18H10z" fill="currentColor" stroke="none"/><path d="M14 40h20" stroke-width="4"/>'),
+  shield: svg('<path d="M24 4l17 6v13c0 10-7 17-17 21C14 40 7 33 7 23V10z" stroke-width="3.5"/><path d="M24 13l8 3v7c0 6-3 9-8 11z" fill="currentColor" stroke="none"/>'),
+  heal: svg('<circle cx="24" cy="24" r="19" stroke-width="3"/><path d="M24 12v24M12 24h24" stroke-width="7"/>'),
+  hook: svg('<path d="M40 6L16 30" stroke-width="4"/><path d="M16 30c-8 0-10 12 0 12s10-8 6-12" stroke-width="5"/>'),
+  grab: svg('<path d="M42 10L14 24l28 14" stroke-width="3" opacity=".5"/><path d="M40 24H10" stroke-width="5"/><path d="M20 14L8 24l12 10" stroke-width="5"/>'),
+  leap: svg('<path d="M6 40C10 12 34 8 40 30" stroke-width="4"/><path d="M32 26l8 6 4-10" stroke-width="4"/><path d="M4 44h40" stroke-width="2.5" opacity=".5"/>'),
+  heart: svg('<path d="M24 42C8 30 4 22 4 15a10 10 0 0 1 20-3 10 10 0 0 1 20 3c0 7-4 15-20 27z" fill="currentColor" stroke="none"/>'),
+  cross: svg('<path d="M9 9l30 30M39 9L9 39" stroke-width="7"/><circle cx="24" cy="24" r="20" stroke-width="2.5" opacity=".6"/>'),
+  trap: svg('<circle cx="24" cy="24" r="18" stroke-width="5"/><circle cx="24" cy="24" r="6" fill="currentColor" stroke="none"/>'),
+  star: svg('<path d="M24 3l6 14 15 1-11 10 4 15-14-8-14 8 4-15L3 18l15-1z" fill="currentColor" stroke="none"/>'),
+};
+const iconOf = (S) => ICONS[S.id] || GLYPHS[S.icon] || GLYPHS.star;
 const FINISH = {
   over: ['OVER FINISH', '場外へ吹き飛ばした！'],
   burst: ['BURST FINISH', '一撃で回転を断ち切った！'],
@@ -137,7 +160,7 @@ export class UI {
       const S = kitOf(blade)[KEYS.indexOf(k)];
       const how = S.aim === 'self' ? '押すと即発動' : '長押しで照準 → 離して発動';
       const b = el('div', 'skill' + (S.ult ? ' ult' : ''));
-      b.innerHTML = `<div class="s-ring"></div><div class="s-icon">${ICONS[S.id]}</div><div class="s-cd"></div><div class="s-num"></div><div class="s-key">${k}</div><div class="s-badge"></div>
+      b.innerHTML = `<div class="s-ring"></div><div class="s-icon">${iconOf(S)}</div><div class="s-cd"></div><div class="s-num"></div><div class="s-key">${k}</div><div class="s-badge"></div>
         <div class="s-tip"><b>${S.name}</b><i>${S.en}</i><p>${S.desc}</p><span>${S.ult ? 'ゲージ 100%' : 'クールダウン ' + +(S.cd * blade.cdMul).toFixed(1) + '秒'}　／　${how}</span></div>`;
       bar.appendChild(b);
       this.skills[k] = { root: b, cd: $('.s-cd', b), num: $('.s-num', b), ring: $('.s-ring', b), badge: $('.s-badge', b), ready: true, note: '' };
@@ -179,7 +202,7 @@ export class UI {
     $('#how-name').textContent = b.name + ' のスキル';
     $('#sheet').style.setProperty('--c', b.css);
     $('#sheet').innerHTML = this.sheets[b.id];
-    $('#how').innerHTML = kitOf(b).map((S, i) => `<div class="how-row"><kbd>${KEYS[i]}</kbd><div class="how-icon">${ICONS[S.id]}</div><div><b>${S.name}</b><span>${S.desc}</span></div></div>`).join('');
+    $('#how').innerHTML = kitOf(b).map((S, i) => `<div class="how-row"><kbd>${KEYS[i]}</kbd><div class="how-icon">${iconOf(S)}</div><div><b>${S.name}</b><span>${S.desc}</span></div></div>`).join('');
   }
 
   show(id, on) { $('#' + id).classList.toggle('hidden', !on); }
@@ -279,7 +302,7 @@ export class UI {
     r.classList.toggle('armed', lb.me.ready);
     const kit = $('#lb-kit');
     kit.style.setProperty('--c', BLADES[lb.me.blade].css);
-    kit.innerHTML = kitOf(BLADES[lb.me.blade]).map((S, i) => `<div class="how-row"><kbd>${KEYS[i]}</kbd><div class="how-icon">${ICONS[S.id]}</div><div><b>${S.name}</b><span>${S.desc}</span></div></div>`).join('');
+    kit.innerHTML = kitOf(BLADES[lb.me.blade]).map((S, i) => `<div class="how-row"><kbd>${KEYS[i]}</kbd><div class="how-icon">${iconOf(S)}</div><div><b>${S.name}</b><span>${S.desc}</span></div></div>`).join('');
   }
 
   setRound(n) { $('#round').textContent = 'ROUND ' + n; }
@@ -407,6 +430,17 @@ export class UI {
       case 'lotus': case 'turret': case 'arise': { const n = world.own(me, S.id).length; return n ? String(n) : ''; }
       case 'conquer': case 'shift': return world.own(me, 'arise').length ? '' : '—';
     }
+    // Skills described by fields (see `kind` in config.js).
+    if (S.casts) return me.re[key] > 0 ? String(S.casts - me.stack) : '';
+    if (S.re) return me.re[key] > 0 ? '↩' : '';
+    if (S.permHit) return me.perm ? String(me.perm) : '';
+    if (S.id === 'purgatory') return Math.round((S.line + S.per * me.perm) * 100) + '%';
+    if (S.storeShield || S.storeHit) return me.store >= 1 ? String(Math.round(me.store)) : '';
+    if (S.perTag) return foe.tag ? '釘' + foe.tag : '';
+    if (S.id === 'bladecaller') { const n = world.own(me, 'feather').length; return n ? String(n) : ''; }
+    if (S.id === 'keg') { const n = world.own(me, 'keg').length; return n ? String(n) : ''; }
+    if (S.kind === 'buff' && S.dur) return me.buff > 0 ? Math.ceil(me.buff) + 's' : '';
+    if (me.blade.ramp && key === 'Q') return me.stack ? '+' + Math.round(me.blade.ramp.per * me.stack * 100) + '%' : '';
     return '';
   }
 

@@ -126,6 +126,200 @@ export const BLADES = {
     bars: { atk: 3, def: 3, sta: 3, spd: 3 },
     desc: '分身の砂兵を置いて戦わせる。砂兵の壁で相手を縁まで押し出す。',
   },
+  hammer: {
+    id: 'hammer', kit: { Q: 'hshock', W: 'steadfast', E: 'hcharge', R: 'verdict' },
+    name: 'アイアン・ハンマー', en: 'IRON HAMMER', type: 'DEFENSE', typeJa: 'ディフェンス',
+    color: 0x5f8cff, css: '#5f8cff', teeth: 6,
+    atk: 1.16, def: 1.2, mass: 1.3, speed: 12.5, decay: 5.8, spinMax: 1000, cdMul: 1.0, guardMul: 1.0,
+    bars: { atk: 3, def: 5, sta: 3, spd: 2 },
+    pin: { dmg: 40, stun: 1.2 },
+    desc: '相手を壁まで運んでスタンさせ、突進してくる相手は陣で止める。必殺技は場外まで吹き飛ばす一撃。',
+  },
+  fox: {
+    id: 'fox', kit: { Q: 'orb', W: 'foxfire', E: 'charm', R: 'rush' },
+    name: 'ナインテイル・チャーム', en: 'NINE TAIL CHARM', type: 'ATTACK', typeJa: 'アタック',
+    color: 0xff8fd0, css: '#ff8fd0', teeth: 5,
+    atk: 1.24, def: 0.98, mass: 0.94, speed: 15.5, decay: 6.6, spinMax: 1000, cdMul: 1.0, guardMul: 1.0,
+    bars: { atk: 4, def: 2, sta: 2, spd: 5 },
+    desc: '行って戻る宝珠と、相手を引き寄せる魅了。必殺技は3回まで続けて使える突進。',
+  },
+  reaper: {
+    id: 'reaper', kit: { Q: 'bonehook', W: 'ghostwater', E: 'undertow', R: 'deathbelow' },
+    name: 'ブラッドハーバー・リーパー', en: 'HARBOR REAPER', type: 'ATTACK', typeJa: 'アタック',
+    color: 0x1fae8c, css: '#1fae8c', teeth: 3,
+    atk: 1.3, def: 1.0, mass: 0.96, speed: 15.5, decay: 6.7, spinMax: 1000, cdMul: 1.0, guardMul: 1.0,
+    bars: { atk: 5, def: 2, sta: 2, spd: 5 },
+    desc: '鉤で引き寄せ、弱った相手を必殺技で「処刑」する。回転が一定以下の相手は即KO。',
+  },
+  barrel: {
+    id: 'barrel', kit: { Q: 'cask', W: 'drunk', E: 'bodyslam', R: 'bigkeg' },
+    name: 'バレル・ブルーザー', en: 'BARREL BRUISER', type: 'DEFENSE', typeJa: 'ディフェンス',
+    color: 0xc97a3a, css: '#c97a3a', teeth: 6,
+    atk: 1.0, def: 1.12, mass: 1.35, speed: 12.5, decay: 5.7, spinMax: 1000, cdMul: 1.0, guardMul: 1.0,
+    bars: { atk: 3, def: 4, sta: 4, spd: 2 },
+    desc: '樽と体当たりで相手を好きな方向へ吹き飛ばす重量級。',
+  },
+  chrono: {
+    id: 'chrono', kit: { Q: 'timewinder', W: 'parallel', E: 'phasedive', R: 'rewind' },
+    name: 'クロノ・リワインド', en: 'CHRONO REWIND', type: 'STAMINA', typeJa: 'スタミナ',
+    color: 0x4af0e0, css: '#4af0e0', teeth: 4,
+    atk: 1.18, def: 1.0, mass: 0.98, speed: 15, decay: 5.8, spinMax: 1000, cdMul: 1.0, guardMul: 1.0,
+    bars: { atk: 3, def: 3, sta: 4, spd: 4 },
+    rewind: 4,
+    desc: '時間を巻き戻して被弾をなかったことにする。必殺技で4秒前の位置に戻り、失った回転の一部を取り返す。',
+  },
+  iron: {
+    id: 'iron', kit: { Q: 'obliterate', W: 'indestructible', E: 'deathgrasp', R: 'realm' },
+    name: 'アイアン・レヴナント', en: 'IRON REVENANT', type: 'DEFENSE', typeJa: 'ディフェンス',
+    color: 0x6f9f8a, css: '#6f9f8a', teeth: 4,
+    atk: 1.08, def: 1.15, mass: 1.3, speed: 12, decay: 5.8, spinMax: 1000, cdMul: 1.0, guardMul: 1.0,
+    bars: { atk: 4, def: 4, sta: 4, spd: 1 },
+    store: { taken: 0.35, dealt: 0.35, max: 140, fade: 4 },
+    buff: { atk: 1.15, armor: 0.85 },
+    desc: '与えたダメージも受けたダメージも蓄え、バリアに変える。必殺技は相手から回転を吸い続ける。',
+  },
+  dragon: {
+    id: 'dragon', kit: { Q: 'sonicwave', W: 'safeguard', E: 'tempest', R: 'dragonrage' },
+    name: 'ドラゴン・ストライカー', en: 'DRAGON STRIKER', type: 'ATTACK', typeJa: 'アタック',
+    color: 0xff5a3c, css: '#ff5a3c', teeth: 3,
+    atk: 1.2, def: 0.98, mass: 1.0, speed: 15.5, decay: 6.9, spinMax: 1000, cdMul: 1.0, guardMul: 1.0,
+    bars: { atk: 5, def: 3, sta: 2, spd: 5 },
+    desc: '弾を当てて飛びつき、密着した相手を狙った方向へ蹴り飛ばしてリングアウトを狙う。',
+  },
+  boss: {
+    id: 'boss', kit: { Q: 'knuckle', W: 'haymaker', E: 'facebreaker', R: 'showstopper' },
+    name: 'ブロウラー・キング', en: 'BRAWLER KING', type: 'DEFENSE', typeJa: 'ディフェンス',
+    color: 0xf0a060, css: '#f0a060', teeth: 4,
+    atk: 1.0, def: 1.1, mass: 1.3, speed: 13, decay: 5.8, spinMax: 1000, cdMul: 1.0, guardMul: 1.0,
+    bars: { atk: 4, def: 4, sta: 3, spd: 2 },
+    store: { taken: 0.45, dealt: 0, max: 140, fade: 6 },
+    desc: '受けたダメージを「気合」として溜め、拳とバリアにして返す。必殺技は相手を掴んで叩きつける。',
+  },
+  pirate: {
+    id: 'pirate', kit: { Q: 'parrrley', W: 'orange', E: 'keg', R: 'barrage' },
+    name: 'パウダー・キャプテン', en: 'POWDER CAPTAIN', type: 'ATTACK', typeJa: 'アタック',
+    color: 0xd96a1e, css: '#d96a1e', teeth: 5,
+    atk: 1.3, def: 1.02, mass: 1.0, speed: 13.5, decay: 6.0, spinMax: 1000, cdMul: 1.0, guardMul: 1.0,
+    bars: { atk: 4, def: 3, sta: 3, spd: 3 },
+    desc: '火薬樽を並べ、撃って誘爆させる。必殺技はアリーナのどこにでも砲撃を降らせる。',
+  },
+  ash: {
+    id: 'ash', kit: { Q: 'nails', W: 'ignition', E: 'pursuit', R: 'purgatory' },
+    name: 'アッシュ・エクソシスト', en: 'ASHEN EXORCIST', type: 'ATTACK', typeJa: 'アタック',
+    color: 0xb8b0a8, css: '#b8b0a8', teeth: 3,
+    atk: 1.2, def: 0.94, mass: 0.95, speed: 15.5, decay: 6.9, spinMax: 1000, cdMul: 1.0, guardMul: 1.0,
+    bars: { atk: 5, def: 2, sta: 2, spd: 5 },
+    desc: '釘を刺して鈍らせ、弱った相手を封印具で処刑する。封印具を拾うたび、処刑ラインが試合中ずっと上がる。',
+  },
+  prism: {
+    id: 'prism', kit: { Q: 'binding', W: 'barrier', E: 'singularity', R: 'finalspark' },
+    name: 'プリズム・レディアンス', en: 'PRISM RADIANCE', type: 'STAMINA', typeJa: 'スタミナ',
+    color: 0xfff3a0, css: '#fff3a0', teeth: 6,
+    atk: 1.35, def: 1.06, mass: 0.95, speed: 13.5, decay: 5.6, spinMax: 1000, cdMul: 1.0, guardMul: 1.0,
+    bars: { atk: 4, def: 2, sta: 4, spd: 3 },
+    desc: '光で縛り、アリーナを貫く光線で撃ち抜く遠距離型。',
+  },
+  canvas: {
+    id: 'canvas', kit: { Q: 'fireball', W: 'pool', E: 'grimface', R: 'despair' },
+    name: 'ヴィジョン・ペインター', en: 'VISION PAINTER', type: 'STAMINA', typeJa: 'スタミナ',
+    color: 0x7f7bff, css: '#7f7bff', teeth: 5,
+    atk: 1.35, def: 1.06, mass: 0.96, speed: 13.5, decay: 5.4, spinMax: 1000, cdMul: 1.0, guardMul: 1.0,
+    bars: { atk: 3, def: 2, sta: 5, spd: 3 },
+    desc: '炎で焼き、泉で回復し、恐怖で追い払う。必殺技は当てた場所に広がり続ける絶望を残す。',
+  },
+  star: {
+    id: 'star', kit: { Q: 'paddle', W: 'thief', E: 'bubble', R: 'portal' },
+    name: 'トワイライト・スター', en: 'TWILIGHT STAR', type: 'ATTACK', typeJa: 'アタック',
+    color: 0xffb38a, css: '#ffb38a', teeth: 5,
+    atk: 1.18, def: 0.92, mass: 0.92, speed: 15.5, decay: 6.8, spinMax: 1000, cdMul: 1.0, guardMul: 1.0,
+    bars: { atk: 5, def: 1, sta: 2, spd: 5 },
+    desc: '遠くから当てるほど痛い星と、時間差で眠らせる泡。必殺技で飛び込み、すぐ元の場所へ帰れる。',
+  },
+  spark: {
+    id: 'spark', kit: { Q: 'burstfire', W: 'ultrashock', E: 'surge', R: 'crash' },
+    name: 'スパーク・サージ', en: 'SPARK SURGE', type: 'ATTACK', typeJa: 'アタック',
+    color: 0xd8ff3a, css: '#d8ff3a', teeth: 4,
+    atk: 1.2, def: 0.98, mass: 0.92, speed: 16, decay: 6.7, spinMax: 1000, cdMul: 1.0, guardMul: 1.0,
+    bars: { atk: 4, def: 2, sta: 2, spd: 5 },
+    buff: { speed: 1.25, atk: 1.15 },
+    desc: '短い間隔で撃ち続ける連射型。必殺技で帯電し、移動も攻撃も一段速くなる。',
+  },
+  plume: {
+    id: 'plume', kit: { Q: 'daggers', W: 'plumage', E: 'bladecaller', R: 'storm' },
+    name: 'フェザー・ストーム', en: 'FEATHER STORM', type: 'ATTACK', typeJa: 'アタック',
+    color: 0xd03a8c, css: '#d03a8c', teeth: 5,
+    atk: 1.32, def: 1.0, mass: 0.95, speed: 14.5, decay: 6.4, spinMax: 1000, cdMul: 1.0, guardMul: 1.0,
+    bars: { atk: 5, def: 2, sta: 3, spd: 4 },
+    buff: { atk: 1.2 },
+    desc: '投げた羽根は床に残り、呼び戻すと相手を背後から切り裂く。3枚当てるとスタン。',
+  },
+  darkin: {
+    id: 'darkin', kit: { Q: 'darkinblade', W: 'chains', E: 'umbral', R: 'worldender' },
+    name: 'ワールド・エンダー', en: 'WORLD ENDER', type: 'ATTACK', typeJa: 'アタック',
+    color: 0xc81e3c, css: '#c81e3c', teeth: 3,
+    atk: 1.2, def: 1.05, mass: 1.15, speed: 13.5, decay: 6.4, spinMax: 1000, cdMul: 1.0, guardMul: 1.0,
+    bars: { atk: 5, def: 3, sta: 3, spd: 3 },
+    buff: { atk: 1.25, speed: 1.2, regen: 8 },
+    desc: '3連の大剣で打ち上げる重い剣士。必殺技の間は攻撃も速度も上がり、回転が回復し続ける。',
+  },
+  rose: {
+    id: 'rose', kit: { Q: 'flair', W: 'whirl', E: 'wildrush', R: 'inferno' },
+    name: 'スタイル・ランカー', en: 'STYLE RANKER', type: 'ATTACK', typeJa: 'アタック',
+    color: 0xe8566a, css: '#e8566a', teeth: 4,
+    atk: 1.25, def: 0.98, mass: 0.98, speed: 15.5, decay: 6.6, spinMax: 1000, cdMul: 1.0, guardMul: 1.0,
+    bars: { atk: 5, def: 2, sta: 2, spd: 5 },
+    desc: '撃って、弾を斬り払って、すり抜ける。必殺技は自分を中心に弾幕をばらまき続ける。',
+  },
+  glaive: {
+    id: 'glaive', kit: { Q: 'darkglaive', W: 'dreaded', E: 'aureate', R: 'grim' },
+    name: 'アンサンダード・グレイヴ', en: 'UNSUNDERED GLAIVE', type: 'DEFENSE', typeJa: 'ディフェンス',
+    color: 0xe8b84a, css: '#e8b84a', teeth: 4,
+    atk: 0.95, def: 1.05, mass: 1.2, speed: 13.5, decay: 5.8, spinMax: 1000, cdMul: 1.0, guardMul: 1.0,
+    bars: { atk: 4, def: 4, sta: 4, spd: 2 },
+    ramp: { per: 0.01, max: 10 },
+    desc: 'スキルを当てるたびに与えるダメージが1%ずつ上がっていく（ラウンド中、最大10回）。長期戦ほど強い。',
+  },
+  lunar: {
+    id: 'lunar', kit: { Q: 'calibrum', W: 'infernum', E: 'gravitum', R: 'vigil' },
+    name: 'ルナ・アーセナル', en: 'LUNAR ARSENAL', type: 'ATTACK', typeJa: 'アタック',
+    color: 0x8fb8ff, css: '#8fb8ff', teeth: 4,
+    atk: 1.34, def: 1.02, mass: 0.94, speed: 13.5, decay: 6.2, spinMax: 1000, cdMul: 1.0, guardMul: 1.0,
+    bars: { atk: 5, def: 1, sta: 3, spd: 3 },
+    desc: '長射程の狙撃・扇状の炎・足止めの重力弾を使い分ける武器庫。',
+  },
+  cosmos: {
+    id: 'cosmos', kit: { Q: 'breath', W: 'flight', E: 'blackhole', R: 'fallingstar' },
+    name: 'スターフォージ', en: 'STAR FORGER', type: 'STAMINA', typeJa: 'スタミナ',
+    color: 0x5a6cff, css: '#5a6cff', teeth: 6,
+    atk: 1.2, def: 1.05, mass: 1.05, speed: 13, decay: 5.4, spinMax: 1000, cdMul: 1.0, guardMul: 1.0,
+    bars: { atk: 3, def: 3, sta: 5, spd: 2 },
+    desc: '息吹を吐き続け、重力の穴に引き込み、星を落とす。大きく飛んで位置も変えられる。',
+  },
+  hex: {
+    id: 'hex', kit: { Q: 'balefulstrike', W: 'darkmatter', E: 'horizon', R: 'primordial' },
+    name: 'ダーク・ソーサラー', en: 'DARK SORCERER', type: 'STAMINA', typeJa: 'スタミナ',
+    color: 0x9a4aff, css: '#9a4aff', teeth: 5,
+    atk: 1.12, def: 1.0, mass: 0.94, speed: 13.5, decay: 5.6, spinMax: 1000, cdMul: 1.0, guardMul: 1.0,
+    bars: { atk: 3, def: 2, sta: 4, spd: 3 },
+    permDmg: 0.02,
+    desc: 'Qを当てるたびに魔力が溜まり、与えるダメージが2%ずつ上がる（最大30回）。魔力は次のラウンドにも持ち越す。',
+  },
+  gauntlet: {
+    id: 'gauntlet', kit: { Q: 'vault', W: 'blastshield', E: 'relentless', R: 'cease' },
+    name: 'ヴォルト・ブレイカー', en: 'VAULT BREAKER', type: 'ATTACK', typeJa: 'アタック',
+    color: 0xff4f9a, css: '#ff4f9a', teeth: 3,
+    atk: 1.08, def: 1.05, mass: 1.15, speed: 14.5, decay: 6.6, spinMax: 1000, cdMul: 1.0, guardMul: 1.0,
+    bars: { atk: 5, def: 3, sta: 3, spd: 4 },
+    desc: '長い突進で殴り込む。必殺技は離れた相手に一瞬で詰め寄り、打ち上げる。',
+  },
+  arcane: {
+    id: 'arcane', kit: { Q: 'mystic', W: 'flux', E: 'arcshift', R: 'trueshot' },
+    name: 'アーケイン・シューター', en: 'ARCANE SHOOTER', type: 'ATTACK', typeJa: 'アタック',
+    color: 0x6ae0ff, css: '#6ae0ff', teeth: 4,
+    atk: 1.3, def: 1.0, mass: 0.92, speed: 15, decay: 6.4, spinMax: 1000, cdMul: 1.0, guardMul: 1.0,
+    bars: { atk: 5, def: 1, sta: 2, spd: 4 },
+    desc: 'Qを当てるほど他のスキルが早く戻ってくる。当て続けることが強さになる射撃型。',
+  },
 };
 
 export const ENEMY_COLOR = 0xff3b4e;
@@ -143,6 +337,10 @@ export const BLEED = { max: 5, dur: 8, dps: 3 };
 //   hidden  not in any kit: a second stage, or something an object fires
 //   kb / tumble / launch / slow / stun / up / bleed / mark   what a hit does
 //   keep    share of the ordinary collision damage a dash hit adds on top of its own
+// Newer skills are described entirely by fields; `kind` picks the behaviour
+// (see World.generic and World.genericZone in sim.js):
+//   shot / bolts / dash / blink / blast / field / burst / cone / buff / leap / beam / kick / strike / throw
+//   icon    which stock glyph the HUD draws for it
 export const SKILLS = {
   // ---- AZURE FANG: hit-and-run attacker ------------------------------------
   sonic: {
@@ -351,7 +549,7 @@ export const SKILLS = {
   recall: { name: 'ゆがみ・帰還', en: 'RETURN', aim: 'self', hidden: true },
   ethereal: {
     name: '幻の鎖', en: 'ETHEREAL CHAINS', aim: 'line', cd: 11, tele: 0.42,
-    range: 11, speed: 32, radius: 0.8, dmg: 24, slow: 1.5, dur: 1.5, safe: 6, breakRange: 10.5, pop: 54, root: 1.3,
+    range: 11, speed: 32, radius: 0.8, dmg: 24, slow: 1.5, tie: 'CHAINED', dur: 1.5, safe: 6, breakRange: 10.5, pop: 54, root: 1.3,
     desc: '鎖でつなぐ。1.5秒のあいだ引きちぎられなければ、相手をスタンさせる。',
   },
   mimic: {
@@ -446,6 +644,525 @@ export const SKILLS = {
     name: '皇帝の分砂嶺', en: "EMPEROR'S DIVIDE", aim: 'line', cd: 2, ult: true, tele: 0.3,
     range: 8, radius: 3.6, wall: 3.6, back: 1, travel: 7, speed: 22, hold: 4, dmg: 100, kb: 18, solid: true,
     desc: '【必殺技】背後から砂兵の壁が前進し、相手を強く押し出す。壁は4秒残り、自分だけ通り抜けられる。',
+  },
+  // ---- IRON HAMMER: walls are weapons ----------------------------------------
+  hshock: {
+    name: 'ハンマーショック', en: 'HAMMER SHOCK', aim: 'ground', kind: 'blast', icon: 'blast', cd: 6,
+    tele: 0.2, range: 5.5, aoe: 2.6, delay: 0.3, twice: 0.9, dmg: 40, slow: 1,
+    desc: '床を叩いてスロウにし、同じ場所が少し遅れてもう一度爆発する。',
+  },
+  steadfast: {
+    name: '不動の陣', en: 'STEADFAST PRESENCE', aim: 'self', kind: 'field', icon: 'shield', cd: 12,
+    follow: true, block: true, dur: 2.5, aoe: 4, dmg: 22, stun: 0.5, haste: 2.5,
+    desc: '2.5秒間、自分の周りに陣を張って加速する。陣の中で突進・瞬間移動した相手を止めて弾き返す。',
+  },
+  hcharge: {
+    name: 'ヒロイックチャージ', en: 'HEROIC CHARGE', aim: 'dash', kind: 'dash', icon: 'dash', cd: 9,
+    tele: 0.4, dist: 7, minDist: 3, speed: 34, dmg: 30, kb: 14, carry: 0.9,
+    desc: '突進して相手を進行方向へ運ぶ。そのまま壁に叩きつけるとスタンと追加ダメージ。',
+  },
+  verdict: {
+    name: '裁きの一撃', en: "KEEPER'S VERDICT", aim: 'line', kind: 'beam', icon: 'beam', cd: 2, ult: true,
+    tele: 0.2, charge: 0.7, root: true, armor: 0.5, range: 14, radius: 1.6, dmg: 115, kb: 24, launch: 2,
+    desc: '【必殺技】力を溜めて一直線の衝撃波を放ち、当たった相手を場外まで吹き飛ばす。',
+  },
+  // ---- NINE TAIL CHARM: out, back, and three more times ----------------------
+  orb: {
+    name: '欺きの宝珠', en: 'ORB OF DECEPTION', aim: 'line', kind: 'shot', icon: 'orb', cd: 5,
+    tele: 0.35, range: 11, speed: 26, radius: 0.9, dmg: 32, pierce: true, ret: true, backMul: 1.3,
+    desc: '宝珠が行って戻ってくる。往復とも当たり、戻りのほうが痛い。',
+  },
+  foxfire: {
+    name: '狐火', en: 'FOX-FIRE', aim: 'self', kind: 'bolts', icon: 'star', cd: 7,
+    bolt: 'foxbolt', n: 3, haste: 1.5,
+    desc: '相手を自動で狙う狐火を3発放ち、少しの間加速する。',
+  },
+  foxbolt: {
+    name: '狐火', en: 'FOX-FIRE', aim: 'line', hidden: true,
+    range: 10, speed: 30, radius: 0.5, dmg: 18, kb: 1.5, tumble: 0, launch: 0,
+  },
+  charm: {
+    name: '魅了', en: 'CHARM', aim: 'line', kind: 'shot', icon: 'heart', cd: 10,
+    tele: 0.4, range: 11, speed: 30, radius: 0.85, dmg: 30, charm: 1.3,
+    desc: '当たった相手は1.3秒間、何もできずにこちらへ歩いてくる。',
+  },
+  rush: {
+    name: 'スピリットラッシュ', en: 'SPIRIT RUSH', aim: 'dash', kind: 'dash', icon: 'dash', cd: 2, ult: true,
+    re: 'rush', casts: 3, window: 6, dist: 6, minDist: 3, speed: 38, through: true, bolt: 'foxbolt', n: 2,
+    desc: '【必殺技】相手をすり抜ける突進。6秒以内なら3回まで使え、止まるたびに狐火を2発放つ。',
+  },
+  // ---- HARBOR REAPER: hook, drown, execute -----------------------------------
+  bonehook: {
+    name: '骨の鉤', en: 'BONE SKEWER', aim: 'line', kind: 'shot', icon: 'hook', cd: 8,
+    tele: 0.45, range: 12, speed: 32, radius: 0.8, dmg: 40, chain: true, pull: 18, slow: 1.2,
+    desc: '鉤を撃ち、当たった相手を引き寄せる。',
+  },
+  ghostwater: {
+    name: '幽海の潜行', en: 'GHOSTWATER DIVE', aim: 'self', kind: 'buff', icon: 'heal', cd: 11,
+    haste: 4, heal: 0.15,
+    desc: '4秒間加速し、減った回転の15%を取り戻す。',
+  },
+  undertow: {
+    name: '亡霊の引き波', en: 'PHANTOM UNDERTOW', aim: 'dash', kind: 'dash', icon: 'dash', cd: 9,
+    dist: 6.5, minDist: 4, speed: 36, through: true, phantom: 'wraith',
+    desc: '相手をすり抜けて突進する。残した亡霊が後から同じ道を追いかけ、触れた相手をスタンさせる。',
+  },
+  wraith: {
+    name: '亡霊', en: 'PHANTOM', aim: 'line', hidden: true,
+    range: 8, speed: 22, radius: 1.1, dmg: 36, stun: 1.0, pierce: true,
+  },
+  deathbelow: {
+    name: '水底の死', en: 'DEATH FROM BELOW', aim: 'ground', kind: 'blast', icon: 'cross', cd: 2, ult: true,
+    tele: 0.2, range: 9, aoe: 3.2, delay: 0.5, dmg: 115, line: 0.2,
+    desc: '【必殺技】指定地点を十字に断つ。回転が20%を切っている相手は即KO。',
+  },
+  // ---- BARREL BRUISER: throw them wherever you like --------------------------
+  cask: {
+    name: '樽転がし', en: 'BARREL ROLL', aim: 'ground', kind: 'field', icon: 'blast', cd: 8,
+    re: 'caskpop', range: 9, aoe: 3.2, dur: 2.5, endDmg: 50, endSlow: 1.5,
+    desc: '樽を置く。2.5秒後か、もう一度押したときに爆発してスロウにする。',
+  },
+  caskpop: {
+    name: '起爆', en: 'DETONATE', aim: 'self', hidden: true,
+    
+  },
+  drunk: {
+    name: '酔いどれ', en: 'DRUNKEN RAGE', aim: 'self', kind: 'buff', icon: 'buff', cd: 7,
+    empower: 4, bonus: 26, kb: 7, stun: 0.4, shield: 40, hold: 2.5,
+    desc: 'バリアを張り、4秒間、次の体当たりを強化する。当てると一瞬スタン。',
+  },
+  bodyslam: {
+    name: '体当たり', en: 'BODY SLAM', aim: 'dash', kind: 'dash', icon: 'dash', cd: 9,
+    tele: 0.4, dist: 6.5, minDist: 3, speed: 32, dmg: 30, keep: 0.5, kb: 6, stun: 0.8,
+    desc: '突進し、最初に当たった相手をスタンさせる。',
+  },
+  bigkeg: {
+    name: '爆発樽', en: 'EXPLOSIVE CASK', aim: 'ground', kind: 'blast', icon: 'blast', cd: 2, ult: true,
+    tele: 0.15, range: 10, aoe: 4.4, delay: 0.45, dmg: 100, kb: 16, launch: 2,
+    desc: '【必殺技】着弾点を中心に外向きへ大きく吹き飛ばす。奥に置けば手前へ、手前に置けば場外へ。',
+  },
+  // ---- CHRONO REWIND: undo the last four seconds -----------------------------
+  timewinder: {
+    name: 'タイムワインダー', en: 'TIMEWINDER', aim: 'line', kind: 'shot', icon: 'orb', cd: 6,
+    tele: 0.35, range: 10, speed: 28, radius: 0.9, dmg: 32, pierce: true, ret: true, slow: 1, backMul: 1.4,
+    desc: '行って戻る弾。往復とも当たってスロウにし、戻りのほうが痛い。',
+  },
+  parallel: {
+    name: '並行世界', en: 'PARALLEL CONVERGENCE', aim: 'ground', kind: 'field', icon: 'field', cd: 13,
+    range: 9, aoe: 3.6, dur: 2.2, endDmg: 30, endStun: 1.4, endShield: 80,
+    desc: '2.2秒後に発動する領域を置く。中の相手をスタンさせ、自分が中にいればバリアを得る。',
+  },
+  phasedive: {
+    name: '位相ダイブ', en: 'PHASE DIVE', aim: 'dash', kind: 'dash', icon: 'dash', cd: 8,
+    dist: 5, minDist: 3, speed: 34, empower: 3, bonus: 50, kb: 7,
+    desc: '短く突進し、3秒間、次の体当たりを強化する。',
+  },
+  rewind: {
+    name: 'クロノブレイク', en: 'CHRONOBREAK', aim: 'self', icon: 'star', cd: 2, ult: true,
+    back: 0.5, flat: 60, aoe: 4.2, dmg: 135, kb: 8,
+    desc: '【必殺技】4秒前にいた場所へ戻り、その間に失った回転の半分を取り返す。戻った場所の周囲にダメージ。',
+  },
+  // ---- IRON REVENANT: every blow is banked -----------------------------------
+  obliterate: {
+    name: '破砕', en: 'OBLITERATE', aim: 'ground', kind: 'blast', icon: 'blast', cd: 5,
+    tele: 0.2, range: 5.5, aoe: 2.7, delay: 0.5, dmg: 58, kb: 4,
+    desc: '少し溜めて目の前の床を叩き割る。',
+  },
+  indestructible: {
+    name: '不壊', en: 'INDESTRUCTIBLE', aim: 'self', kind: 'buff', icon: 'shield', cd: 12,
+    storeShield: true, min: 30, max: 140, hold: 4,
+    desc: '与えた・受けたダメージの蓄えを、4秒間のバリアに変える。',
+  },
+  deathgrasp: {
+    name: '死の掌握', en: "DEATH'S GRASP", aim: 'cone', kind: 'cone', icon: 'grab', cd: 10,
+    tele: 0.35, range: 8, half: 0.45, dmg: 26, pull: 16, slow: 1,
+    desc: '扇の中の相手を手前へ引きずり込む。',
+  },
+  realm: {
+    name: '死の領域', en: 'REALM OF DEATH', aim: 'self', icon: 'star', cd: 2, ult: true,
+    need: 'range', range: 9, dur: 6, drain: 22, heal: 0.6, breakRange: 40,
+    desc: '【必殺技】近くの相手を6秒間、どこへ逃げても切れない帯でつなぎ、回転を吸い続ける。その間は攻撃と防御も上がる。',
+  },
+  // ---- DRAGON STRIKER: mark, follow, kick out --------------------------------
+  sonicwave: {
+    name: '響波', en: 'SONIC WAVE', aim: 'line', kind: 'shot', icon: 'shot', cd: 7,
+    tele: 0.4, re: 'resonate', reOnHit: 3, range: 13, speed: 36, radius: 0.8, dmg: 32,
+    desc: '弾を撃つ。当たったら3秒以内にもう一度押すと、相手へ一瞬で飛びつく。',
+  },
+  resonate: {
+    name: '共鳴撃', en: 'RESONATING STRIKE', aim: 'self', kind: 'strike', hidden: true,
+    tp: true, dmg: 40, exec: 0.6,
+  },
+  safeguard: {
+    name: '鉄の構え', en: 'SAFEGUARD', aim: 'self', kind: 'buff', icon: 'shield', cd: 9,
+    shield: 60, hold: 2, haste: 2,
+    desc: '2秒間バリアを張り、加速する。',
+  },
+  tempest: {
+    name: '地裂', en: 'TEMPEST', aim: 'self', kind: 'burst', icon: 'burst', cd: 7,
+    aoe: 4, dmg: 34, slow: 1.8,
+    desc: '周囲に衝撃波を出してスロウにする。',
+  },
+  dragonrage: {
+    name: '龍の怒り', en: "DRAGON'S RAGE", aim: 'line', kind: 'kick', icon: 'beam', cd: 2, ult: true,
+    need: 'range', grab: 3.8, range: 6, radius: 1.2, dmg: 100, kb: 26, launch: 2.2,
+    desc: '【必殺技】密着した相手を、狙った方向へ場外まで蹴り飛ばす。',
+  },
+  // ---- BRAWLER KING: take it, then give it back ------------------------------
+  knuckle: {
+    name: '拳闘', en: 'KNUCKLE DOWN', aim: 'self', kind: 'buff', icon: 'buff', cd: 6,
+    empower: 4, bonus: 30, kb: 8, haste: 1.5,
+    desc: '加速し、4秒間、次の体当たりを強化する。',
+  },
+  haymaker: {
+    name: '剛拳', en: 'HAYMAKER', aim: 'cone', kind: 'cone', icon: 'cone', cd: 10,
+    tele: 0.4, range: 7.5, half: 0.4, dmg: 34, storeHit: 0.6, hold: 2.5,
+    desc: '溜まった気合をすべて拳に乗せて殴り、同じ量のバリアを得る。',
+  },
+  facebreaker: {
+    name: '顔面クラッシュ', en: 'FACEBREAKER', aim: 'self', kind: 'burst', icon: 'grab', cd: 9,
+    aoe: 4.2, dmg: 26, pullIn: 14, stun: 0.7,
+    desc: '周囲の相手を自分のところへ引き寄せてスタンさせる。',
+  },
+  showstopper: {
+    name: 'ショーストッパー', en: 'THE SHOW STOPPER', aim: 'ground', kind: 'throw', icon: 'leap', cd: 2, ult: true,
+    need: 'range', grab: 3.8, range: 8, aoe: 3.6, air: 0.7, height: 5, dmg: 100, massMul: 0.6, stun: 0.5,
+    desc: '【必殺技】密着した相手を掴み、指定地点へ叩きつける。重い相手ほどダメージが大きい。',
+  },
+  // ---- POWDER CAPTAIN: kegs first, then the match ----------------------------
+  parrrley: {
+    name: '早撃ち', en: 'PARRRLEY', aim: 'line', kind: 'shot', icon: 'shot', cd: 3,
+    tele: 0.35, range: 12, speed: 40, radius: 0.7, dmg: 42, kb: 3, tumble: 0.1,
+    desc: '弾を撃つ。自分の火薬樽に当てると爆発させられる。',
+  },
+  orange: {
+    name: '壊血病治療', en: 'REMOVE SCURVY', aim: 'self', kind: 'buff', icon: 'heal', cd: 14,
+    heal: 0.12, flat: 40, cleanse: true,
+    desc: '回転を回復し、スロウ・毒・出血などをすべて消す。',
+  },
+  keg: {
+    name: '火薬樽', en: 'POWDER KEG', aim: 'ground', icon: 'trap', cd: 6,
+    ai: 'ground', range: 8, aoe: 3.6, dur: 18, max: 3, dmg: 72, slow: 1.5, kb: 5,
+    desc: '火薬樽を置く（最大3個）。自分の弾か体当たりで爆発し、近くの樽も誘爆する。相手に踏まれると不発。',
+  },
+  barrage: {
+    name: '一斉砲撃', en: 'CANNON BARRAGE', aim: 'ground', kind: 'field', icon: 'field', cd: 2, ult: true,
+    range: 30, aoe: 6, dur: 5, dps: 44, slowIn: true,
+    desc: '【必殺技】アリーナのどこへでも5秒間の砲撃を降らせる。中の相手はスロウになり削られ続ける。',
+  },
+  // ---- ASHEN EXORCIST: nail them down, then seal them away -------------------
+  nails: {
+    name: '儀式の釘', en: 'RITUAL NAILS', aim: 'line', kind: 'shot', icon: 'shot', cd: 6,
+    tele: 0.3, re: 'nails', casts: 3, window: 2.5, range: 12, speed: 38, radius: 0.7, dmg: 24, nail: 0.25,
+    desc: '釘を投げる。続けて3本まで投げられ、刺さった本数だけ相手のスロウが強くなる。',
+  },
+  ignition: {
+    name: '魂の点火', en: 'SOUL IGNITION', aim: 'self', kind: 'buff', icon: 'buff', cd: 11,
+    cost: 40, haste: 4, shield: 70, hold: 4,
+    desc: '回転を少し燃やして4秒間加速し、バリアを得る。',
+  },
+  pursuit: {
+    name: '灰の追跡', en: 'ASHEN PURSUIT', aim: 'blink', kind: 'blink', icon: 'blink', cd: 8,
+    range: 6, speed: 40, aoe: 3, dmg: 34, perTag: 24,
+    desc: '瞬間移動して周囲を斬る。相手に刺さった釘を引き抜き、1本ごとに追加ダメージ。',
+  },
+  purgatory: {
+    name: '煉獄', en: 'PURGATORY', aim: 'ground', icon: 'cross', cd: 2, ult: true,
+    ai: 'ground', range: 9, aoe: 3.5, dur: 4, dmg: 95, slow: 1.5, line: 0.1, per: 0.02, permMax: 4,
+    desc: '【必殺技】封印具を蹴り込み、範囲内の相手に釘を3本刺す。4秒の間に釘の刺さった相手の回転が処刑ライン（10%）を切ると即KO。封印具を自分で拾うとラインが2%上がる（試合中ずっと、最大18%）。',
+  },
+  // ---- PRISM RADIANCE: bind, then burn a line across the arena ---------------
+  binding: {
+    name: '光の縛め', en: 'LIGHT BINDING', aim: 'line', kind: 'shot', icon: 'shot', cd: 6,
+    tele: 0.45, range: 13, speed: 30, radius: 0.8, dmg: 40, stun: 1.2,
+    desc: '当たった相手を1.2秒スタンさせる弾。',
+  },
+  barrier: {
+    name: '虹の障壁', en: 'PRISMATIC BARRIER', aim: 'self', kind: 'buff', icon: 'shield', cd: 9,
+    shield: 90, hold: 2.5,
+    desc: '2.5秒間のバリアを張る。',
+  },
+  singularity: {
+    name: '光の特異点', en: 'LUCENT SINGULARITY', aim: 'ground', kind: 'field', icon: 'field', cd: 5.5,
+    tele: 0.1, range: 10, aoe: 3.2, dur: 1.1, slowIn: true, endDmg: 66, endSlow: 1,
+    desc: '中の相手をスロウにする光球を置く。1.3秒後に炸裂する。',
+  },
+  finalspark: {
+    name: '終極の閃光', en: 'FINAL SPARK', aim: 'line', kind: 'beam', icon: 'beam', cd: 2, ult: true,
+    tele: 0.1, charge: 0.6, root: true, range: 30, radius: 1.4, dmg: 180,
+    desc: '【必殺技】少し溜めて、アリーナを端から端まで貫く光線を放つ。',
+  },
+  // ---- VISION PAINTER: fire, a spring, and dread -----------------------------
+  fireball: {
+    name: '破滅の炎', en: 'DEVASTATING FIRE', aim: 'line', kind: 'shot', icon: 'shot', cd: 3.2,
+    tele: 0.35, range: 12, speed: 32, radius: 0.8, dmg: 34, splash: 2.6, splashDmg: 26,
+    desc: '当たるか射程の端で爆発する火球。',
+  },
+  pool: {
+    name: '安息の泉', en: 'FLEETING CURRENT', aim: 'self', kind: 'field', icon: 'heal', cd: 12,
+    aoe: 3.6, dur: 4, regen: 20, hasteIn: true,
+    desc: '足元に泉を作る。中にいる間は回転が回復し、加速する。',
+  },
+  grimface: {
+    name: '戦慄の貌', en: 'GRIM VISAGE', aim: 'line', kind: 'shot', icon: 'heart', cd: 8,
+    tele: 0.4, range: 11, speed: 34, radius: 0.8, dmg: 32, fear: 1.1,
+    desc: '当たった相手は1.1秒間、何もできずに逃げていく。',
+  },
+  despair: {
+    name: '絶望の螺旋', en: 'SPIRALING DESPAIR', aim: 'line', kind: 'shot', icon: 'star', cd: 2, ult: true,
+    tele: 0.4, range: 14, speed: 30, radius: 1.0, dmg: 30, spawn: 'despairz',
+    desc: '【必殺技】当たった場所に3秒間広がり続ける領域を残す。中の相手はスロウになり削られ、最後に炸裂する。',
+  },
+  despairz: {
+    name: '絶望', en: 'DESPAIR', aim: 'ground', kind: 'field', hidden: true,
+    aoe: 5, r0: 2, grow: 2.4, dur: 3, dps: 50, slowIn: true, endDmg: 90,
+  },
+  // ---- TWILIGHT STAR: the further the better ---------------------------------
+  paddle: {
+    name: '流れ星', en: 'PADDLE STAR', aim: 'line', kind: 'shot', icon: 'star', cd: 5,
+    tele: 0.4, range: 16, speed: 30, radius: 0.8, dmg: 24, far: 1.4,
+    desc: '星を投げる。遠くまで飛んでから当たるほどダメージが上がる（最大2.4倍）。',
+  },
+  thief: {
+    name: '呪文泥棒', en: 'SPELL THIEF', aim: 'self', kind: 'bolts', icon: 'star', cd: 8,
+    bolt: 'starbolt', n: 3, haste: 2,
+    desc: '相手を自動で狙う光弾を3発放ち、加速する。',
+  },
+  starbolt: {
+    name: '光弾', en: 'STAR BOLT', aim: 'line', hidden: true,
+    range: 10, speed: 30, radius: 0.5, dmg: 15, kb: 1.5, tumble: 0, launch: 0,
+  },
+  bubble: {
+    name: 'おやすみ泡', en: 'SLEEPY TROUBLE BUBBLE', aim: 'line', kind: 'shot', icon: 'orb', cd: 10,
+    range: 11, speed: 26, radius: 0.9, dmg: 18, slow: 1.4, tie: 'DROWSY', dur: 1.2, breakRange: 99, pop: 30, root: 1.6,
+    desc: '当たった相手はうとうとしてスロウになり、1.2秒後に眠って1.6秒動けなくなる。',
+  },
+  portal: {
+    name: 'ポータルジャンプ', en: 'PORTAL JUMP', aim: 'blink', kind: 'blink', icon: 'blink', cd: 2, ult: true,
+    re: 'recall', window: 1.8, range: 7, speed: 60, aoe: 3.2, dmg: 95, kb: 6,
+    desc: '【必殺技】瞬間移動して周囲を吹き飛ばす。1.8秒以内にもう一度押すと元の場所へ帰る。',
+  },
+  // ---- SPARK SURGE: never stop shooting --------------------------------------
+  burstfire: {
+    name: '連射', en: 'BURST FIRE', aim: 'line', kind: 'shot', icon: 'shot', cd: 1.1,
+    tele: 0.2, range: 9, speed: 44, radius: 0.6, dmg: 16, fan: 3, half: 0.1, kb: 1, tumble: 0, launch: 0,
+    desc: '3発の弾を細い扇で撃つ。クールダウンがとても短い。',
+  },
+  ultrashock: {
+    name: 'ウルトラショック', en: 'ULTRASHOCK LASER', aim: 'line', kind: 'shot', icon: 'beam', cd: 8,
+    tele: 0.4, range: 18, speed: 50, radius: 0.7, dmg: 46, slow: 1.5,
+    desc: '長射程の電撃。当たった相手をスロウにする。',
+  },
+  surge: {
+    name: 'スパークサージ', en: 'SPARK SURGE', aim: 'dash', kind: 'dash', icon: 'dash', cd: 7,
+    dist: 6, minDist: 4, speed: 40, through: true, haste: 2,
+    desc: '相手をすり抜ける突進。そのあと2秒間加速する。',
+  },
+  crash: {
+    name: 'ライトニングクラッシュ', en: 'LIGHTNING CRASH', aim: 'self', kind: 'burst', icon: 'burst', cd: 2, ult: true,
+    aoe: 5, dmg: 110, kb: 8, buff: 8,
+    desc: '【必殺技】周囲に放電し、8秒間、移動速度と与えるダメージが上がる。',
+  },
+  // ---- FEATHER STORM: the feathers come back ---------------------------------
+  daggers: {
+    name: '双刃', en: 'DOUBLE DAGGERS', aim: 'line', kind: 'shot', icon: 'shot', cd: 4,
+    tele: 0.3, range: 12, speed: 38, radius: 0.7, dmg: 26, fan: 2, half: 0.09, pierce: true, feather: true,
+    desc: '貫通する羽根を2枚投げる。羽根は落ちた場所に6秒残る。',
+  },
+  feather: {
+    name: '羽根', en: 'FEATHER', aim: 'ground', hidden: true,
+    aoe: 0.6, dur: 6, max: 6,
+  },
+  plumage: {
+    name: '死の羽衣', en: 'DEADLY PLUMAGE', aim: 'self', kind: 'buff', icon: 'buff', cd: 12,
+    dur: 4, haste: 2,
+    desc: '4秒間、与えるダメージが20%上がり、少しの間加速する。',
+  },
+  bladecaller: {
+    name: 'ブレードコーラー', en: 'BLADECALLER', aim: 'self', icon: 'grab', cd: 7,
+    ai: 'feathers',
+    desc: '床の羽根をすべて自分へ呼び戻す。途中の相手を切り裂き、3枚当たるとスタン。',
+  },
+  quill: {
+    name: '羽根', en: 'QUILL', aim: 'line', hidden: true,
+    range: 30, speed: 40, radius: 0.9, dmg: 28, pierce: true, root: 1.2,
+  },
+  storm: {
+    name: 'フェザーストーム', en: 'FEATHERSTORM', aim: 'leap', kind: 'leap', icon: 'leap', cd: 2, ult: true,
+    range: 6, aoe: 1.5, air: 0.9, height: 6, shot: 'daggers', fan: 5, half: 0.5,
+    desc: '【必殺技】跳び上がって攻撃をかわし、扇状に羽根を5枚ばらまく。',
+  },
+  // ---- WORLD ENDER: three swings and the end of the world --------------------
+  darkinblade: {
+    name: 'ダーキンブレード', en: 'THE DARKIN BLADE', aim: 'ground', kind: 'blast', icon: 'blast', cd: 10,
+    tele: 0.15, re: 'darkinblade', casts: 3, window: 3.5, range: 6, aoe: 2.7, delay: 0.45, dmg: 42, up: 0.5,
+    desc: '大剣を叩きつけて打ち上げる。続けて3回まで使える。',
+  },
+  chains: {
+    name: '業火の鎖', en: 'INFERNAL CHAINS', aim: 'line', kind: 'shot', icon: 'hook', cd: 11,
+    tele: 0.4, range: 10, speed: 30, radius: 0.8, dmg: 22, slow: 1.3, tie: 'CHAINED', dur: 1.3, safe: 4, breakRange: 6, pop: 30, yank: 16,
+    desc: '鎖でつなぐ。1.3秒のあいだに離れなければ、手元まで引きずり戻す。',
+  },
+  umbral: {
+    name: '影の突進', en: 'UMBRAL DASH', aim: 'dash', kind: 'dash', icon: 'dash', cd: 5,
+    dist: 4.5, minDist: 3, speed: 34, dmg: 10, keep: 0.3, kb: 4, heal: 0.05,
+    desc: '短く突進し、減った回転を少し取り戻す。',
+  },
+  worldender: {
+    name: 'ワールドエンダー', en: 'WORLD ENDER', aim: 'self', kind: 'buff', icon: 'star', cd: 2, ult: true,
+    dur: 9,
+    desc: '【必殺技】9秒間、攻撃と速度が上がり、回転が回復し続ける。',
+  },
+  // ---- STYLE RANKER: shoot, cut, pass through --------------------------------
+  flair: {
+    name: '早撃ち', en: 'FLAIR', aim: 'line', kind: 'shot', icon: 'shot', cd: 2.5,
+    tele: 0.3, range: 10, speed: 40, radius: 0.7, dmg: 36, kb: 3, tumble: 0.1,
+    desc: '弾を撃つ。クールダウンが短い。',
+  },
+  whirl: {
+    name: '円刃', en: 'BLADE WHIRL', aim: 'self', kind: 'field', icon: 'burst', cd: 11,
+    follow: true, eat: true, dur: 0.8, aoe: 3.4, dmg0: 32,
+    desc: '周囲を斬り、0.8秒間、近くに飛んできた相手の弾をすべて斬り落とす。',
+  },
+  wildrush: {
+    name: 'ワイルドラッシュ', en: 'WILD RUSH', aim: 'dash', kind: 'dash', icon: 'dash', cd: 6,
+    tele: 0.3, dist: 6, minDist: 4, speed: 38, through: true, pass: 38, haste: 1.5,
+    desc: '相手をすり抜けて斬る突進。そのあと少しの間加速する。',
+  },
+  inferno: {
+    name: '地獄の引き金', en: 'INFERNO TRIGGER', aim: 'self', kind: 'field', icon: 'burst', cd: 2, ult: true,
+    follow: true, dur: 2.2, aoe: 5.5, dps: 100,
+    desc: '【必殺技】2.2秒間、自分の周囲に弾幕をばらまき続ける。動きながら撃てる。',
+  },
+  // ---- UNSUNDERED GLAIVE: stronger with every hit ----------------------------
+  darkglaive: {
+    name: 'ダーキングレイヴ', en: 'THE DARKIN GLAIVE', aim: 'self', kind: 'buff', icon: 'buff', cd: 6,
+    empower: 4, bonus: 30, kb: 7, up: 0.4, healMax: 0.025,
+    desc: '回転を少し回復し、4秒間、次の体当たりを強化する。当てると打ち上げる。',
+  },
+  dreaded: {
+    name: '戦慄の帰還', en: 'DREADED RETURN', aim: 'line', kind: 'shot', icon: 'hook', cd: 8,
+    tele: 0.4, range: 9, speed: 34, radius: 0.9, dmg: 34, chain: true, pull: 16, slow: 0.8,
+    desc: '槍で突き、当たった相手を引き寄せる。',
+  },
+  aureate: {
+    name: '黄金の突進', en: 'AUREATE RUSH', aim: 'dash', kind: 'dash', icon: 'dash', cd: 8,
+    dist: 5.5, minDist: 3, speed: 34, aoe: 4.2, inner: 2, land: 38, weak: 20,
+    desc: '突進した先で周囲を薙ぐ。外周で当てたほうがダメージが大きい。',
+  },
+  grim: {
+    name: '冷酷な救済', en: 'GRIM DELIVERANCE', aim: 'leap', kind: 'leap', icon: 'leap', cd: 2, ult: true,
+    range: 8, air: 0.8, height: 6, aoe: 4, dmg: 115, kb: 10, healHit: 0.2,
+    desc: '【必殺技】跳び上がって突き下ろす。与えたダメージの20%ぶん回転が回復する。',
+  },
+  // ---- LUNAR ARSENAL: a gun for every range ----------------------------------
+  calibrum: {
+    name: '月光狙撃', en: 'CALIBRUM', aim: 'line', kind: 'shot', icon: 'beam', cd: 6,
+    tele: 0.45, range: 20, speed: 52, radius: 0.7, dmg: 46, mark: 4,
+    desc: '長射程の狙撃。当たると印が付き、次のスキルが当たると炸裂する。',
+  },
+  infernum: {
+    name: '蒼炎放射', en: 'INFERNUM', aim: 'cone', kind: 'cone', icon: 'cone', cd: 5,
+    tele: 0.3, range: 7.5, half: 0.5, dmg: 50, kb: 4,
+    desc: '扇状に炎を噴く。',
+  },
+  gravitum: {
+    name: '重力弾', en: 'GRAVITUM', aim: 'line', kind: 'shot', icon: 'orb', cd: 10,
+    tele: 0.4, range: 12, speed: 34, radius: 0.8, dmg: 20, slow: 2.5, tie: 'ROOTING', dur: 0.9, breakRange: 99, pop: 12, root: 1.0,
+    desc: '当たった相手を強いスロウにし、0.9秒後にその場へ縛り付ける。',
+  },
+  vigil: {
+    name: '月光の番人', en: 'MOONLIGHT VIGIL', aim: 'line', kind: 'shot', icon: 'star', cd: 2, ult: true,
+    tele: 0.4, range: 16, speed: 24, radius: 1.4, dmg: 70, slow: 1.5, splash: 4, splashDmg: 100,
+    desc: '【必殺技】ゆっくり進む月光弾。当たるか射程の端で大きく爆発する。',
+  },
+  // ---- STAR FORGER: breath, gravity, a falling star --------------------------
+  breath: {
+    name: '星の息吹', en: 'BREATH OF LIGHT', aim: 'cone', kind: 'cone', icon: 'cone', cd: 1.6,
+    tele: 0.2, range: 8, half: 0.3, dmg: 30,
+    desc: '細い扇で息吹を吐く。クールダウンがとても短い。',
+  },
+  flight: {
+    name: '星間飛行', en: 'ASTRAL FLIGHT', aim: 'leap', kind: 'leap', icon: 'leap', cd: 13,
+    range: 12, aoe: 1.5, air: 0.9, height: 5,
+    desc: '遠くまで飛ぶ。飛んでいる間は攻撃を受けない。',
+  },
+  blackhole: {
+    name: '特異点', en: 'SINGULARITY', aim: 'ground', kind: 'field', icon: 'field', cd: 10,
+    tele: 0.1, range: 9, aoe: 4, dur: 4, dps: 30, pullIn: 6, slowIn: true,
+    desc: '4秒間の重力の穴を置く。中の相手は中心へ引かれ、スロウになり削られ続ける。',
+  },
+  fallingstar: {
+    name: '流星', en: 'FALLING STAR', aim: 'ground', kind: 'blast', icon: 'blast', cd: 2, ult: true,
+    tele: 0.1, range: 10, aoe: 5, delay: 0.9, dmg: 150, stun: 1.2, kb: 6,
+    desc: '【必殺技】指定地点に星を落とす。巻き込んだ相手をスタンさせる。',
+  },
+  // ---- DARK SORCERER: it only gets worse for them ----------------------------
+  balefulstrike: {
+    name: '魔力の一撃', en: 'BALEFUL STRIKE', aim: 'line', kind: 'shot', icon: 'shot', cd: 3.5,
+    tele: 0.35, range: 12, speed: 36, radius: 0.85, dmg: 38, kb: 3, tumble: 0.1, permHit: 30,
+    desc: '弾を撃つ。当てるたびに魔力が1溜まる。',
+  },
+  darkmatter: {
+    name: '暗黒物質', en: 'DARK MATTER', aim: 'ground', kind: 'blast', icon: 'blast', cd: 7,
+    range: 10, aoe: 2.9, delay: 0.9, dmg: 90,
+    desc: '0.9秒後、指定地点に暗黒物質が落ちる。',
+  },
+  horizon: {
+    name: '事象の地平', en: 'EVENT HORIZON', aim: 'ground', kind: 'field', icon: 'trap', cd: 14,
+    range: 9, aoe: 4.2, dur: 3, cage: 1.4, arm: 0.5, dmg: 10,
+    desc: '3秒間の輪を置く。輪の縁に触れた相手を1.4秒スタンさせる。',
+  },
+  primordial: {
+    name: '原初の爆発', en: 'PRIMORDIAL BURST', aim: 'self', kind: 'strike', icon: 'star', cd: 2, ult: true,
+    need: 'range', range: 9, dmg: 105, exec: 1.0,
+    desc: '【必殺技】近くの相手に必中の魔弾を撃つ。相手の回転が少ないほど威力が上がる（最大2倍）。',
+  },
+  // ---- VAULT BREAKER: straight in --------------------------------------------
+  vault: {
+    name: 'ヴォルトブレイカー', en: 'VAULT BREAKER', aim: 'dash', kind: 'dash', icon: 'dash', cd: 8,
+    tele: 0.45, dist: 9, minDist: 4, speed: 40, dmg: 38, keep: 0.6, kb: 12,
+    desc: '長い突進。当てると大ダメージと強いノックバック。',
+  },
+  blastshield: {
+    name: 'ブラストシールド', en: 'BLAST SHIELD', aim: 'self', kind: 'buff', icon: 'shield', cd: 10,
+    shield: 75, hold: 3,
+    desc: '3秒間のバリアを張る。',
+  },
+  relentless: {
+    name: '連打', en: 'RELENTLESS FORCE', aim: 'self', kind: 'buff', icon: 'buff', cd: 6,
+    empower: 5, bonus: 26, kb: 6,
+    desc: '5秒間、次の体当たりを強化する。クールダウンが短い。',
+  },
+  cease: {
+    name: '強制執行', en: 'CEASE AND DESIST', aim: 'self', kind: 'strike', icon: 'star', cd: 2, ult: true,
+    need: 'range', range: 9, tp: true, dmg: 115, up: 1.0,
+    desc: '【必殺技】近くの相手へ一瞬で詰め寄り、打ち上げる。',
+  },
+  // ---- ARCANE SHOOTER: land the shot, get everything back --------------------
+  mystic: {
+    name: 'ミスティックショット', en: 'MYSTIC SHOT', aim: 'line', kind: 'shot', icon: 'shot', cd: 3,
+    tele: 0.35, range: 15, speed: 44, radius: 0.7, dmg: 38, kb: 3, tumble: 0.1, refund: 1,
+    desc: '弾を撃つ。当てると、すべてのスキルのクールダウンが1秒縮む。',
+  },
+  flux: {
+    name: 'エッセンスフラックス', en: 'ESSENCE FLUX', aim: 'line', kind: 'shot', icon: 'orb', cd: 8,
+    tele: 0.4, range: 13, speed: 36, radius: 0.9, dmg: 18, mark: 4,
+    desc: '印を付ける弾。印は次のスキルが当たると炸裂する。',
+  },
+  arcshift: {
+    name: 'アーケインシフト', en: 'ARCANE SHIFT', aim: 'blink', kind: 'blink', icon: 'blink', cd: 9,
+    range: 6, speed: 40, bolt: 'arcbolt', n: 1,
+    desc: '瞬間移動し、移動先から相手を自動で狙う弾を撃つ。',
+  },
+  arcbolt: {
+    name: '魔弾', en: 'ARCANE BOLT', aim: 'line', hidden: true,
+    range: 11, speed: 34, radius: 0.6, dmg: 32, kb: 2, tumble: 0, launch: 0,
+  },
+  trueshot: {
+    name: 'トゥルーショット', en: 'TRUESHOT BARRAGE', aim: 'line', kind: 'shot', icon: 'beam', cd: 2, ult: true,
+    tele: 0.5, range: 40, speed: 34, radius: 2, dmg: 150, pierce: true,
+    desc: '【必殺技】アリーナを横断する太い光波を放つ。',
   },
 };
 for (const id in SKILLS) SKILLS[id].id = id;

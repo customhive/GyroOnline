@@ -26,8 +26,8 @@ for (const k of KEYS) for (const i of [0, 1]) check(a.canCast(a.tops[i], k) === 
 // falls out of step with the writer shows up at once as garbage.
 const near = (x, y, tol) => Math.abs(x - y) <= tol;
 const TOP = { x: 0.01, z: 0.01, vx: 0.01, vz: 0.01, spin: 0.03, tumble: 0.011, launch: 0.011, guard: 0.011, slow: 0.011, empower: 0.021, up: 0.011, ground: 0.011,
-  mark: 0.021, scar: 0.013, poison: 0.011, bleed: 0, last: 0, bleedT: 0.026, shield: 1, shieldT: 0.013, buff: 0.051, stack: 0, stackT: 0.034, dmark: 0.017, dacc: 0.021,
-  egg: 0.017, eggHp: 1, projN: 0, zoneN: 0 };
+  mark: 0.021, scar: 0.013, poison: 0.011, bleed: 0, last: 0, bleedT: 0.026, shield: 1, shieldT: 0.021, buff: 0.051, stack: 0, stackT: 0.034, dmark: 0.017, dacc: 0.021,
+  egg: 0.017, eggHp: 1, projN: 0, zoneN: 0, haste: 0.021, charm: 0.011, pin: 0.011, store: 0.51, tag: 0, tagT: 0.041, perm: 0, charmDir: 0 };
 const ids = Object.keys(BLADES);
 let states = 0, biggest = 0, events = 0;
 ids.forEach((id, n) => {
@@ -47,8 +47,8 @@ ids.forEach((id, n) => {
         const v = e[k];
         if (v == null || typeof v !== 'object') continue;
         if ('blade' in v) check(back[k] === m.tops[v.side], `${e.type}.${k}: top lost`);
-        else if ('aim' in v) check(back[k] === v, `${e.type}.${k}: skill lost`);
-        else check(back[k] && back[k].skill === v.skill, `${e.type}.${k}: object lost`);
+        else if ('aim' in v) check(back[k].id === v.id, `${e.type}.${k}: skill lost`);
+        else check(back[k] && back[k].skill.id === v.skill.id, `${e.type}.${k}: object lost`);
       }
     }
     w.events.length = 0;
@@ -75,7 +75,7 @@ ids.forEach((id, n) => {
     w.projectiles.forEach((p, j) => {
       const q = m.projectiles[j];
       if (!q) return;
-      check(p.id === q.id && p.skill === q.skill && p.owner.side === q.owner.side && p.hit === q.hit, `${tag} proj ${j} identity`);
+      check(p.id === q.id && p.skill.id === q.skill.id && p.owner.side === q.owner.side && p.hit === q.hit && p.back === q.back, `${tag} proj ${j} identity`);
       check(near(p.x, q.x, 0.01) && near(p.z, q.z, 0.01) && near(p.left, q.left, 0.001) && near(p.dmg, q.dmg, 0.006) && p.speed === q.speed && p.r === q.r, `${tag} proj ${j} values`);
     });
     check(w.zones.length === m.zones.length, `${tag} zone count`);

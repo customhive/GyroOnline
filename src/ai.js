@@ -6,7 +6,7 @@ import { ARENA, KEYS, SKILLS, skillOf } from './config.js';
 import { intercept, predictAt, targetable, spinRatio, rooted, wallOf } from './sim.js';
 
 // Blades that fight from range back off when the other top gets this close.
-const KEEP_AWAY = { curtain: 7.5, gear: 6.5, frost: 5.5, sand: 5 };
+const KEEP_AWAY = { curtain: 7.5, gear: 6.5, frost: 5.5, sand: 5, prism: 7, canvas: 6.5, star: 7, lunar: 7.5, arcane: 7, hex: 6.5, cosmos: 5.5, pirate: 5, spark: 5.5, fox: 5 };
 
 export class CpuBrain {
   constructor(world, me, level) {
@@ -77,7 +77,8 @@ export class CpuBrain {
     for (const z of w.zones) {
       if (z.owner === me) continue;
       const S = z.skill;
-      if ((z.kind === 'quake' || z.kind === 'grenade') && this.escape(z.x, z.z, z.r, z.T - z.t)) return true;
+      if ((z.kind === 'quake' || z.kind === 'grenade' || S.kind === 'blast') && this.escape(z.x, z.z, z.r, z.T - z.t)) return true;
+      if (S.kind === 'field' && (S.dps || S.slowIn || S.endDmg) && Math.hypot(me.x - z.x, me.z - z.z) < z.r + 0.5 && this.escape(z.x, z.z, z.r, S.endDmg ? z.T - z.t : 9)) return true;
       if (z.kind === 'lotus' && z.c && this.escape(z.x, z.z, z.r, S.fuse - (z.t - z.a))) return true;
       // Ground that hurts or slows: walk out of it.
       if ((z.kind === 'blizzard' || z.kind === 'glue' || z.kind === 'poison') && Math.hypot(me.x - z.x, me.z - z.z) < z.r + 0.5 && this.escape(z.x, z.z, z.r, 9)) return true;
@@ -87,7 +88,11 @@ export class CpuBrain {
       }
     }
     if (foe.air && foe.air.skill.aoe && this.escape(foe.air.tx, foe.air.tz, foe.air.skill.aoe, foe.air.T - foe.air.t)) return true;
-    if (foe.charge && this.escape(foe.x, foe.z, foe.charge.skill.aoe, foe.charge.T - foe.charge.t)) return true;
+    if (foe.charge && foe.charge.skill.kind === 'beam') {
+      // A beam is being lined up: step out of its lane.
+      const c = foe.charge, side = -(me.x - foe.x) * c.dz + (me.z - foe.z) * c.dx;
+      if (Math.abs(side) < c.skill.radius + 2 && r() < L.dodge) { const s = side >= 0 ? 1 : -1; w.issueMove(me, me.x - c.dz * s * 5, me.z + c.dx * s * 5); return true; }
+    } else if (foe.charge && this.escape(foe.x, foe.z, foe.charge.skill.aoe, foe.charge.T - foe.charge.t)) return true;
     // Under fire from a channelled barrage: get out of the line.
     if (foe.chan && r() < L.dodge) {
       const s = (me.x - foe.x) * -foe.chan.dz + (me.z - foe.z) * foe.chan.dx >= 0 ? 1 : -1;
@@ -160,6 +165,7 @@ export class CpuBrain {
     if (this.has('insanity') && (spinRatio(me) < 0.75 || d < 5) && want()) return this.use('insanity');
     if (this.has('upgrade') && d < 12 && want()) return this.use('upgrade');
     if (this.has('divide') && d < 6.5 && want(0.1)) return this.use('divide', foe.x, foe.z);
+    if (this.described(d, want, ahead, guarded)) return true;
     if (guarded) return false;
 
     // Dashes that hit.
@@ -251,6 +257,96 @@ export class CpuBrain {
       return this.use('icewall', foe.x + ((foe.x - me.x) / k) * 2, foe.z + ((foe.z - me.z) / k) * 2);
     }
     if (this.has('valor') && d > 5 && d < 9 && want(-0.3)) return this.use('valor', foe.x, foe.z);
+    return false;
+  }
+
+  // Skills that say what they are (`kind` in config.js) are played from that
+  // description alone, so a new blade needs no code here.
+  described(d, want, ahead, guarded) {
+    const { world: w, me, foe } = this;
+    const r = w.rng;
+    for (const k of KEYS) {
+      const base = skillOf(me, k);
+      if (!base.icon || !w.canCast(me, k)) continue;
+      const S = w.aimSkill(me, k), again = me.re[k] > 0, wind = me.windup[k];
+      const go = (x = me.x, z = me.z) => w.cast(me, k, x, z);
+      const at = (p) => go(p.x, p.z);
+      if (guarded && S.kind !== 'buff' && S.kind !== 'field') continue;
+      switch (S.ai || S.kind || S.id) {
+        case 'shot':
+          if (d < S.range - 1 && want(again ? 0.3 : base.ult ? 0.1 : 0)) return at(this.jitter(intercept(me.x, me.z, foe, me, S.speed, wind)));
+          break;
+        case 'bolts':
+          if (d < 9 && want()) return go();
+          break;
+        case 'dash':
+          if (S.dmg || S.pass || S.land || S.bolt || S.phantom || S.empower) { if (d > 2.5 && d < S.dist + 1.5 && want(again ? 0.3 : 0)) return at(ahead(0.15)); }
+          else if (d > 5 && d < 10 && want(-0.3)) return go(foe.x, foe.z);
+          break;
+        case 'blink':
+          if (d > 3.5 && d < S.range + 3 && want(-0.1)) {
+            // Onto the target if the arrival hurts, short of it otherwise.
+            const p = ahead(0.15), n = Math.hypot(p.x - me.x, p.z - me.z) || 1, stop = S.dmg ? 1.5 : 4;
+            return go(me.x + ((p.x - me.x) / n) * Math.max(2, n - stop), me.z + ((p.z - me.z) / n) * Math.max(2, n - stop));
+          }
+          break;
+        case 'recall':
+          if (want(-0.2)) return go();
+          break;
+        case 'blast':
+          if (d < S.range + 1 && want(again ? 0.3 : foe.tumble > 0.3 || foe.slow > 0.5 ? 0.3 : 0)) return at(this.jitter(ahead(S.delay + wind), 0.7));
+          break;
+        case 'field':
+          if (S.aim === 'self') { if ((S.regen ? spinRatio(me) < 0.85 : d < S.aoe + 0.5) && want()) return go(); }
+          else if (d < S.range + 1 && want()) return at(this.jitter(ahead(0.3), 0.6));
+          break;
+        case 'ground':
+          if (d < S.range + 1 && want(-0.1)) return at(this.jitter(ahead(0.3), 0.6));
+          break;
+        case 'burst':
+          if (d < S.aoe - 0.3 && want(0.2)) return go();
+          break;
+        case 'cone':
+          if (d < S.range - 0.8 && want(0.15)) return at(this.jitter(ahead(0.08 + wind), 0.5));
+          break;
+        case 'buff':
+          if ((S.storeShield ? me.store > 50 : S.heal || S.healMax || S.cleanse ? spinRatio(me) < 0.8 : d < 8) && want()) return go();
+          break;
+        case 'leap':
+          if (S.dmg) { if (d < S.range + 2 && want(foe.tumble > 0 ? 0.3 : 0)) return at(this.jitter(ahead(S.air * 0.85), 0.8)); }
+          else if (S.shot) { if (d < 9 && want()) return go(foe.x, foe.z); }
+          else if (d < 3.5 && r() < 0.25) return go(-me.x, -me.z); // only to get away
+          break;
+        case 'beam':
+          if (d > 2.5 && d < S.range - 2 && want(foe.tumble > 0.3 ? 0.3 : 0)) return at(this.jitter(ahead(S.charge * 0.8 + wind), 0.6));
+          break;
+        case 'kick': {
+          // Toward the nearest stretch of wall.
+          const n = Math.hypot(foe.x, foe.z);
+          if (want(0.3)) return n > 1 ? go(me.x + (foe.x / n) * 5, me.z + (foe.z / n) * 5) : go(foe.x, foe.z);
+          break;
+        }
+        case 'throw': {
+          const n = Math.hypot(foe.x, foe.z) || 1;
+          if (want(0.3)) return go(me.x + (foe.x / n) * 8, me.z + (foe.z / n) * 8);
+          break;
+        }
+        case 'strike': case 'realm':
+          if (want(0.3)) return go();
+          break;
+        case 'rewind':
+          if (me.hist.length && me.hist[0].spin - me.spin > 140 && want(0.2)) return go();
+          break;
+        case 'caskpop': {
+          const q = w.own(me, 'cask')[0];
+          if (q && Math.hypot(q.x - foe.x, q.z - foe.z) < q.r - 0.4) return go();
+          break;
+        }
+        case 'feathers':
+          if (w.own(me, 'feather').length >= 2 && want()) return go();
+          break;
+      }
+    }
     return false;
   }
 
