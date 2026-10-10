@@ -8,7 +8,7 @@
 import { SKILLS, KEYS } from './config.js';
 import { initZone } from './sim.js';
 
-export const PROTOCOL = 7;
+export const PROTOCOL = 8;
 export const PKT_SNAPSHOT = 1, PKT_PING = 2, PKT_PONG = 3;
 
 const SKILL_IDS = Object.keys(SKILLS);
@@ -51,9 +51,9 @@ function writeTop(w, t) {
   w.u16(t.projN); w.u16(t.zoneN);
   w.u8(t.up * 100); w.u8(t.ground * 100); w.u8(t.mark * 50); w.u8(t.scar * 80); w.u8(t.poison * 100);
   w.u8(t.bleed | (t.last << 4)); w.u8(t.bleedT * 25); w.u8(t.shield); w.u8(t.shieldT * 50); w.u8(t.buff * 20);
-  w.u8(t.stack); w.u8(t.stackT * 30); w.u8(t.dmark * 60); w.u16(t.dacc * 50); w.u8(t.egg * 60); w.u8(t.eggHp);
+  w.u8(t.stack); w.u8(t.stackT * 20); w.u8(t.dmark * 60); w.u16(t.dacc * 50); w.u8(t.egg * 60); w.u8(t.eggHp);
   for (const k of KEYS) w.u8(Math.ceil(t.re[k] * 20)); // rounded up: an open window must not arrive closed
-  w.u8(Math.ceil(t.stun * 100)); w.u8(t.slowK * 100);
+  w.u8(Math.ceil(t.stun * 100)); w.u8(Math.ceil(t.snare * 100)); w.u8(t.slowK * 100);
   w.u8(t.haste * 50); w.u8(Math.ceil(t.charm * 100)); w.u8(t.pin * 100); w.u8(t.store); w.u8(t.tag); w.u8(t.tagT * 25); w.u8(t.perm);
   w.u8((t.toggle ? G_TOGGLE : 0) | (t.eggUsed ? G_EGGUSED : 0) | (t.chan ? G_CHAN : 0) | (t.ret ? G_RET : 0) | (t.dash && t.dash.hit ? G_DASHHIT : 0) | (t.charmDir < 0 ? G_FEAR : 0) | (t.hold ? G_HOLD : 0));
   w.u8((t.cmd ? F_CMD : 0) | (t.dash ? F_DASH : 0) | (t.blink ? F_BLINK : 0) | (t.air ? F_AIR : 0) | (t.out ? F_OUT : 0)
@@ -63,7 +63,7 @@ function writeTop(w, t) {
   if (t.air) { const a = t.air; w.u8(skillNo(a.skill)); w.u8(a.by); w.u8(a.t * 200); w.i16(a.sx * POS); w.i16(a.sz * POS); w.i16(a.tx * POS); w.i16(a.tz * POS); }
   if (t.out) { w.u8(t.out.t * 50); w.i16(t.out.y * 100); w.i16(t.out.vy * 100); }
   if (t.charge) { const c = t.charge; w.u8(skillNo(c.skill)); w.u8(c.t * 200); w.i16((c.dx || 0) * DIR); w.i16((c.dz || 0) * DIR); }
-  if (t.orbs) { const o = t.orbs; w.u8(o.alive); w.u8(o.t * 40); w.u16((((o.ang % TAU) + TAU) % TAU) * 10000); w.u8(o.cd * 200); }
+  if (t.orbs) { const o = t.orbs; w.u8(skillNo(o.skill)); w.u8(o.alive); w.u8(o.t * 40); w.u16((((o.ang % TAU) + TAU) % TAU) * 10000); w.u8(o.cd * 200); }
   if (t.tether) { const h = t.tether; w.u8(skillNo(h.skill)); w.u8(h.t * 80); w.u16(h.acc * 100); w.u8(h.tick * 200); }
   if (t.chan) { const c = t.chan; w.u8(c.t * 60); w.u8(c.n); w.i16(c.dx * DIR); w.i16(c.dz * DIR); }
   if (t.ret) { w.i16(t.ret.x * POS); w.i16(t.ret.z * POS); }
@@ -93,9 +93,9 @@ function readTop(r, t) {
   const bl = r.u8();
   t.bleed = bl & 15; t.last = bl >> 4;
   t.bleedT = r.u8() / 25; t.shield = r.u8(); t.shieldT = r.u8() / 50; t.buff = r.u8() / 20;
-  t.stack = r.u8(); t.stackT = r.u8() / 30; t.dmark = r.u8() / 60; t.dacc = r.u16() / 50; t.egg = r.u8() / 60; t.eggHp = r.u8();
+  t.stack = r.u8(); t.stackT = r.u8() / 20; t.dmark = r.u8() / 60; t.dacc = r.u16() / 50; t.egg = r.u8() / 60; t.eggHp = r.u8();
   for (const k of KEYS) t.re[k] = r.u8() / 20;
-  t.stun = r.u8() / 100; t.slowK = r.u8() / 100;
+  t.stun = r.u8() / 100; t.snare = r.u8() / 100; t.slowK = r.u8() / 100;
   t.haste = r.u8() / 50; t.charm = r.u8() / 100; t.pin = r.u8() / 100; t.store = r.u8(); t.tag = r.u8(); t.tagT = r.u8() / 25; t.perm = r.u8();
   const g = r.u8();
   t.toggle = !!(g & G_TOGGLE); t.eggUsed = !!(g & G_EGGUSED); t.charmDir = g & G_FEAR ? -1 : 1;
@@ -112,10 +112,10 @@ function readTop(r, t) {
   t.out = f & F_OUT ? { t: r.u8() / 50, y: r.i16() / 100, vy: r.i16() / 100 } : null;
   if (f & F_CHARGE) { const skill = skillAt(r.u8()); t.charge = { t: r.u8() / 200, T: skill.charge, skill, ...readDir(r) }; } else t.charge = null;
   if (f & F_ORBS) {
-    const alive = r.u8();
+    const skill = skillAt(r.u8()), alive = r.u8();
     let n = 0;
     for (let i = 0; i < 8; i++) if (alive & (1 << i)) n++;
-    t.orbs = { alive, n, t: r.u8() / 40, ang: r.u16() / 10000, cd: r.u8() / 200, skill: SKILLS.satellite };
+    t.orbs = { alive, n, t: r.u8() / 40, ang: r.u16() / 10000, cd: r.u8() / 200, skill };
   } else t.orbs = null;
   if (f & F_TETHER) { const skill = skillAt(r.u8()); t.tether = { t: r.u8() / 80, T: skill.dur, skill, acc: r.u16() / 100, tick: r.u8() / 200 }; } else t.tether = null;
   t.chan = g & G_CHAN ? { t: r.u8() / 60, n: r.u8(), ...readDir(r), skill: SKILLS.curtaincall } : null;

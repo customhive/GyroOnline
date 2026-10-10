@@ -190,5 +190,146 @@ console.log('STUN AND SLOW (all blades)');
   check(a.me.x > b.me.x + 0.5 && b.me.x > c.me.x + 1, `slow: a 90% slow holds a top back more than the usual 40% (${a.me.x.toFixed(1)} / ${b.me.x.toFixed(1)} / ${c.me.x.toFixed(1)})`);
 }
 
+console.log('SNARE (all blades)');
+{
+  const { w, me } = setup('azure', 8);
+  w.snare(me, 1);
+  check(!w.issueMove(me, 5, 5) && me.snare > 0, 'snare: no moving');
+  check(w.blocked(me, 'E') === '束縛中', 'snare: no dashing');
+  check(w.canCast(me, 'Q'), 'snare: skills that do not move the top still work');
+}
+
+console.log('BROKEN EDGE (Riven)');
+{
+  let { w, me, foe, run, saw } = setup('edge', 12);
+  const z0 = me.z;
+  w.cast(me, 'Q', foe.x, foe.z); setup.last.drift(0.1);
+  check(Math.abs(z0 - me.z - 2.75) < 0.6 && me.re.Q > 3.5 && me.cd.Q > 12, 'Q: a 2.75 step, live again for 4 seconds, cooldown already running');
+  w.cast(me, 'Q', foe.x, foe.z); setup.last.drift(0.2);
+  foe.x = me.x; foe.z = me.z - 5.2;
+  w.cast(me, 'Q', foe.x, foe.z); setup.last.drift(0.25, foe.x, foe.z);
+  check(saw('blast') && me.re.Q === 0, 'Q: the third use ends in a slam and closes the window');
+  ({ w, me, foe, run, saw } = setup('edge', 3));
+  w.cast(me, 'W', me.x, me.z);
+  check(Math.abs(foe.stun - 0.45) < 0.01, 'W: stuns for 0.45 seconds');
+  ({ w, me, foe, run, saw } = setup('edge', 22));
+  w.cast(me, 'E', foe.x, foe.z);
+  check(me.shield === 80 && Math.abs(me.shieldT - 1.5) < 0.01, 'E: a shield for 1.5 seconds');
+  setup.last.drift(0.3);
+  w.cast(me, 'R', me.x, me.z);
+  check(me.buff > 9.9 && me.re.R > 9.9, 'R: 10 seconds of power, and the key stays live');
+  setup.last.drift(0.3);
+  w.cast(me, 'R', foe.x, foe.z);
+  check(w.projectiles.length === 3 && me.re.R === 0, 'R again: a fan of three, once');
+}
+
+console.log('GUILLOTINE LORD (Darius)');
+{
+  let { w, me, foe, run, saw } = setup('guillo', 4.2);
+  me.spin = 600; w.cast(me, 'Q', me.x, me.z); run(0.7);
+  check(!!me.charge, 'Q: winds up for 0.75 seconds');
+  const s0 = me.spin, f0 = foe.spin; run(0.1);
+  const outer = f0 - foe.spin;
+  check(outer > 30 && me.spin > s0 + 40 && foe.bleed === 1, 'Q: the blade (outer ring) hits hard, heals 17% of missing spin, and bleeds');
+  ({ w, me, foe, run, saw } = setup('guillo', 2.8));
+  w.cast(me, 'Q', me.x, me.z); const f1 = foe.spin; run(0.8);
+  check((f1 - foe.spin) < outer * 0.5, 'Q: the handle (inside) does 65% less');
+  ({ w, me, foe, run, saw } = setup('guillo', 2.6));
+  w.cast(me, 'W', me.x, me.z); me.vz = -8; for (let i = 0; i < 30; i++) w.step(DT);
+  check(foe.slowK === 0.9 && foe.bleed === 1, 'W: the next body hit slows by 90% and bleeds');
+  const hit = (bleed) => { const s = setup('guillo', 6); s.foe.bleed = bleed; s.foe.bleedT = 5; s.w.cast(s.me, 'R', s.foe.x, s.foe.z); const f = s.foe.spin; for (let i = 0; i < 40; i++) s.w.step(DT); return f - s.foe.spin; };
+  const r0 = hit(0), r5 = hit(5);
+  check(r5 > r0 * 1.5, `R: each bleed stack adds 20% (${r0.toFixed(0)} -> ${r5.toFixed(0)} at 5)`);
+}
+
+console.log('VENOM TRAIL (Singed)');
+{
+  let { w, me, foe, run, saw } = setup('venom', 8);
+  const free = setup('venom', 8); free.run(1);
+  w.cast(me, 'Q', me.x, me.z); run(1);
+  check(me.toggle && Math.abs(me.spin - free.me.spin) < 0.5, 'Q: the trail costs no spin');
+  w.cast(me, 'W', foe.x, foe.z); run(0.1);
+  check(foe.slowK === 0.7 && foe.ground > 0, 'W: 70% slow and no dashing on the adhesive');
+  run(3);
+  check(!w.zones.some((z) => z.kind === 'glue'), 'W: lasts 3 seconds');
+  ({ w, me, foe, run, saw } = setup('venom', 3));
+  w.cast(me, 'W', me.x, me.z + 5.5); w.cast(me, 'E', me.x, me.z);
+  for (let i = 0; i < 80; i++) w.step(DT);
+  check(foe.snare > 0 && foe.z > me.z, 'E: thrown over the shoulder into the adhesive, the target is rooted');
+}
+
+console.log('ARCANE SHOOTER (Ezreal)');
+{
+  let { w, me, foe, run, saw } = setup('arcane', 6);
+  me.cd.W = 8; me.cd.E = 14;
+  w.cast(me, 'Q', foe.x, foe.z); run(0.2);
+  check(Math.abs(me.cd.W - 6.3) < 0.1 && Math.abs(me.cd.E - 12.3) < 0.1, 'Q: landing it takes 1.5 seconds off every cooldown');
+  ({ w, me, foe, run, saw } = setup('arcane', 6));
+  w.cast(me, 'W', foe.x, foe.z); run(0.3);
+  check(foe.mark > 3, 'W: marks the target for 4 seconds');
+  const f0 = foe.spin; me.x = foe.x; me.z = foe.z + 2.4; me.vz = -6; for (let i = 0; i < 20; i++) w.step(DT);
+  check(foe.mark === 0 && f0 - foe.spin > 30, 'W: a body hit sets the mark off');
+  ({ w, me, foe, run, saw } = setup('arcane', 10));
+  w.cast(me, 'R', foe.x, foe.z); run(0.9);
+  check(!!me.charge && w.projectiles.length === 0, 'R: a full second of lining up first');
+  run(0.2);
+  check(w.projectiles.length === 1, 'R: then the shot goes');
+}
+
+console.log('DARK SORCERER (Veigar)');
+{
+  let { w, me, foe, run, saw } = setup('hex', 6);
+  w.cast(me, 'Q', foe.x, foe.z); run(0.3);
+  check(me.perm === 1, 'Q: landing it adds one stack');
+  w.resetRound();
+  check(me.perm === 1, 'Q: stacks carry over to the next round');
+  ({ w, me, foe, run, saw } = setup('hex', 4));
+  w.cast(me, 'E', foe.x + 4.25, foe.z); run(0.4);
+  check(foe.stun === 0, 'E: nothing for the first half second');
+  run(0.15);
+  check(foe.stun > 1.3 && foe.stun <= 1.5, 'E: touching the rim stuns for 1.5 seconds');
+  const at = (ratio) => { const s = setup('hex', 6); s.foe.spin = s.foe.spinMax * ratio; s.w.cast(s.me, 'R', s.me.x, s.me.z); return s.foe.spinMax * ratio - s.foe.spin; };
+  const full = at(1), third = at(0.333), tenth = at(0.1);
+  check(third > full * 1.9 && Math.abs(tenth - third) < 1, `R: up to double against a weakened target, capped at two thirds missing (${full.toFixed(0)} / ${third.toFixed(0)} / ${tenth.toFixed(0)})`);
+}
+
+console.log('BARREL BRUISER (Gragas)');
+{
+  const pop = (wait) => { const s = setup('barrel', 6); s.w.cast(s.me, 'Q', s.foe.x, s.foe.z); s.run(wait); const f = s.foe.spin; s.w.cast(s.me, 'Q', s.me.x, s.me.z); s.run(0.05); return { dmg: f - s.foe.spin, slow: s.foe.slowK }; };
+  const early = pop(0.1), ripe = pop(2.2);
+  check(ripe.dmg > early.dmg * 1.35 && early.slow < 0.65 && ripe.slow === 0.9, `Q: left to ripen for 2 seconds it hits half as hard again and slows 90% (${early.dmg.toFixed(0)} -> ${ripe.dmg.toFixed(0)})`);
+  let { w, me, foe, run, saw } = setup('barrel', 6);
+  w.cast(me, 'Q', foe.x, foe.z); const f0 = foe.spin; run(4.1);
+  check(f0 - foe.spin > 40 && !w.zones.length, 'Q: goes off by itself after 4 seconds');
+  ({ w, me, foe, run, saw } = setup('barrel', 5));
+  w.cast(me, 'W', me.x, me.z);
+  const a = w.hurt(me, 100, foe, 'x'); me.buff = 0; const b = w.hurt(me, 100, foe, 'x');
+  check(a < b * 0.85 && me.empower > 4, 'W: takes less damage for a while, and the next body hit is empowered');
+  ({ w, me, foe, run, saw } = setup('barrel', 5));
+  w.cast(me, 'E', foe.x, foe.z); for (let i = 0; i < 30; i++) w.step(DT);
+  check(foe.stun > 0 && me.cd.E < 12 * 0.62, 'E: stuns, and hands back 40% of its cooldown on a hit');
+}
+
+console.log('NINE TAIL CHARM (Ahri)');
+{
+  let { w, me, foe, run, saw } = setup('fox', 5);
+  w.cast(me, 'Q', foe.x, foe.z);
+  let out = 0, back = 0; const f0 = foe.spin;
+  for (let i = 0; i < 200 && w.projectiles.length; i++) { const f = foe.spin; w.step(DT); const d = f - foe.spin; if (d > 5) { if (w.projectiles[0] && w.projectiles[0].back) back = d; else if (!out) out = d; } foe.x = 0; foe.z = -2.5; foe.vx = foe.vz = 0; me.x = 0; me.z = 2.5; me.vx = me.vz = 0; }
+  check(out > 0 && back > out * 1.15, `Q: hits on the way out and, ignoring defence, on the way back (${out.toFixed(0)} / ${back.toFixed(0)})`);
+  ({ w, me, foe, run, saw } = setup('fox', 20));
+  w.cast(me, 'W', me.x, me.z); run(0.5);
+  check(me.orbs && me.orbs.n === 3 && me.haste > 0 && !w.projectiles.length, 'W: three flames circle, with haste, while nothing is near');
+  foe.x = me.x; foe.z = me.z - 6; run(0.1);
+  check(!me.orbs && w.projectiles.length === 3, 'W: they fly at a target that comes near');
+  ({ w, me, foe, run, saw } = setup('fox', 6));
+  foe.dash = { dx: 1, dz: 0, speed: 30, t: 0.5, skill: SKILLS.blitz, hit: false };
+  w.cast(me, 'E', foe.x, foe.z); run(0.3);
+  check(foe.charm > 0.8 && foe.slowK === 0.65 && !foe.dash, 'E: charms for 1.1 seconds, slows 65%, and stops a dash');
+  ({ w, me, foe, run, saw } = setup('fox', 20));
+  let uses = 0; for (let i = 0; i < 4; i++) { if (w.cast(me, 'R', 0, 0)) uses++; for (let k = 0; k < 40; k++) w.step(DT); }
+  check(uses === 3, 'R: three leaps on one charge');
+}
+
 console.log(bad ? `\n${bad} of ${n} checks failed` : `\nall ${n} checks passed`);
 process.exit(bad ? 1 : 0);

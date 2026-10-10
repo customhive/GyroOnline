@@ -80,7 +80,7 @@ export const BLADES = {
     color: 0x2ee6c0, css: '#2ee6c0', teeth: 3,
     atk: 1.15, def: 1.0, mass: 1.05, speed: 15, decay: 6.8, spinMax: 1000, cdMul: 1.0, guardMul: 1.0,
     bars: { atk: 4, def: 3, sta: 2, spd: 4 },
-    buff: { atk: 1.15 },
+    buff: { atk: 1.2 },
     desc: '小刻みな突進をつないで張り付き、弱った相手を斬撃で仕留める。',
   },
   mirage: {
@@ -105,9 +105,9 @@ export const BLADES = {
     id: 'venom', kit: { Q: 'poison', W: 'glue', E: 'fling', R: 'insanity' },
     name: 'ヴェノム・トレイル', en: 'VENOM TRAIL', type: 'STAMINA', typeJa: 'スタミナ',
     color: 0xa4e22a, css: '#a4e22a', teeth: 5,
-    atk: 0.95, def: 1.1, mass: 1.2, speed: 14.5, decay: 5.2, spinMax: 1060, cdMul: 1.0, guardMul: 1.0,
+    atk: 0.95, def: 1.02, mass: 1.2, speed: 14.5, decay: 5.6, spinMax: 1000, cdMul: 1.0, guardMul: 1.0,
     bars: { atk: 2, def: 4, sta: 5, spd: 3 },
-    buff: { speed: 1.3, armor: 0.75, regen: 12 },
+    buff: { speed: 1.3, armor: 0.8, regen: 8 },
     desc: '走った跡を毒に変え、追いかけてくる相手を削る。近づかれたら背後へ投げ飛ばす。',
   },
   gear: {
@@ -139,7 +139,7 @@ export const BLADES = {
     id: 'fox', kit: { Q: 'orb', W: 'foxfire', E: 'charm', R: 'rush' },
     name: 'ナインテイル・チャーム', en: 'NINE TAIL CHARM', type: 'ATTACK', typeJa: 'アタック',
     color: 0xff8fd0, css: '#ff8fd0', teeth: 5,
-    atk: 1.24, def: 0.98, mass: 0.94, speed: 15.5, decay: 6.6, spinMax: 1000, cdMul: 1.0, guardMul: 1.0,
+    atk: 1.34, def: 1.0, mass: 0.94, speed: 15.5, decay: 6.4, spinMax: 1000, cdMul: 1.0, guardMul: 1.0,
     bars: { atk: 4, def: 2, sta: 2, spd: 5 },
     desc: '行って戻る宝珠と、相手を引き寄せる魅了。必殺技は3回まで続けて使える突進。',
   },
@@ -157,8 +157,9 @@ export const BLADES = {
     id: 'barrel', kit: { Q: 'cask', W: 'drunk', E: 'bodyslam', R: 'bigkeg' },
     name: 'バレル・ブルーザー', en: 'BARREL BRUISER', type: 'DEFENSE', typeJa: 'ディフェンス',
     color: 0xc97a3a, css: '#c97a3a', teeth: 6,
-    atk: 1.0, def: 1.12, mass: 1.35, speed: 12.5, decay: 5.7, spinMax: 1000, cdMul: 1.0, guardMul: 1.0,
+    atk: 0.94, def: 1.1, mass: 1.35, speed: 12.5, decay: 5.8, spinMax: 1000, cdMul: 1.0, guardMul: 1.0,
     bars: { atk: 3, def: 4, sta: 4, spd: 2 },
+    buff: { armor: 0.8 },
     desc: '樽と体当たりで相手を好きな方向へ吹き飛ばす重量級。',
   },
   chrono: {
@@ -301,7 +302,7 @@ export const BLADES = {
     id: 'hex', kit: { Q: 'balefulstrike', W: 'darkmatter', E: 'horizon', R: 'primordial' },
     name: 'ダーク・ソーサラー', en: 'DARK SORCERER', type: 'STAMINA', typeJa: 'スタミナ',
     color: 0x9a4aff, css: '#9a4aff', teeth: 5,
-    atk: 1.12, def: 1.0, mass: 0.94, speed: 13.5, decay: 5.6, spinMax: 1000, cdMul: 1.0, guardMul: 1.0,
+    atk: 1.28, def: 1.06, mass: 0.94, speed: 13.5, decay: 5.4, spinMax: 1000, cdMul: 1.0, guardMul: 1.0,
     bars: { atk: 3, def: 2, sta: 4, spd: 3 },
     permDmg: 0.02,
     desc: 'Qを当てるたびに魔力が溜まり、与えるダメージが2%ずつ上がる（最大30回）。魔力は次のラウンドにも持ち越す。',
@@ -318,15 +319,16 @@ export const BLADES = {
     id: 'arcane', kit: { Q: 'mystic', W: 'flux', E: 'arcshift', R: 'trueshot' },
     name: 'アーケイン・シューター', en: 'ARCANE SHOOTER', type: 'ATTACK', typeJa: 'アタック',
     color: 0x6ae0ff, css: '#6ae0ff', teeth: 4,
-    atk: 1.3, def: 1.0, mass: 0.92, speed: 15, decay: 6.4, spinMax: 1000, cdMul: 1.0, guardMul: 1.0,
+    atk: 1.45, def: 1.08, mass: 0.92, speed: 15, decay: 6.0, spinMax: 1000, cdMul: 1.0, guardMul: 1.0,
     bars: { atk: 5, def: 1, sta: 2, spd: 4 },
+    markOnClash: true,
     desc: 'Qを当てるほど他のスキルが早く戻ってくる。当て続けることが強さになる射撃型。',
   },
 };
 
 export const ENEMY_COLOR = 0xff3b4e;
 // Stacking damage over time left by GUILLOTINE LORD's skills.
-export const BLEED = { max: 5, dur: 8, dps: 3 };
+export const BLEED = { max: 5, dur: 5, dps: 3 };
 
 // `aim` decides how a skill is targeted:
 //   line / dash / blink / cone  -> a direction from the top toward the cursor
@@ -517,28 +519,28 @@ export const SKILLS = {
   },
   // ---- BROKEN EDGE: short dashes, then the finishing cut ------------------------
   brokenwings: {
-    name: '三連舞', en: 'BROKEN WINGS', aim: 'dash', cd: 10, tele: 0.3, re: 'brokenwings',
-    dist: 4.2, minDist: 3, speed: 30, dmg: 18, keep: 0.3, kb: 5, window: 3, aoe: 2.9, slam: 28, slamUp: 0.6,
-    desc: '3回まで続けて使える短い突進。3回目は着地点の周囲を打ち上げる。',
+    name: '折れた翼', en: 'BROKEN WINGS', aim: 'dash', cd: 13, tele: 0.3, re: 'brokenwings',
+    dist: 2.75, minDist: 2.75, speed: 30, dmg: 26, keep: 0.3, kb: 5, window: 4, aoe: 2.9, slam: 36, slamUp: 0.45,
+    desc: '斬りながら短く踏み込む。4秒以内なら3回まで続けて使え、3回目は跳んで周囲を打ち上げる。',
   },
   kiburst: {
-    name: '気合', en: 'KI BURST', aim: 'self', cd: 7,
-    aoe: 3.1, dmg: 26, stun: 0.55,
+    name: '気功破', en: 'KI BURST', aim: 'self', cd: 7,
+    aoe: 3.2, dmg: 30, stun: 0.45,
     desc: '周囲の相手を一瞬スタンさせる。',
   },
   valor: {
-    name: '勇進', en: 'VALOR', aim: 'dash', cd: 8,
-    dist: 4.8, minDist: 3, speed: 32, dmg: 8, keep: 0.3, kb: 4, shield: 70, hold: 2,
-    desc: '短く突進し、2秒間ダメージを肩代わりするバリアを張る。',
+    name: '勇躍', en: 'VALOR', aim: 'dash', cd: 6,
+    dist: 2.5, minDist: 2.5, speed: 32, dmg: 8, keep: 0.3, kb: 4, shield: 80, hold: 1.5,
+    desc: '短く踏み込み、1.5秒間ダメージを肩代わりするバリアを張る。',
   },
   exile: {
-    name: '追放者の刃', en: 'BLADE OF THE EXILE', aim: 'self', cd: 2, ult: true, re: 'windslash',
+    name: '追放者の剣', en: 'BLADE OF THE EXILE', aim: 'self', cd: 2, ult: true, re: 'windslash',
     dur: 10,
-    desc: '【必殺技】10秒間、与えるダメージが15%上がる。その間にもう一度押すと斬撃を飛ばし、相手の回転が少ないほど大ダメージ。',
+    desc: '【必殺技】10秒間、与えるダメージが20%上がる。その間にもう一度押すと扇状の衝撃波を飛ばし、相手の回転が少ないほど大ダメージ（最大3倍）。',
   },
   windslash: {
-    name: '風斬り', en: 'WIND SLASH', aim: 'cone', hidden: true,
-    range: 13, half: 0.3, speed: 36, radius: 0.9, dmg: 54, kb: 9, exec: 1.0, fan: 3,
+    name: 'ウィンドスラッシュ', en: 'WIND SLASH', aim: 'cone', hidden: true,
+    range: 7.2, half: 0.3, speed: 36, radius: 0.9, dmg: 46, kb: 9, exec: 2, fan: 3,
   },
   // ---- MIRAGE TRICK: in, out, and once more ---------------------------------------
   sigil: {
@@ -564,45 +566,45 @@ export const SKILLS = {
   },
   // ---- GUILLOTINE LORD: bleed them, then end it ------------------------------------
   decimate: {
-    name: '皆殺しの斧', en: 'DECIMATE', aim: 'self', cd: 7,
-    charge: 0.5, aoe: 5.2, inner: 2.7, dmg: 54, weak: 20, heal: 0.08, bleed: 1,
-    desc: '少し溜めてドーナツ状に斬る。外周で当てると大ダメージと回復、内側は威力が低い。出血を付ける。',
+    name: '皆殺しの斧', en: 'DECIMATE', aim: 'self', cd: 5,
+    charge: 0.75, aoe: 4.85, inner: 3.3, dmg: 54, weak: 19, heal: 0.17, bleed: 1,
+    desc: '0.75秒溜めて周囲を斬る。刃（外周）で当てると大ダメージで、減った回転の17%を取り戻す。柄（内側）はダメージが65%減る。出血を付ける。',
   },
   cripple: {
-    name: '脚砕き', en: 'CRIPPLING STRIKE', aim: 'self', cd: 6,
-    empower: 4, bonus: 30, kb: 6, slow: 2.2, bleed: 1,
-    desc: '4秒間、次の体当たりを強化する。当てると強いスロウと出血を付ける。',
+    name: '脚削ぎ', en: 'CRIPPLING STRIKE', aim: 'self', cd: 5,
+    empower: 4, bonus: 30, kb: 6, slow: 1, slowPct: 0.9, bleed: 1,
+    desc: '4秒間、次の体当たりを強化する。当てると1秒間90%のスロウと出血を付ける。',
   },
   apprehend: {
-    name: '捕縛', en: 'APPREHEND', aim: 'cone', cd: 10, tele: 0.35,
-    range: 7.8, half: 0.5, dmg: 20, pull: 17, slow: 1.2, bleed: 1,
-    desc: '扇の中の相手を手前へ引き寄せる。出血を付ける。',
+    name: '捕縛', en: 'APPREHEND', aim: 'cone', cd: 16, tele: 0.35,
+    range: 5.35, half: 0.5, dmg: 20, pull: 17, slow: 2, bleed: 1,
+    desc: '扇の中の相手を手前へ引き寄せ、2秒間スロウにする。出血を付ける。',
   },
   guillotine: {
-    name: '断頭台', en: 'NOXIAN GUILLOTINE', aim: 'dash', cd: 2, ult: true, tele: 0.4,
-    dist: 9.5, minDist: 4, speed: 38, dmg: 85, kb: 12, perBleed: 0.15,
-    desc: '【必殺技】狙った方向へ突進し、当たった相手を断つ。相手の出血1スタックにつき威力が15%上がる。',
+    name: 'ノクサスギロチン', en: 'NOXIAN GUILLOTINE', aim: 'dash', cd: 2, ult: true, tele: 0.4,
+    dist: 9.5, minDist: 4, speed: 38, dmg: 80, kb: 12, perBleed: 0.2, trueDmg: true,
+    desc: '【必殺技】狙った方向へ突進し、当たった相手を断つ。相手の防御を無視し、出血1スタックにつき威力が20%上がる（最大2倍）。',
   },
   // ---- VENOM TRAIL: make them chase you ---------------------------------------------
   poison: {
     name: '毒の軌跡', en: 'POISON TRAIL', aim: 'self', cd: 1,
-    cost: 7, every: 0.3, aoe: 1.4, dur: 3.2, dps: 23, linger: 1.2,
-    desc: '切り替え式。オンの間は回転を少しずつ消費し、通った跡を毒の床にする。',
+    cost: 0, every: 0.3, aoe: 1.4, dur: 3.25, dps: 18, linger: 2,
+    desc: '切り替え式。オンの間、通った跡を毒の床にする。触れた相手は2秒間毒を受ける。',
   },
   glue: {
-    name: '強力粘着剤', en: 'MEGA ADHESIVE', aim: 'ground', cd: 12,
-    range: 10, aoe: 3.3, dur: 5,
-    desc: '粘着床を5秒置く。中の相手は大きくスロウになり、突進・瞬間移動・跳躍が使えない。',
+    name: '強力粘着剤', en: 'MEGA ADHESIVE', aim: 'ground', cd: 13,
+    range: 10, aoe: 3.5, dur: 3, slowPct: 0.7,
+    desc: '粘着床を3秒置く。中の相手は70%のスロウになり、突進・瞬間移動・跳躍が使えない。',
   },
   fling: {
-    name: '投げ飛ばし', en: 'FLING', aim: 'self', cd: 9, need: 'range',
-    range: 3.6, dist: 5.5, air: 0.55, height: 3.2, dmg: 42, stun: 1.4,
-    desc: '密着した相手を自分の背後へ放り投げる。粘着床に落とすとスタン。',
+    name: 'すくい投げ', en: 'FLING', aim: 'self', cd: 8, need: 'range',
+    range: 3.6, dist: 5.5, air: 0.55, height: 3.2, dmg: 46, snare: 1.2,
+    desc: '密着した相手を自分の背後へ放り投げる。粘着床に落とすと、その場に縛り付ける。',
   },
   insanity: {
-    name: '狂気の薬', en: 'INSANITY POTION', aim: 'self', cd: 2, ult: true,
-    dur: 8,
-    desc: '【必殺技】8秒間、移動速度が上がり、被ダメージが減り、回転が回復し続ける。',
+    name: '狂人のポーション', en: 'INSANITY POTION', aim: 'self', cd: 2, ult: true,
+    dur: 10,
+    desc: '【必殺技】10秒間、移動速度が上がり、被ダメージが減り、回転が回復し続ける。',
   },
   // ---- TURRET ENGINEER: hold ground with machines ------------------------------------
   turret: {
@@ -673,28 +675,28 @@ export const SKILLS = {
   },
   // ---- NINE TAIL CHARM: out, back, and three more times ----------------------
   orb: {
-    name: '欺きの宝珠', en: 'ORB OF DECEPTION', aim: 'line', kind: 'shot', icon: 'orb', cd: 5,
-    tele: 0.35, range: 11, speed: 26, radius: 0.9, dmg: 32, pierce: true, ret: true, backMul: 1.3,
-    desc: '宝珠が行って戻ってくる。往復とも当たり、戻りのほうが痛い。',
+    name: '幻惑のオーブ', en: 'ORB OF DECEPTION', aim: 'line', kind: 'shot', icon: 'orb', cd: 7,
+    tele: 0.35, range: 7.9, speed: 26, radius: 0.9, dmg: 32, pierce: true, ret: true, backTrue: true,
+    desc: 'オーブが行って戻ってくる。往復とも当たり、戻りは相手の防御を無視する。',
   },
   foxfire: {
-    name: '狐火', en: 'FOX-FIRE', aim: 'self', kind: 'bolts', icon: 'star', cd: 7,
-    bolt: 'foxbolt', n: 3, haste: 1.5,
-    desc: '相手を自動で狙う狐火を3発放ち、少しの間加速する。',
+    name: 'フォックスファイア', en: 'FOX-FIRE', aim: 'self', icon: 'star', cd: 5,
+    count: 3, dur: 2.5, wait: 0.35, orbit: 2.2, size: 0.5, seek: 8, bolt: 'foxbolt', haste: 2,
+    desc: '3つの狐火をまとって加速する。狐火は近くの相手へ自動で飛んでいく。',
   },
   foxbolt: {
     name: '狐火', en: 'FOX-FIRE', aim: 'line', hidden: true,
     range: 10, speed: 30, radius: 0.5, dmg: 18, kb: 1.5, tumble: 0, launch: 0,
   },
   charm: {
-    name: '魅了', en: 'CHARM', aim: 'line', kind: 'shot', icon: 'heart', cd: 10,
-    tele: 0.4, range: 11, speed: 30, radius: 0.85, dmg: 30, charm: 1.3,
-    desc: '当たった相手は1.3秒間、何もできずにこちらへ歩いてくる。',
+    name: 'チャーム', en: 'CHARM', aim: 'line', kind: 'shot', icon: 'heart', cd: 12,
+    tele: 0.4, range: 8, speed: 30, radius: 0.85, dmg: 30, charm: 1.1, slow: 1.1, slowPct: 0.65,
+    desc: '当たった相手は1.1秒間、何もできずにゆっくりこちらへ歩いてくる。相手の突進も止める。',
   },
   rush: {
-    name: 'スピリットラッシュ', en: 'SPIRIT RUSH', aim: 'dash', kind: 'dash', icon: 'dash', cd: 2, ult: true,
-    re: 'rush', casts: 3, window: 6, dist: 6, minDist: 3, speed: 38, through: true, bolt: 'foxbolt', n: 2,
-    desc: '【必殺技】相手をすり抜ける突進。6秒以内なら3回まで使え、止まるたびに狐火を2発放つ。',
+    name: 'スピリットラッシュ', en: 'SPIRIT RUSH', aim: 'dash', kind: 'dash', icon: 'dash', cd: 2, ult: true, re: 'rush',
+    casts: 3, window: 10, dist: 4.5, minDist: 4.5, speed: 38, through: true, bolt: 'foxbolt', n: 1,
+    desc: '【必殺技】相手をすり抜けて跳び、止まるたびに狐火を放つ。10秒以内なら3回まで使える。',
   },
   // ---- HARBOR REAPER: hook, drown, execute -----------------------------------
   bonehook: {
@@ -731,28 +733,28 @@ export const SKILLS = {
   },
   // ---- BARREL BRUISER: throw them wherever you like --------------------------
   cask: {
-    name: '樽転がし', en: 'BARREL ROLL', aim: 'ground', kind: 'field', icon: 'blast', cd: 8,
-    re: 'caskpop', range: 9, aoe: 3.2, dur: 2.5, endDmg: 50, endSlow: 1.5,
-    desc: '樽を置く。2.5秒後か、もう一度押したときに爆発してスロウにする。',
+    name: 'タル転がし', en: 'BARREL ROLL', aim: 'ground', kind: 'field', icon: 'blast', cd: 6, re: 'caskpop',
+    range: 8.5, aoe: 3.75, dur: 4, ripen: 2, ripeMul: 0.5, endDmg: 44, endSlow: 2, endSlowPct: 0.6, ripeSlowPct: 0.9,
+    desc: '樽を置く。置いて2秒かけて威力とスロウ（60%→90%）が増していく。4秒後か、もう一度押したときに爆発する。',
   },
   caskpop: {
     name: '起爆', en: 'DETONATE', aim: 'self', hidden: true,
     
   },
   drunk: {
-    name: '酔いどれ', en: 'DRUNKEN RAGE', aim: 'self', kind: 'buff', icon: 'buff', cd: 7,
-    empower: 4, bonus: 26, kb: 7, stun: 0.4, shield: 40, hold: 2.5,
-    desc: 'バリアを張り、4秒間、次の体当たりを強化する。当てると一瞬スタン。',
+    name: '飲みすぎ注意', en: 'DRUNKEN RAGE', aim: 'self', kind: 'buff', icon: 'buff', cd: 5,
+    buff: 2.5, empower: 5, bonus: 30, kb: 7,
+    desc: '2.5秒間、受けるダメージが減る。5秒間、次の体当たりを強化する。',
   },
   bodyslam: {
-    name: '体当たり', en: 'BODY SLAM', aim: 'dash', kind: 'dash', icon: 'dash', cd: 9,
-    tele: 0.4, dist: 6.5, minDist: 3, speed: 32, dmg: 30, keep: 0.5, kb: 6, stun: 0.8,
-    desc: '突進し、最初に当たった相手をスタンさせる。',
+    name: 'ボディスラム', en: 'BODY SLAM', aim: 'dash', kind: 'dash', icon: 'dash', cd: 12,
+    tele: 0.4, dist: 6, minDist: 3, speed: 32, dmg: 30, keep: 0.5, kb: 6, stun: 0.6, refundHit: 0.4,
+    desc: '突進し、最初に当たった相手をスタンさせる。当てると、残りクールダウンの40%が戻る。',
   },
   bigkeg: {
-    name: '爆発樽', en: 'EXPLOSIVE CASK', aim: 'ground', kind: 'blast', icon: 'blast', cd: 2, ult: true,
-    tele: 0.15, range: 10, aoe: 4.4, delay: 0.45, dmg: 100, kb: 16, launch: 2,
-    desc: '【必殺技】着弾点を中心に外向きへ大きく吹き飛ばす。奥に置けば手前へ、手前に置けば場外へ。',
+    name: 'ワシの奢りじゃ！', en: 'EXPLOSIVE CASK', aim: 'ground', kind: 'blast', icon: 'blast', cd: 2, ult: true,
+    tele: 0.15, range: 10, aoe: 4.4, delay: 0.5, dmg: 100, kb: 16, launch: 2,
+    desc: '【必殺技】0.5秒後に爆発し、着弾点を中心に外向きへ大きく吹き飛ばす。奥に置けば手前へ、手前に置けば場外へ。',
   },
   // ---- CHRONO REWIND: undo the last four seconds -----------------------------
   timewinder: {
@@ -1116,23 +1118,23 @@ export const SKILLS = {
   },
   // ---- DARK SORCERER: it only gets worse for them ----------------------------
   balefulstrike: {
-    name: '魔力の一撃', en: 'BALEFUL STRIKE', aim: 'line', kind: 'shot', icon: 'shot', cd: 3.5,
-    tele: 0.35, range: 12, speed: 36, radius: 0.85, dmg: 38, kb: 3, tumble: 0.1, permHit: 30,
+    name: 'イーヴィルストライク', en: 'BALEFUL STRIKE', aim: 'line', kind: 'shot', icon: 'shot', cd: 4,
+    tele: 0.35, range: 8.25, speed: 36, radius: 0.85, dmg: 38, kb: 3, tumble: 0.1, permHit: 30,
     desc: '弾を撃つ。当てるたびに魔力が1溜まる。',
   },
   darkmatter: {
-    name: '暗黒物質', en: 'DARK MATTER', aim: 'ground', kind: 'blast', icon: 'blast', cd: 7,
-    range: 10, aoe: 2.9, delay: 0.9, dmg: 90,
-    desc: '0.9秒後、指定地点に暗黒物質が落ちる。',
+    name: 'ダークマター', en: 'DARK MATTER', aim: 'ground', kind: 'blast', icon: 'blast', cd: 8,
+    range: 9.5, aoe: 2.9, delay: 1.25, dmg: 96,
+    desc: '1.25秒後、指定地点に暗黒物質が落ちる。',
   },
   horizon: {
-    name: '事象の地平', en: 'EVENT HORIZON', aim: 'ground', kind: 'field', icon: 'trap', cd: 14,
-    range: 9, aoe: 4.2, dur: 3, cage: 1.4, arm: 0.5, dmg: 10,
-    desc: '3秒間の輪を置く。輪の縁に触れた相手を1.4秒スタンさせる。',
+    name: 'イベントホライズン', en: 'EVENT HORIZON', aim: 'ground', kind: 'field', icon: 'trap', cd: 14,
+    range: 7.25, aoe: 4.25, dur: 3.5, cage: 1.5, arm: 0.5, dmg: 10,
+    desc: '0.5秒後に3秒間の輪が現れる。縁に触れた相手を1.5秒スタンさせる。突進で越えようとしても止める。',
   },
   primordial: {
-    name: '原初の爆発', en: 'PRIMORDIAL BURST', aim: 'self', kind: 'strike', icon: 'star', cd: 2, ult: true,
-    need: 'range', range: 9, dmg: 105, exec: 1.0,
+    name: 'メテオバースト', en: 'PRIMORDIAL BURST', aim: 'self', kind: 'strike', icon: 'star', cd: 2, ult: true,
+    need: 'range', range: 7.75, dmg: 105, exec: 1.0, execCap: 0.667,
     desc: '【必殺技】近くの相手に必中の魔弾を撃つ。相手の回転が少ないほど威力が上がる（最大2倍）。',
   },
   // ---- VAULT BREAKER: straight in --------------------------------------------
@@ -1158,18 +1160,18 @@ export const SKILLS = {
   },
   // ---- ARCANE SHOOTER: land the shot, get everything back --------------------
   mystic: {
-    name: 'ミスティックショット', en: 'MYSTIC SHOT', aim: 'line', kind: 'shot', icon: 'shot', cd: 3,
-    tele: 0.35, range: 15, speed: 44, radius: 0.7, dmg: 38, kb: 3, tumble: 0.1, refund: 1,
-    desc: '弾を撃つ。当てると、すべてのスキルのクールダウンが1秒縮む。',
+    name: 'ミスティックショット', en: 'MYSTIC SHOT', aim: 'line', kind: 'shot', icon: 'shot', cd: 4.5,
+    tele: 0.35, range: 9.9, speed: 44, radius: 0.7, dmg: 40, kb: 3, tumble: 0.1, refund: 1.5,
+    desc: '弾を撃つ。当てると、すべてのスキルのクールダウンが1.5秒縮む。',
   },
   flux: {
     name: 'エッセンスフラックス', en: 'ESSENCE FLUX', aim: 'line', kind: 'shot', icon: 'orb', cd: 8,
-    tele: 0.4, range: 13, speed: 36, radius: 0.9, dmg: 18, mark: 4,
-    desc: '印を付ける弾。印は次のスキルが当たると炸裂する。',
+    tele: 0.4, range: 9.7, speed: 36, radius: 0.9, dmg: 18, mark: 4,
+    desc: '印を付ける弾。印は次にスキルか体当たりが当たると炸裂する。',
   },
   arcshift: {
-    name: 'アーケインシフト', en: 'ARCANE SHIFT', aim: 'blink', kind: 'blink', icon: 'blink', cd: 9,
-    range: 6, speed: 40, bolt: 'arcbolt', n: 1,
+    name: 'アーケインシフト', en: 'ARCANE SHIFT', aim: 'blink', kind: 'blink', icon: 'blink', cd: 14,
+    range: 4.75, speed: 40, bolt: 'arcbolt', n: 1,
     desc: '瞬間移動し、移動先から相手を自動で狙う弾を撃つ。',
   },
   arcbolt: {
@@ -1177,9 +1179,9 @@ export const SKILLS = {
     range: 11, speed: 34, radius: 0.6, dmg: 32, kb: 2, tumble: 0, launch: 0,
   },
   trueshot: {
-    name: 'トゥルーショット', en: 'TRUESHOT BARRAGE', aim: 'line', kind: 'shot', icon: 'beam', cd: 2, ult: true,
-    tele: 0.5, range: 40, speed: 34, radius: 2, dmg: 150, pierce: true,
-    desc: '【必殺技】アリーナを横断する太い光波を放つ。',
+    name: 'トゥルーショットバラージ', en: 'TRUESHOT BARRAGE', aim: 'line', kind: 'shot', icon: 'beam', cd: 2, ult: true,
+    tele: 0.1, charge: 1, root: true, range: 40, speed: 40, radius: 2, dmg: 175, pierce: true,
+    desc: '【必殺技】1秒構えたあと、アリーナを横断する太い光波を放つ。',
   },
 };
 for (const id in SKILLS) SKILLS[id].id = id;

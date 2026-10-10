@@ -26,8 +26,8 @@ for (const k of KEYS) for (const i of [0, 1]) check(a.canCast(a.tops[i], k) === 
 // falls out of step with the writer shows up at once as garbage.
 const near = (x, y, tol) => Math.abs(x - y) <= tol;
 const TOP = { x: 0.01, z: 0.01, vx: 0.01, vz: 0.01, spin: 0.03, tumble: 0.011, launch: 0.011, guard: 0.011, slow: 0.011, empower: 0.021, up: 0.011, ground: 0.011,
-  mark: 0.021, scar: 0.013, poison: 0.011, bleed: 0, last: 0, bleedT: 0.026, shield: 1, shieldT: 0.021, buff: 0.051, stack: 0, stackT: 0.034, dmark: 0.017, dacc: 0.021,
-  egg: 0.017, eggHp: 1, projN: 0, zoneN: 0, haste: 0.021, stun: 0.011, slowK: 0.006, charm: 0.011, pin: 0.011, store: 0.51, tag: 0, tagT: 0.041, perm: 0, charmDir: 0 };
+  mark: 0.021, scar: 0.013, poison: 0.011, bleed: 0, last: 0, bleedT: 0.026, shield: 1, shieldT: 0.021, buff: 0.051, stack: 0, stackT: 0.051, dmark: 0.017, dacc: 0.021,
+  egg: 0.017, eggHp: 1, projN: 0, zoneN: 0, haste: 0.021, stun: 0.011, snare: 0.011, slowK: 0.006, charm: 0.011, pin: 0.011, store: 0.51, tag: 0, tagT: 0.041, perm: 0, charmDir: 0 };
 const ids = Object.keys(BLADES);
 let states = 0, biggest = 0, events = 0;
 ids.forEach((id, n) => {

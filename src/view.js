@@ -356,7 +356,7 @@ export class View {
       }
       case 'charge': {
         const t = e.top, y = groundY(t.x, t.z), c = this.colorOf(t);
-        W.spawn(t.x, y + 0.1, t.z, e.skill.aoe, 1, e.T, c, 0.8);
+        W.spawn(t.x, y + 0.1, t.z, e.skill.aoe || 4, 1, e.T, c, 0.8);
         F.flash(t.x, y + 1, t.z, 7, 0.4, c, 1, 120);
         this.addShake(0.2);
         break;
@@ -392,7 +392,7 @@ export class View {
       }
       case 'orbs': {
         const t = e.top, y = groundY(t.x, t.z);
-        W.spawn(t.x, y + 0.1, t.z, 0.6, SKILLS.satellite.orbit + 0.6, 0.35, this.colorOf(t), 1);
+        W.spawn(t.x, y + 0.1, t.z, 0.6, (t.orbs ? t.orbs.skill.orbit : SKILLS.satellite.orbit) + 0.6, 0.35, this.colorOf(t), 1);
         P.burst(t.x, y + 0.8, t.z, 40, 0xfff3c4, 8, { up: 1, life: 0.5, gravity: 0, drag: 2 });
         break;
       }
@@ -806,6 +806,7 @@ export class View {
     v.blurMat.opacity = (0.05 + 0.2 * sr) * (1 - v.fall);
     v.wobble += (2.4 + 7 * (1 - sr)) * dt;
     let amp = egg ? 0 : 0.03 + 0.4 * Math.pow(1 - sr, 2.2) + (t.tumble > 0 || t.up > 0 || t.stun > 0 ? 0.14 : 0);
+    if (t.snare > 0) this.ground.ring(t.x, t.z, 1.5, 1.75, 0xffffff, 0.5 + 0.3 * Math.sin(this.time * 14));
     amp = amp * (1 - v.fall) + 0.62 * v.fall;
     if (t.out) {
       v.group.rotation.x += rdt * 7; v.group.rotation.z += rdt * 5;
@@ -940,7 +941,7 @@ export class View {
     }
     for (const t of w.tops) {
       const v = this.tops[t.side], c = this.colorOf(t), gy = groundY(t.x, t.z);
-      if (t.charge && t.charge.skill.kind === 'beam') {
+      if (t.charge && (t.charge.skill.kind === 'beam' || t.charge.skill.kind === 'shot')) {
         // The lane a beam is about to fill.
         const S = t.charge.skill, ch = t.charge, k = Math.min(1, ch.t / ch.T), col = this.dangerOf(t);
         const len = Math.min(S.range, toWall(t.x, t.z, ch.dx, ch.dz));

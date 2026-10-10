@@ -32,6 +32,7 @@ export function makeTop(side, blade) {
     phase: side * 2.1, tumble: 0, launch: 0, guard: 0, slow: 0, hitCd: 0,
     up: 0,                 // knocked into the air: helpless until it runs out
     stun: 0,               // held where it stands, unable to act; a hit still shoves it
+    snare: 0,              // held where it stands, but still able to use skills that do not move it
     slowK: 0,              // how much of its speed a slow takes (0 = the usual 40%)
     ground: 0,             // stuck in adhesive: slower still, no dashes
     mark: 0, scar: 0, poison: 0, bleed: 0, bleedT: 0,
@@ -85,7 +86,7 @@ export function moveTop(t, dt, opp) {
   const eased = t.slow > 0 ? 1 - (t.slowK || 0.4) : 1;
   const slow = (t.ground > 0 ? Math.min(0.4, eased) : eased) * ((B && B.speed) || 1) * (t.haste > 0 ? 1.3 : 1) * (t.hold ? 0.8 : 1);
   // Stunned tops stay put too, except while a hit is still carrying them.
-  const held = rooted(t) || (t.stun > 0 && t.tumble <= 0);
+  const held = rooted(t) || ((t.stun > 0 || t.snare > 0) && t.tumble <= 0);
   // Steeper near the middle than a plain bowl, so orbits of different size drift out of step.
   const well = ARENA.K * (0.55 + 3.2 / (Math.hypot(t.x, t.z) + 1.5));
   let ax = -well * t.x, az = -well * t.z;
@@ -162,7 +163,7 @@ function ghost(t) {
   return {
     blade: t.blade, x: t.x, z: t.z, vx: t.vx, vz: t.vz, spin: t.spin, spinMax: t.spinMax,
     dir: t.dir, radius: t.radius, tumble: t.tumble, slow: t.slow, phase: t.phase,
-    ground: t.ground, buff: t.buff, haste: t.haste, up: t.up, egg: t.egg, chan: t.chan, hold: t.hold, stun: t.stun, slowK: t.slowK,
+    ground: t.ground, buff: t.buff, haste: t.haste, up: t.up, egg: t.egg, chan: t.chan, hold: t.hold, stun: t.stun, snare: t.snare, slowK: t.slowK,
     cmd: t.cmd ? { ...t.cmd } : null, dash: t.dash ? { ...t.dash } : null,
     blink: t.blink ? { ...t.blink } : null, charge: t.charge,
   };
@@ -259,7 +260,7 @@ export class World {
       t.tumble = t.launch = t.guard = t.slow = t.hitCd = t.empower = 0;
       t.up = t.ground = t.mark = t.scar = t.poison = t.bleed = t.bleedT = t.shield = t.shieldT = t.buff = 0;
       t.stack = t.stackT = t.last = t.dmark = t.dacc = t.egg = t.eggHp = t.dot = t.dotT = t.drop = 0;
-      t.haste = t.charm = t.pin = t.store = t.tag = t.tagT = t.histT = t.stun = t.slowK = 0;
+      t.haste = t.charm = t.pin = t.store = t.tag = t.tagT = t.histT = t.stun = t.snare = t.slowK = 0;
       t.hist = [];
       t.toggle = t.eggUsed = false;
       t.lastHit = null;
@@ -268,7 +269,7 @@ export class World {
   }
 
   issueMove(t, x, z) {
-    if (this.result || t.air || t.out || t.dash || t.blink || rooted(t) || t.stun > 0) return false;
+    if (this.result || t.air || t.out || t.dash || t.blink || rooted(t) || t.stun > 0 || t.snare > 0 || !Number.isFinite(x + z)) return false;
     const lim = ARENA.R - t.radius - 0.2;
     const r = Math.hypot(x, z);
     if (r > lim) { x *= lim / r; z *= lim / r; }
@@ -306,7 +307,7 @@ export class World {
     if (S.need === 'range' && !(targetable(o) && d <= (S.grab ?? S.range) && !((S.id === 'fling' || S.kind === 'throw') && o.egg > 0))) return '射程外';
     if (S.need === 'up' && !(targetable(o) && o.up > 0 && d <= S.range)) return '打ち上げ中のみ';
     if (S.need === 'soldier' && !this.own(t, 'arise').length) return '砂兵がいない';
-    if (t.ground > 0 && (MOBILE.has(S.aim) || S.id === 'shift')) return '粘着中';
+    if ((t.ground > 0 || t.snare > 0) && (MOBILE.has(S.aim) || S.id === 'shift' || S.tp)) return t.snare > 0 ? '束縛中' : '粘着中';
     return null;
   }
 
@@ -759,6 +760,11 @@ export class World {
         t.tether = { t: 0, T: S.dur, skill: S, acc: 0, tick: 0 };
         this.emit('tether', { top: t, target: opp });
         break;
+      case 'foxfire':
+        t.orbs = { n: S.count, alive: (1 << S.count) - 1, t: S.dur, ang: 0, cd: 0, skill: S };
+        t.haste = S.haste;
+        this.emit('orbs', { top: t });
+        break;
       case 'realm':
         t.tether = { t: 0, T: S.dur, skill: S, acc: 0, tick: 0 };
         t.buff = S.dur;
@@ -783,7 +789,7 @@ export class World {
       }
       case 'caskpop': {
         const q = this.own(t, 'cask')[0];
-        if (q) q.t = q.T;
+        if (q) q.T = q.t; // goes off now, with whatever it has ripened to
         break;
       }
       case 'keg': case 'parallel':
@@ -826,7 +832,9 @@ export class World {
     if (S.shield) { t.shield = S.shield; t.shieldT = S.hold; }
     switch (S.kind) {
       case 'shot':
-        if (S.fan) this.fan(t, S, c.dx, c.dz, S.fan);
+        // Some shots are let go only after standing still to line them up.
+        if (S.charge) { t.charge = { t: 0, T: S.charge, skill: S, dx: c.dx, dz: c.dz }; t.cmd = null; this.emit('charge', { top: t, T: S.charge, skill: S }); }
+        else if (S.fan) this.fan(t, S, c.dx, c.dz, S.fan);
         // Wound up: a quick tap is a different, shorter strike; a hold reaches further.
         else if (S.wind) { if (c.held < S.wind.min && S.tap) this.fire(t, SKILLS[S.tap], c.dx, c.dz); else this.fire(t, S, c.dx, c.dz, { left: c.reach }); }
         else this.fire(t, S, c.dx, c.dz);
@@ -910,7 +918,7 @@ export class World {
           t.x = opp.x - (dx / d) * 2.6; t.z = opp.z - (dz / d) * 2.6; t.vx = t.vz = 0; t.cmd = null;
           this.emit('warp', { top: t, fx, fz });
         }
-        const k = S.exec ? 1 + S.exec * (1 - spinRatio(opp)) : 1;
+        const k = S.exec ? 1 + S.exec * Math.min(1, (1 - spinRatio(opp)) / (S.execCap || 1)) : 1;
         const dmg = this.hurt(opp, (S.dmg * k * t.blade.atk) / opp.blade.def, t, S.id);
         this.affect(t, opp, S, 0, 0);
         t.stats.skillHits++;
@@ -1021,6 +1029,15 @@ export class World {
     this.emit('say', { top: v, text: 'STUN', tone: 'red' });
   }
 
+  // Rooted to the spot: no moving and no dashing, but skills still work.
+  snare(v, T) {
+    if (fixed(v)) return;
+    v.snare = Math.max(v.snare, T);
+    v.vx = v.vz = 0;
+    v.cmd = null; v.dash = null;
+    this.emit('say', { top: v, text: 'SNARE', tone: 'red' });
+  }
+
   // Knocked into the air: it hangs where it is and can do nothing.
   lift(v, T) {
     if (fixed(v)) return;
@@ -1053,6 +1070,7 @@ export class World {
       if (S.tumble === 0) this.push(v, dx, dz, S.kb);
       else this.knock(v, dx, dz, S.kb, S.tumble ?? 0.35, S.launch ?? 1.5);
     }
+    if (S.snare) this.snare(v, S.snare);
     if (S.up) this.lift(v, S.up);
     if (S.slow) this.slowBy(v, S.slow, S.slowPct);
     if (S.bleed) this.bleed(v, S.bleed);
@@ -1117,6 +1135,7 @@ export class World {
     t.slow = Math.max(0, t.slow - dt);
     if (t.slow <= 0) t.slowK = 0;
     t.stun = Math.max(0, t.stun - dt);
+    t.snare = Math.max(0, t.snare - dt);
     t.hitCd = Math.max(0, t.hitCd - dt);
     t.empower = Math.max(0, t.empower - dt);
     t.up = Math.max(0, t.up - dt);
@@ -1263,7 +1282,7 @@ export class World {
       const by = this.tops[a.by];
       t.tumble = Math.max(t.tumble, 0.3);
       const hit = this.hurt(t, (S.dmg * (1 + (S.massMul || 0) * (t.mass - 1)) * by.blade.atk) / t.blade.def, by, S.id);
-      if (S.id === 'fling' ? this.own(by, 'glue').some((q) => Math.hypot(q.x - x, q.z - z) < q.r) : S.stun) this.stun(t, S.stun);
+      if (S.id === 'fling') { if (this.own(by, 'glue').some((q) => Math.hypot(q.x - x, q.z - z) < q.r)) this.snare(t, S.snare); } else if (S.stun) this.stun(t, S.stun);
       by.stats.skillHits++;
       this.emit('blast', { top: by, skill: S, x, z, r: S.aoe || 2.2, hit, target: t });
       return;
@@ -1297,6 +1316,7 @@ export class World {
   chargeDone(t, opp) {
     const S = t.charge.skill;
     if (S.id === 'nova') { this.novaBlast(t, opp); return; }
+    if (S.kind === 'shot') { const { dx, dz } = t.charge; t.charge = null; this.fire(t, S, dx, dz); return; }
     if (S.kind === 'beam') {
       // Everything along the line is hit at once.
       const { dx, dz } = t.charge;
@@ -1373,6 +1393,14 @@ export class World {
 
   updateOrbs(t, opp, dt) {
     const o = t.orbs, S = o.skill;
+    if (S.seek) {
+      // FOX-FIRE: the flames circle until something comes near, then go for it.
+      o.t -= dt; o.ang += 4.2 * dt;
+      const near = targetable(opp) && Math.hypot(opp.x - t.x, opp.z - t.z) < S.seek && o.t < S.dur - S.wait;
+      if (near) this.bolts(t, SKILLS[S.bolt], o.n);
+      if (near || o.t <= 0) { t.orbs = null; this.emit('orbsEnd', { top: t }); }
+      return;
+    }
     o.t -= dt; o.ang += 4.2 * dt; o.cd = Math.max(0, o.cd - dt);
     if (o.cd <= 0 && targetable(opp)) {
       for (let i = 0; i < S.count; i++) {
@@ -1501,7 +1529,7 @@ export class World {
           break;
         case 'glue':
           if (z.t >= z.T) { this.endZone(z); break; }
-          if (live && d < z.r) { opp.ground = 0.25; opp.slow = Math.max(opp.slow, 0.25); }
+          if (live && d < z.r) { opp.ground = 0.25; this.slowBy(opp, 0.25, S.slowPct); }
           break;
         case 'turret': {
           // a: overclock time left, b: time to the next shot, c: upgraded
@@ -1654,7 +1682,9 @@ export class World {
     }
     if (z.t >= z.T || this.result) {
       if (S.endDmg && !this.result) {
-        const hit = this.burst(t, S, z.x, z.z, z.r, { dmg: S.endDmg, as: { stun: S.endStun, slow: S.endSlow, kb: S.endKb } });
+        // One that ripens hits harder, and slows more, the longer it was left.
+        const ripe = S.ripen ? Math.min(1, z.t / S.ripen) : 0;
+        const hit = this.burst(t, S, z.x, z.z, z.r, { dmg: S.endDmg * (1 + (S.ripeMul || 0) * ripe), as: { stun: S.endStun, slow: S.endSlow, slowPct: S.ripen ? S.endSlowPct + (S.ripeSlowPct - S.endSlowPct) * ripe : S.endSlowPct, kb: S.endKb } });
         // Its owner standing inside when it goes off is shielded instead.
         if (S.endShield && Math.hypot(t.x - z.x, t.z - z.z) < z.r) { t.shield = S.endShield; t.shieldT = 2.5; }
         void hit;
@@ -1761,8 +1791,8 @@ export class World {
       this.stopDash(s);
       src = s;
     };
-    const bonus = (s, v, amount, keep) => {
-      const add = (amount * s.blade.atk) / v.blade.def;
+    const bonus = (s, v, amount, keep, pierce = false) => {
+      const add = (amount * s.blade.atk) / (pierce ? 1 : v.blade.def);
       if (v === b) { dmgB = dmgB * keep + add; dmgA *= 0.2; } else { dmgA = dmgA * keep + add; dmgB *= 0.2; }
     };
     let special = true;
@@ -1778,7 +1808,9 @@ export class World {
     } else if (!!a.dash !== !!b.dash && (a.dash || b.dash).skill.dmg) {
       const s = a.dash ? a : b, v = this.other(s), h = s.dash, D = h.skill;
       kind = 'dash'; power += 14;
-      bonus(s, v, D.dmg * (D.perBleed ? 1 + D.perBleed * v.bleed : 1), D.keep ?? 1);
+      bonus(s, v, D.dmg * (D.perBleed ? 1 + D.perBleed * v.bleed : 1), D.keep ?? 1, !!D.trueDmg);
+      // Landing it hands back part of what is left of its cooldown.
+      if (D.refundHit) { const k = this.keyOf(s, D.id); if (k) s.cd[k] *= 1 - D.refundHit; }
       thrown(s, v, D.kb, 0.55);
       s.stats.skillHits++;
       this.affect(s, v, D, 0, 0, false);
@@ -1822,6 +1854,10 @@ export class World {
     a.stats.clashes++; b.stats.clashes++;
     dmgA = this.hurt(a, dmgA, b, kind);
     dmgB = this.hurt(b, dmgB, a, kind);
+    // A mark that a body hit sets off as well as a skill.
+    for (const [s, v] of [[a, b], [b, a]]) {
+      if (v.mark > 0 && s.blade.markOnClash) { v.mark = 0; const d2 = this.hurt(v, (SKILLS.sigil.pop * s.blade.atk) / v.blade.def, s, 'sigil'); this.emit('strike', { top: v, src: s, skill: SKILLS.sigil, x: v.x, z: v.z, dmg: d2 }); }
+    }
     this.emit('clash', {
       x: (a.x + b.x) / 2, z: (a.z + b.z) / 2, nx, nz, power, kind, src,
       a, b, dmgA, dmgB,
@@ -1911,6 +1947,7 @@ export class World {
     if (S.exec) k *= 1 + S.exec * (1 - spinRatio(v));
     if (S.far) k *= 1 + S.far * clamp((S.range - p.left) / S.range, 0, 1);
     if (p.back && S.backMul) k *= S.backMul;
+    if (p.back && S.backTrue) k *= v.blade.def; // the way back ignores defence
     const scarred = v.scar > 0;
     const dmg = this.hurt(v, (p.dmg * k) / v.blade.def, o, S.id);
     if (S.chain) this.pull(v, o, S.pull, S.pullDist);

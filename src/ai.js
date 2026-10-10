@@ -88,11 +88,11 @@ export class CpuBrain {
       }
     }
     if (foe.air && foe.air.skill.aoe && this.escape(foe.air.tx, foe.air.tz, foe.air.skill.aoe, foe.air.T - foe.air.t)) return true;
-    if (foe.charge && foe.charge.skill.kind === 'beam') {
-      // A beam is being lined up: step out of its lane.
+    if (foe.charge && (foe.charge.skill.kind === 'beam' || foe.charge.skill.kind === 'shot')) {
+      // A beam or a big shot is being lined up: step out of its lane.
       const c = foe.charge, side = -(me.x - foe.x) * c.dz + (me.z - foe.z) * c.dx;
       if (Math.abs(side) < c.skill.radius + 2 && r() < L.dodge) { const s = side >= 0 ? 1 : -1; w.issueMove(me, me.x - c.dz * s * 5, me.z + c.dx * s * 5); return true; }
-    } else if (foe.charge && this.escape(foe.x, foe.z, foe.charge.skill.aoe, foe.charge.T - foe.charge.t)) return true;
+    } else if (foe.charge && foe.charge.skill.aoe && this.escape(foe.x, foe.z, foe.charge.skill.aoe, foe.charge.T - foe.charge.t)) return true;
     // Under fire from a channelled barrage: get out of the line.
     if (foe.chan && r() < L.dodge) {
       const s = (me.x - foe.x) * -foe.chan.dz + (me.z - foe.z) * foe.chan.dx >= 0 ? 1 : -1;
@@ -331,6 +331,9 @@ export class CpuBrain {
           if (want(0.3)) return go(me.x + (foe.x / n) * 8, me.z + (foe.z / n) * 8);
           break;
         }
+        case 'foxfire':
+          if (d < S.seek + 2 && want()) return go();
+          break;
         case 'strike': case 'realm':
           if (want(0.3)) return go();
           break;
