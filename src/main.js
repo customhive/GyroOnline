@@ -683,7 +683,7 @@ function onEvent(e) {
       break;
     case 'quake':
       audio.quake();
-      if (e.hit) { dmgPop(e.target, e.hit); popAt(e.target, 'STUN', 'word red'); game.hitstop = 0.12; }
+      if (e.hit) { dmgPop(e.target, e.hit); game.hitstop = 0.12; }
       break;
     case 'charge':
       if (e.skill.ult) { audio.leap(); game.slow = { s: 0.4, t: 0.25 }; } else audio.windup();

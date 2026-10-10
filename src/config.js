@@ -340,6 +340,8 @@ export const BLEED = { max: 5, dur: 8, dps: 3 };
 //   need    'range' (target within `range`), 'up' (target knocked up), 'soldier'
 //   hidden  not in any kit: a second stage, or something an object fires
 //   kb / tumble / launch / slow / stun / up / bleed / mark   what a hit does
+//   slowPct share of its speed a slow takes away (0.4 unless given)
+//   ghost   drawn as a faint copy of its owner
 //   keep    share of the ordinary collision damage a dash hit adds on top of its own
 // Newer skills are described entirely by fields; `kind` picks the behaviour
 // (see World.generic and World.genericZone in sim.js):
@@ -699,12 +701,12 @@ export const SKILLS = {
   // ---- HARBOR REAPER: hook, drown, execute -----------------------------------
   bonehook: {
     name: '骨の銛', en: 'BONE SKEWER', aim: 'line', kind: 'shot', icon: 'hook', cd: 8, tele: 0.45,
-    wind: { min: 0.5, full: 1, max: 4 }, tap: 'bonestab', near: 3.7, range: 9.3, speed: 34, radius: 0.8, dmg: 46, chain: true, pull: 20, pullDist: 5.5, slow: 1,
+    wind: { min: 0.5, full: 1, max: 4 }, tap: 'bonestab', near: 3.7, range: 9.3, speed: 34, radius: 0.8, dmg: 46, chain: true, pull: 20, pullDist: 5.5, slow: 1, slowPct: 0.9,
     desc: '長押しで溜めるほど射程が伸びる銛（溜め中は少し遅くなり、4秒で不発）。当たった相手を一定距離だけ手前へ引く。すぐ離すと近距離の突きになる。',
   },
   bonestab: {
     name: '突き', en: 'STAB', aim: 'line', hidden: true,
-    range: 2, speed: 60, radius: 1.1, dmg: 46, slow: 1,
+    range: 2, speed: 60, radius: 1.1, dmg: 46, slow: 1, slowPct: 0.9,
   },
   ghostwater: {
     name: 'ゴーストウォーター', en: 'GHOSTWATER DIVE', aim: 'self', kind: 'buff', icon: 'buff', cd: 10,
@@ -717,11 +719,11 @@ export const SKILLS = {
     desc: 'その場に亡霊を残し、相手をすり抜けて跳ぶ。亡霊は1秒後に自分のいる所へ飛んできて、通り道の相手をスタンさせる。',
   },
   undertowz: {
-    name: '亡霊', en: 'PHANTOM', aim: 'ground', hidden: true,
+    name: '亡霊', en: 'PHANTOM', aim: 'ground', hidden: true, ghost: true,
     aoe: 1.2, delay: 1,
   },
   wraith: {
-    name: '亡霊', en: 'PHANTOM', aim: 'line', hidden: true,
+    name: '亡霊', en: 'PHANTOM', aim: 'line', hidden: true, ghost: true,
     range: 30, speed: 26, radius: 1.1, dmg: 44, stun: 0.75, pierce: true,
   },
   deathbelow: {
@@ -757,13 +759,13 @@ export const SKILLS = {
   // ---- CHRONO REWIND: undo the last four seconds -----------------------------
   timewinder: {
     name: 'タイムワインダー', en: 'TIMEWINDER', aim: 'line', kind: 'shot', icon: 'orb', cd: 7, tele: 0.35,
-    range: 7, speed: 40, radius: 0.9, dmg: 30, pierce: true, ret: true, backMul: 1.3, crawl: 3, linger: 1.6, field: 2.4,
+    range: 7, speed: 40, radius: 0.9, dmg: 30, pierce: true, ret: true, backMul: 1.3, crawl: 3, linger: 1.6, field: 2.4, fieldPct: 0.6,
     desc: '速く飛び、相手に当たるか射程の端で減速フィールドに変わってゆっくり進む。そのあと手元へ戻り、戻りでも当たる。',
   },
   parallel: {
     name: 'パラレルトラップ', en: 'PARALLEL CONVERGENCE', aim: 'ground', icon: 'field', cd: 14,
-    ai: 'ground', range: 12, aoe: 3.6, arm: 3, reveal: 2.5, dur: 4.5, stun: 1.35, shield: 90,
-    desc: '3秒後に領域が現れる（相手には直前まで見えない）。中の相手はスロウ。自分が中へ入ると爆発し、相手をスタンさせてバリアを得る。',
+    ai: 'ground', range: 12, aoe: 3.6, arm: 3, reveal: 2.5, dur: 5.5, stun: 1.35, shield: 90,
+    desc: '3秒後に領域が現れ、2.5秒残る（相手には直前まで見えない）。中の相手はスロウ。領域が現れてから自分が中にいると爆発し、相手をスタンさせてバリアを得る。',
   },
   phasedive: {
     name: 'フェイズダイブ', en: 'PHASE DIVE', aim: 'dash', kind: 'dash', icon: 'dash', cd: 7, re: 'phasehit',

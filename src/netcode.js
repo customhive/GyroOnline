@@ -8,7 +8,7 @@
 import { SKILLS, KEYS } from './config.js';
 import { initZone } from './sim.js';
 
-export const PROTOCOL = 6;
+export const PROTOCOL = 7;
 export const PKT_SNAPSHOT = 1, PKT_PING = 2, PKT_PONG = 3;
 
 const SKILL_IDS = Object.keys(SKILLS);
@@ -53,6 +53,7 @@ function writeTop(w, t) {
   w.u8(t.bleed | (t.last << 4)); w.u8(t.bleedT * 25); w.u8(t.shield); w.u8(t.shieldT * 50); w.u8(t.buff * 20);
   w.u8(t.stack); w.u8(t.stackT * 30); w.u8(t.dmark * 60); w.u16(t.dacc * 50); w.u8(t.egg * 60); w.u8(t.eggHp);
   for (const k of KEYS) w.u8(Math.ceil(t.re[k] * 20)); // rounded up: an open window must not arrive closed
+  w.u8(Math.ceil(t.stun * 100)); w.u8(t.slowK * 100);
   w.u8(t.haste * 50); w.u8(Math.ceil(t.charm * 100)); w.u8(t.pin * 100); w.u8(t.store); w.u8(t.tag); w.u8(t.tagT * 25); w.u8(t.perm);
   w.u8((t.toggle ? G_TOGGLE : 0) | (t.eggUsed ? G_EGGUSED : 0) | (t.chan ? G_CHAN : 0) | (t.ret ? G_RET : 0) | (t.dash && t.dash.hit ? G_DASHHIT : 0) | (t.charmDir < 0 ? G_FEAR : 0) | (t.hold ? G_HOLD : 0));
   w.u8((t.cmd ? F_CMD : 0) | (t.dash ? F_DASH : 0) | (t.blink ? F_BLINK : 0) | (t.air ? F_AIR : 0) | (t.out ? F_OUT : 0)
@@ -94,6 +95,7 @@ function readTop(r, t) {
   t.bleedT = r.u8() / 25; t.shield = r.u8(); t.shieldT = r.u8() / 50; t.buff = r.u8() / 20;
   t.stack = r.u8(); t.stackT = r.u8() / 30; t.dmark = r.u8() / 60; t.dacc = r.u16() / 50; t.egg = r.u8() / 60; t.eggHp = r.u8();
   for (const k of KEYS) t.re[k] = r.u8() / 20;
+  t.stun = r.u8() / 100; t.slowK = r.u8() / 100;
   t.haste = r.u8() / 50; t.charm = r.u8() / 100; t.pin = r.u8() / 100; t.store = r.u8(); t.tag = r.u8(); t.tagT = r.u8() / 25; t.perm = r.u8();
   const g = r.u8();
   t.toggle = !!(g & G_TOGGLE); t.eggUsed = !!(g & G_EGGUSED); t.charmDir = g & G_FEAR ? -1 : 1;

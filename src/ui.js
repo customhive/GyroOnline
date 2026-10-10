@@ -143,10 +143,10 @@ export class UI {
     const root = $('#f' + side);
     root.innerHTML = `
       <div class="f-head"><span class="f-tag"></span><span class="f-name"></span><span class="f-type"></span></div>
-      <div class="gauge"><div class="g-ghost"></div><div class="g-fill"></div><div class="g-ticks"></div><span class="g-num"></span></div>
+      <div class="gauge"><div class="g-ghost"></div><div class="g-fill"></div><div class="g-grey"></div><div class="g-ticks"></div><span class="g-num"></span></div>
       <div class="f-foot"><div class="pips"></div><div class="f-ult"><i></i><span>ULT</span></div></div>`;
     return {
-      root, tag: $('.f-tag', root), name: $('.f-name', root), type: $('.f-type', root), fill: $('.g-fill', root), ghost: $('.g-ghost', root),
+      root, tag: $('.f-tag', root), name: $('.f-name', root), type: $('.f-type', root), fill: $('.g-fill', root), grey: $('.g-grey', root), ghost: $('.g-ghost', root),
       num: $('.g-num', root), pips: $('.pips', root), ult: $('.f-ult i', root), ultBox: $('.f-ult', root), ghostV: 1, shown: 1,
     };
   }
@@ -366,6 +366,10 @@ export class UI {
       f.ghostV += (r - f.ghostV) * Math.min(1, rdt * 2.2);
       f.fill.style.transform = `scaleX(${r})`;
       f.ghost.style.transform = `scaleX(${f.ghostV})`;
+      // Grey spin: lost, but not gone. It sits just past the end of the bar.
+      const grey = t.blade.grey ? Math.min(1 - r, t.store / t.spinMax) : 0;
+      f.grey.style.width = grey * 100 + '%';
+      f.grey.style[this.slot(t) === 0 ? 'left' : 'right'] = r * 100 + '%';
       f.num.textContent = Math.ceil(Math.max(0, t.spin) * 3.6) + ' rpm';
       f.root.classList.toggle('low', r < 0.25);
       f.ult.style.transform = `scaleX(${t.ult / 100})`;

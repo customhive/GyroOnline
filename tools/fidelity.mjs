@@ -54,7 +54,7 @@ console.log('CHRONO REWIND (Ekko)');
   run(0.3);
   const p = w.projectiles[0];
   check(p && p.crawl && p.speed === SKILLS.timewinder.crawl, 'Q: turns into a slow-moving field on hitting the target');
-  check(foe.slow > 0, 'Q: the field slows');
+  check(foe.slow > 0 && foe.slowK === 0.6, 'Q: the field slows by 60%');
   const s1 = foe.spin;
   run(2.2);
   check(w.projectiles.length === 0 && s1 - foe.spin > 20, 'Q: returns to Ekko and hits again on the way back');
@@ -76,8 +76,10 @@ console.log('CHRONO REWIND (Ekko)');
   check(w.zones.length === 1 && foe.slow === 0, 'W: nothing happens for the first 3 seconds');
   run(0.3);
   check(foe.slow > 0, 'W: once formed, the field slows the target inside');
+  run(2.0);
+  check(w.zones.length === 1, 'W: the field stays for 2.5 seconds after forming');
   me.x = foe.x; me.z = foe.z + 2.6; run(0.05);
-  check(w.zones.length === 0 && foe.tumble > 1.2 && me.shield > 0, 'W: stepping in detonates it: stun and a shield');
+  check(w.zones.length === 0 && foe.stun > 1.2 && me.shield > 0, 'W: stepping in detonates it: stun and a shield');
 
   ({ w, me, foe, run, saw } = setup('chrono', 8));
   w.cast(me, 'E', foe.x, foe.z);
@@ -124,7 +126,7 @@ console.log('HARBOR REAPER (Pyke)');
   check(setup.last.untouched(), 'Q tapped: does not reach a target 7 away');
   ({ w, me, foe, run, saw } = setup('reaper', 3.2));
   w.hold(me, 'Q'); w.cast(me, 'Q', foe.x, foe.z); run(0.2);
-  check(foe.spin < foe.spinMax && foe.slow > 0, 'Q tapped: hits and slows up close');
+  check(foe.spin < foe.spinMax && foe.slow > 0 && foe.slowK === 0.9, 'Q tapped: hits and slows by 90% up close');
 
   ({ w, me, foe, run, saw } = setup('reaper', 10));
   w.hold(me, 'Q');
@@ -162,7 +164,7 @@ console.log('HARBOR REAPER (Pyke)');
   check(w.zones.some((z) => z.kind === 'undertowz' && Math.abs(z.z - start.z) < 0.01) && w.projectiles.length === 0, 'E: the phantom waits at the starting point');
   foe.x = 0; foe.z = (start.z + me.z) / 2; foe.vx = foe.vz = 0;
   for (let i = 0; i < 110; i++) { w.step(DT); if (foe.tumble <= 0) { foe.x = 0; foe.z = (start.z + me.z) / 2; foe.vx = foe.vz = 0; } }
-  check(foe.spin < foe.spinMax && foe.tumble > 0, 'E: after 1 second it flies to Pyke, stunning what is in between');
+  check(foe.spin < foe.spinMax && foe.stun > 0, 'E: after 1 second it flies to Pyke, stunning what is in between');
 
   ({ w, me, foe, run, saw } = setup('reaper', 6));
   w.cast(me, 'R', foe.x, foe.z); setup.last.drift(0.6);
@@ -179,6 +181,24 @@ console.log('HARBOR REAPER (Pyke)');
   foe.spin = foe.spinMax * 0.5;
   w.cast(me, 'R', foe.x, foe.z); run(0.6);
   check(!w.result && spinRatio(foe) < 0.45, 'R: above the line it is ordinary damage');
+}
+
+console.log('STUN AND SLOW (all blades)');
+{
+  const { w, me, foe, run } = setup('azure', 8);
+  foe.vx = 9; foe.vz = 0;
+  w.stun(foe, 1);
+  const at = { x: foe.x, z: foe.z };
+  for (let i = 0; i < 60; i++) w.step(DT);
+  check(Math.hypot(foe.x - at.x, foe.z - at.z) < 0.3, 'stun: the top stops where it stands');
+  check(!w.issueMove(foe, 5, 5) && !w.canCast(foe, 'Q'), 'stun: no moving, no skills');
+  w.knock(foe, 1, 0, 10, 0.3, 0);
+  for (let i = 0; i < 40; i++) w.step(DT);
+  check(foe.x - at.x > 1.5, 'stun: a hit still knocks it away');
+  const a = setup('azure', 20), b = setup('azure', 20), c = setup('azure', 20);
+  b.w.slowBy(b.me, 3); c.w.slowBy(c.me, 3, 0.9);
+  for (const s of [a, b, c]) for (let i = 0; i < 50; i++) { s.w.issueMove(s.me, 9, 10); s.w.step(DT); }
+  check(a.me.x > b.me.x + 0.5 && b.me.x > c.me.x + 1, `slow: a 90% slow holds a top back more than the usual 40% (${a.me.x.toFixed(1)} / ${b.me.x.toFixed(1)} / ${c.me.x.toFixed(1)})`);
 }
 
 console.log(bad ? `\n${bad} of ${n} checks failed` : `\nall ${n} checks passed`);

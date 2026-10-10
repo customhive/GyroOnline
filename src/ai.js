@@ -352,7 +352,7 @@ export class CpuBrain {
 
   update(dt) {
     const { world: w, me, foe, level: L } = this;
-    if (w.result || me.out || me.air || me.blink || me.spin <= 0 || rooted(me)) return;
+    if (w.result || me.out || me.air || me.blink || me.spin <= 0 || rooted(me) || me.stun > 0) return;
     if (this.reflex(dt)) return;
     this.t -= dt;
     if (this.t > 0) return;

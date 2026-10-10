@@ -31,6 +31,8 @@ export function makeTop(side, blade) {
     projN: 0, zoneN: 0,
     phase: side * 2.1, tumble: 0, launch: 0, guard: 0, slow: 0, hitCd: 0,
     up: 0,                 // knocked into the air: helpless until it runs out
+    stun: 0,               // held where it stands, unable to act; a hit still shoves it
+    slowK: 0,              // how much of its speed a slow takes (0 = the usual 40%)
     ground: 0,             // stuck in adhesive: slower still, no dashes
     mark: 0, scar: 0, poison: 0, bleed: 0, bleedT: 0,
     shield: 0, shieldT: 0, buff: 0,
@@ -80,8 +82,10 @@ export function moveTop(t, dt, opp) {
   }
   const sr = spinRatio(t);
   const B = t.buff > 0 && t.blade.buff;
-  const slow = (t.ground > 0 ? 0.4 : t.slow > 0 ? 0.6 : 1) * ((B && B.speed) || 1) * (t.haste > 0 ? 1.3 : 1) * (t.hold ? 0.8 : 1);
-  const held = rooted(t);
+  const eased = t.slow > 0 ? 1 - (t.slowK || 0.4) : 1;
+  const slow = (t.ground > 0 ? Math.min(0.4, eased) : eased) * ((B && B.speed) || 1) * (t.haste > 0 ? 1.3 : 1) * (t.hold ? 0.8 : 1);
+  // Stunned tops stay put too, except while a hit is still carrying them.
+  const held = rooted(t) || (t.stun > 0 && t.tumble <= 0);
   // Steeper near the middle than a plain bowl, so orbits of different size drift out of step.
   const well = ARENA.K * (0.55 + 3.2 / (Math.hypot(t.x, t.z) + 1.5));
   let ax = -well * t.x, az = -well * t.z;
@@ -158,7 +162,7 @@ function ghost(t) {
   return {
     blade: t.blade, x: t.x, z: t.z, vx: t.vx, vz: t.vz, spin: t.spin, spinMax: t.spinMax,
     dir: t.dir, radius: t.radius, tumble: t.tumble, slow: t.slow, phase: t.phase,
-    ground: t.ground, buff: t.buff, haste: t.haste, up: t.up, egg: t.egg, chan: t.chan, hold: t.hold,
+    ground: t.ground, buff: t.buff, haste: t.haste, up: t.up, egg: t.egg, chan: t.chan, hold: t.hold, stun: t.stun, slowK: t.slowK,
     cmd: t.cmd ? { ...t.cmd } : null, dash: t.dash ? { ...t.dash } : null,
     blink: t.blink ? { ...t.blink } : null, charge: t.charge,
   };
@@ -181,6 +185,7 @@ export function predictPath(t, opp, T, n) {
       g.tumble = Math.max(0, g.tumble - h);
       g.slow = Math.max(0, g.slow - h);
       g.up = Math.max(0, g.up - h);
+      g.stun = Math.max(0, g.stun - h);
       const c = wallContact(g);
       if (c && c.vn > 0) { bounce(g, c); g.dash = null; }
     }
@@ -254,7 +259,7 @@ export class World {
       t.tumble = t.launch = t.guard = t.slow = t.hitCd = t.empower = 0;
       t.up = t.ground = t.mark = t.scar = t.poison = t.bleed = t.bleedT = t.shield = t.shieldT = t.buff = 0;
       t.stack = t.stackT = t.last = t.dmark = t.dacc = t.egg = t.eggHp = t.dot = t.dotT = t.drop = 0;
-      t.haste = t.charm = t.pin = t.store = t.tag = t.tagT = t.histT = 0;
+      t.haste = t.charm = t.pin = t.store = t.tag = t.tagT = t.histT = t.stun = t.slowK = 0;
       t.hist = [];
       t.toggle = t.eggUsed = false;
       t.lastHit = null;
@@ -263,7 +268,7 @@ export class World {
   }
 
   issueMove(t, x, z) {
-    if (this.result || t.air || t.out || t.dash || t.blink || rooted(t)) return false;
+    if (this.result || t.air || t.out || t.dash || t.blink || rooted(t) || t.stun > 0) return false;
     const lim = ARENA.R - t.radius - 0.2;
     const r = Math.hypot(x, z);
     if (r > lim) { x *= lim / r; z *= lim / r; }
@@ -273,7 +278,7 @@ export class World {
 
   // States that block every skill, whatever its cooldown.
   busy(t) {
-    return !!(this.result || t.spin <= 0 || t.air || t.out || t.cast || t.dash || t.blink || t.charge || t.chan || t.up > 0 || t.egg > 0);
+    return !!(this.result || t.spin <= 0 || t.air || t.out || t.cast || t.dash || t.blink || t.charge || t.chan || t.up > 0 || t.stun > 0 || t.egg > 0);
   }
 
   // The skill a key would cast right now: its second stage while the recast
@@ -315,11 +320,13 @@ export class World {
   }
 
   // How far a wound-up skill reaches right now.
-  holdRange(t, key) {
+  // `thrown` asks what the long form would reach, even while a release
+  // would still give the short one.
+  holdRange(t, key, thrown = false) {
     const S = this.aimSkill(t, key), W = S.wind;
     if (!W) return S.range;
     const h = t.hold && t.hold.key === key ? t.hold.t : 0;
-    if (h < W.min && S.tap) return SKILLS[S.tap].range;
+    if (h < W.min && S.tap && !thrown) return SKILLS[S.tap].range;
     return S.near + (S.range - S.near) * clamp(h / W.full, 0, 1);
   }
 
@@ -1012,9 +1019,17 @@ export class World {
     v.tumble = Math.max(v.tumble, 0.5); v.cmd = null; v.dash = null; v.cast = null; v.chan = null; v.hold = null;
   }
 
+  // Slows `v` for `T` seconds, taking `pct` of its speed (40% unless said).
+  // A weaker slow never replaces a stronger one that is still running.
+  slowBy(v, T, pct = 0.4) {
+    v.slowK = v.slow > 0 ? Math.max(v.slowK || 0.4, pct) : pct;
+    v.slow = Math.max(v.slow, T);
+  }
+
   stun(v, T) {
     if (fixed(v)) return;
-    v.tumble = Math.max(v.tumble, T);
+    v.stun = Math.max(v.stun, T);
+    v.vx = v.vz = 0;
     v.cmd = null; v.dash = null; v.cast = null; v.chan = null; v.hold = null;
     this.emit('say', { top: v, text: 'STUN', tone: 'red' });
   }
@@ -1045,13 +1060,14 @@ export class World {
       this.emit('strike', { top: v, src: s, skill: SKILLS.sigil, x: v.x, z: v.z, dmg });
     }
     if (S.mark) v.mark = S.mark;
+    // Stun first: it stops the top dead, and the knockback then carries it off.
+    if (S.stun) this.stun(v, S.stun);
     if (S.kb && shove) {
       if (S.tumble === 0) this.push(v, dx, dz, S.kb);
       else this.knock(v, dx, dz, S.kb, S.tumble ?? 0.35, S.launch ?? 1.5);
     }
-    if (S.stun) this.stun(v, S.stun);
     if (S.up) this.lift(v, S.up);
-    if (S.slow) v.slow = Math.max(v.slow, S.slow);
+    if (S.slow) this.slowBy(v, S.slow, S.slowPct);
     if (S.bleed) this.bleed(v, S.bleed);
     if ((S.charm || S.fear) && !fixed(v)) {
       v.charm = S.charm || S.fear; v.charmDir = S.charm ? 1 : -1;
@@ -1112,6 +1128,8 @@ export class World {
     t.tumble = Math.max(0, t.tumble - dt);
     t.launch = Math.max(0, t.launch - dt);
     t.slow = Math.max(0, t.slow - dt);
+    if (t.slow <= 0) t.slowK = 0;
+    t.stun = Math.max(0, t.stun - dt);
     t.hitCd = Math.max(0, t.hitCd - dt);
     t.empower = Math.max(0, t.empower - dt);
     t.up = Math.max(0, t.up - dt);
@@ -1144,7 +1162,7 @@ export class World {
     if (t.blade.rewind) {
       // A short trail of where it has been, for REWIND.
       t.histT -= dt;
-      if (t.histT <= 0) { t.histT = 0.25; t.hist.push({ x: t.x, z: t.z, spin: t.spin }); if (t.hist.length > t.blade.rewind * 4) t.hist.shift(); }
+      if (t.histT <= 0) { t.histT = 0.1; t.hist.push({ x: t.x, z: t.z, spin: t.spin }); if (t.hist.length > t.blade.rewind * 10) t.hist.shift(); }
     }
     if (t.shieldT > 0) { t.shieldT -= dt; if (t.shieldT <= 0) { t.shieldT = 0; t.shield = 0; } }
     if (t.bleedT > 0) { t.bleedT -= dt; if (t.bleedT <= 0) { t.bleedT = 0; t.bleed = 0; } }
@@ -1440,7 +1458,7 @@ export class World {
             if (d < 0.05) { dx = 0; dz = 1; } else { dx /= d; dz /= d; }
             const g = opp.guard > 0 ? 0.3 : 1;
             hit = this.hurt(opp, (S.dmg * g * t.blade.atk) / opp.blade.def, t, 'quake');
-            if (g === 1) this.knock(opp, dx, dz, S.kb, S.stun, 0);
+            if (g === 1) { this.stun(opp, S.stun); this.knock(opp, dx, dz, S.kb, 0.25, 0); }
             t.stats.skillHits++;
           }
           this.emit('quake', { top: t, x: z.x, z: z.z, r: z.r, hit, target: hit ? opp : null });
@@ -1799,6 +1817,9 @@ export class World {
       b.vx += nx * dvb; b.vz += nz * dvb;
       // Both spin the same way, so the rims scrub each other sideways.
       const tk = 0.22 * Math.min(vn, 24);
+      // A stunned top is carried by the blow instead of holding its ground.
+      if (a.stun > 0) a.tumble = Math.max(a.tumble, 0.22);
+      if (b.stun > 0) b.tumble = Math.max(b.tumble, 0.22);
       a.vx += -nz * tk; a.vz += nx * tk;
       b.vx -= -nz * tk; b.vz -= nx * tk;
       // A plain clash only throws a top out once its spin is nearly gone.
@@ -1896,7 +1917,7 @@ export class World {
   projHit(p, v) {
     const o = p.owner, S = p.skill;
     let k = 1;
-    if (S.chill && (v.slow > 0 || v.tumble > 0 || v.up > 0)) k = S.chill;
+    if (S.chill && (v.slow > 0 || v.tumble > 0 || v.stun > 0 || v.up > 0)) k = S.chill;
     // Finishers bite harder the less spin the target has left.
     if (S.exec) k *= 1 + S.exec * (1 - spinRatio(v));
     if (S.far) k *= 1 + S.far * clamp((S.range - p.left) / S.range, 0, 1);
@@ -1939,7 +1960,7 @@ export class World {
       }
       p.x += p.dx * st; p.z += p.dz * st; p.left -= st;
       const v = this.other(p.owner);
-      if (p.crawl && targetable(v) && Math.hypot(v.x - p.x, v.z - p.z) < S.field) v.slow = Math.max(v.slow, 0.3);
+      if (p.crawl && targetable(v) && Math.hypot(v.x - p.x, v.z - p.z) < S.field) this.slowBy(v, 0.3, S.fieldPct);
       const keg = this.own(p.owner, 'keg').find((q) => Math.hypot(q.x - p.x, q.z - p.z) < 1.2 + p.r);
       if (keg) { p.dead = true; this.blowKeg(keg); continue; }
       if (this.stopped(p)) {

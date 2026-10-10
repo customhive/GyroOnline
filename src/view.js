@@ -77,7 +77,7 @@ export class View {
     for (const c of this.spare) { this.scene.remove(c.group); disposeTop(c); }
     this.spare = [];
     for (const v of this.tops) {
-      if (v.holo) { this.scene.remove(v.holo.group); disposeTop(v.holo); }
+      for (const g of v.ghosts || []) { this.scene.remove(g.group); disposeTop(g); }
       this.scene.remove(v.group, v.light, ...v.orbs);
       v.trail.dispose(this.scene);
       disposeTop(v);
@@ -90,7 +90,7 @@ export class View {
       const v = buildTop(t.blade, this.glow);
       v.trail = new Trail(this.scene, t.blade.color);
       v.light = new THREE.PointLight(t.blade.color, 26, 13, 1.7);
-      v.drop = 0; v.dropV = 0; v.fall = 0; v.hold = false; v.ox = 0; v.oz = 0; v.hover = 0;
+      v.drop = 0; v.dropV = 0; v.fall = 0; v.hold = false; v.ox = 0; v.oz = 0; v.hover = 0; v.ghosts = [];
       // Satellite orbs, parked invisible until the skill is used.
       v.orbs = [];
       for (let i = 0; i < SKILLS.satellite.count; i++) {
@@ -560,6 +560,20 @@ export class View {
     });
   }
 
+  // The i-th faint copy of a top, made the first time it is asked for.
+  // Holograms and phantoms are all drawn with these.
+  ghost(v, i, t) {
+    let g = v.ghosts[i];
+    if (!g) {
+      g = v.ghosts[i] = buildTop(t.blade, this.glow);
+      g.shield.visible = false; g.aura.visible = false;
+      g.group.traverse((m) => { if (m.material && m !== g.shield) { m.material.transparent = true; m.material.opacity = 0.14; m.material.depthWrite = false; m.castShadow = false; } });
+      g.blurMat.opacity = 0.08;
+      this.scene.add(g.group);
+    }
+    return g;
+  }
+
   // The same for zones that have a body: clones, turrets and walls.
   syncObjects(dt) {
     const live = new Set();
@@ -679,10 +693,21 @@ export class View {
         if (p.crawl) { G.ring(p.x, p.z, 0, p.skill.field, this.colorOf(p.owner), 0.1); G.ring(p.x, p.z, p.skill.field - 0.1, p.skill.field, this.dangerOf(p.owner), 0.7); }
         if (p.skill.re && SKILLS[p.skill.re].aoe) { const A = SKILLS[p.skill.re].aoe; G.ring(p.x, p.z, A - 0.1, A, this.dangerOf(p.owner), 0.55); G.ring(p.x, p.z, 0, A, this.dangerOf(p.owner), 0.06); }
         v.group.children[1].rotation.x += dt * 22;
+        // A phantom is its copy, not a bolt.
+        v.group.children[0].visible = v.group.children[1].visible = !p.skill.ghost;
         if (dt > 0) for (let i = 0; i < 3; i++) {
           P.emit(p.x - p.dx * Math.random() * 1.2 + (Math.random() - 0.5) * 0.9, y + (Math.random() - 0.5) * 0.8, p.z - p.dz * Math.random() * 1.2 + (Math.random() - 0.5) * 0.9,
             -p.dx * 4, Math.random() * 2, -p.dz * 4, 0.3, 0.3, this.colorOf(p.owner), 0, 1);
         }
+      }
+      // Phantoms: zones and shots that are shown as a faint copy of their owner.
+      for (const t of w.tops) {
+        const v = this.tops[t.side], spots = [];
+        for (const z of w.zones) if (z.skill.ghost && z.owner === t && !z.dead) spots.push(z);
+        for (const p of w.projectiles) if (p.skill.ghost && p.owner === t) spots.push(p);
+        const first = t.blade.rewind ? 1 : 0;
+        spots.forEach((s, i) => { const g = this.ghost(v, first + i, t); g.group.visible = true; g.group.position.set(s.x, groundY(s.x, s.z), s.z); g.spin.rotation.y -= 30 * dt; });
+        for (let i = first + spots.length; i < v.ghosts.length; i++) if (v.ghosts[i]) v.ghosts[i].group.visible = false;
       }
       this.drawTelegraphs(dt);
       this.drawOngoing(dt);
@@ -771,7 +796,7 @@ export class View {
     v.blur.rotation.z += 11 * dt;
     v.blurMat.opacity = (0.05 + 0.2 * sr) * (1 - v.fall);
     v.wobble += (2.4 + 7 * (1 - sr)) * dt;
-    let amp = egg ? 0 : 0.03 + 0.4 * Math.pow(1 - sr, 2.2) + (t.tumble > 0 || t.up > 0 ? 0.14 : 0);
+    let amp = egg ? 0 : 0.03 + 0.4 * Math.pow(1 - sr, 2.2) + (t.tumble > 0 || t.up > 0 || t.stun > 0 ? 0.14 : 0);
     amp = amp * (1 - v.fall) + 0.62 * v.fall;
     if (t.out) {
       v.group.rotation.x += rdt * 7; v.group.rotation.z += rdt * 5;
@@ -801,19 +826,23 @@ export class View {
 
     if (t.blade.rewind) {
       // The hologram: where this top stood a few seconds ago, and where its ultimate returns to.
-      if (!v.holo) {
-        v.holo = buildTop(t.blade, this.glow);
-        v.holo.shield.visible = false; v.holo.aura.visible = false;
-        v.holo.group.traverse((m) => { if (m.material && m !== v.holo.shield) { m.material.transparent = true; m.material.opacity = 0.28; m.material.depthWrite = false; m.castShadow = false; } });
-        this.scene.add(v.holo.group);
-      }
-      const h = t.hist[0];
-      v.holo.group.visible = !!h && !t.out && !t.air && !this.world.result && Math.hypot(h.x - t.x, h.z - t.z) > 0.6;
+      const h = t.hist[0], holo = this.ghost(v, 0, t);
+      holo.group.visible = !!h && !t.out && !t.air && !this.world.result;
       if (h) {
         // Eased, so it glides rather than hopping from sample to sample.
-        const g = v.holo.group.position, k = Math.min(1, rdt * 6);
+        const g = holo.group.position, k = Math.min(1, rdt * 10);
         g.set(g.x + (h.x - g.x) * k, groundY(h.x, h.z), g.z + (h.z - g.z) * k);
-        v.holo.spin.rotation.y -= 30 * dt;
+        holo.spin.rotation.y -= 30 * dt;
+        // A faint, wavering ribbon along the path between the two.
+        const pts = t.hist;
+        for (let i = 0; i + 4 < pts.length; i += 4) {
+          const a = pts[i], b = pts[i + 4], dx = b.x - a.x, dz = b.z - a.z, d = Math.hypot(dx, dz);
+          if (d < 0.05) continue;
+          const wave = 0.5 + 0.5 * Math.sin(this.time * 5 - i * 0.45);
+          this.ground.rect(a.x, a.z, dx / d, dz / d, d, 0.1 + 0.1 * wave, c, 0.05 + 0.07 * wave, 0.09);
+        }
+        const last = pts[pts.length - 1 - ((pts.length - 1) % 4)], lx = t.x - last.x, lz = t.z - last.z, ld = Math.hypot(lx, lz);
+        if (ld > 0.05) this.ground.rect(last.x, last.z, lx / ld, lz / ld, ld, 0.14, c, 0.08, 0.09);
       }
     }
     v.trail.boost = t.dash || t.blink ? 1 : t.air ? 0.6 : t.empower > 0 ? 0.5 : 0;
@@ -1150,8 +1179,14 @@ export class View {
       const line = S.aim === 'line';
       const len = Math.min(toWall(me.x, me.z, dx, dz), line ? w.holdRange(me, key) : clamp(d, S.minDist, S.dist));
       const hw = line ? S.radius : 1.25;
-      // How far a wound-up skill could reach at full stretch.
-      if (S.wind) G.ring(me.x, me.z, S.range - 0.05, S.range, AIM, 0.2);
+      // A wound-up skill: its full stretch as a ring, and the reach of the
+      // long throw growing from the moment the key goes down, so the jump
+      // from tap to throw is seen coming.
+      if (S.wind) {
+        G.ring(me.x, me.z, S.range - 0.05, S.range, AIM, 0.2);
+        const far = Math.min(toWall(me.x, me.z, dx, dz), w.holdRange(me, key, true));
+        if (far > len + 0.05) G.lane(me.x + dx * 1.4, me.z + dz * 1.4, dx, dz, far - 1.4, hw, col, 0.04, 0.35);
+      }
       G.lane(me.x + dx * 1.4, me.z + dz * 1.4, dx, dz, len - 1.4, hw, col, ok ? 0.16 : 0.07, ok ? 0.9 : 0.4);
       if (!line) G.ring(me.x + dx * len, me.z + dz * len, 1.2, 1.33, col, 0.8);
       if (!line && S.aoe) G.ring(me.x + dx * len, me.z + dz * len, S.aoe - 0.1, S.aoe, col, 0.5);
