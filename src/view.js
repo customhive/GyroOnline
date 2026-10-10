@@ -584,6 +584,7 @@ export class View {
 
     v.trail.boost = t.dash || t.blink ? 1 : t.air ? 0.6 : t.empower > 0 ? 0.5 : 0;
     if (!t.out && v.drop <= 0) v.trail.push(t.x + v.ox, t.z + v.oz, lift);
+    v.trail.update(rdt);
 
     if (dt <= 0 || t.out) return;
     const sp = Math.hypot(t.vx, t.vz);

@@ -48,7 +48,12 @@ try {
   // Freeze the page's own loop so only our hand-stepped frames advance the game.
   await send('Page.addScriptToEvaluateOnNewDocument', { source: 'window.requestAnimationFrame = () => 0;' });
   await send('Page.navigate', { url: sc.url });
-  await sleep(1500);
+  // Wait for the game itself, not a fixed time: a cold browser can be slow to load.
+  for (let i = 0; i < 100; i++) {
+    await sleep(200);
+    const r = await send('Runtime.evaluate', { expression: 'typeof __gc', returnByValue: true });
+    if (r.result?.result?.value === 'object') break;
+  }
   const helpers = `window.seen=[];(()=>{const oh=__gc.view.handle.bind(__gc.view);__gc.view.handle=(e)=>{seen.push(e.type+(e.kind?':'+e.kind:''));oh(e)};})();
     window.run=(s)=>{const n=Math.round(s*60);for(let i=0;i<n;i++)__gc.frame(1/60);const g=__gc.game;return JSON.stringify({state:g.state,t:g.world&&+g.world.time.toFixed(2),spins:g.world&&g.world.tops.map(t=>Math.round(t.spin)),ult:g.world&&g.world.tops.map(t=>Math.round(t.ult)),score:g.score,seen:seen.splice(0).join(' ')})};
     window.until=(type,max=60,extra=4)=>{let n=0;while(n<max*60){__gc.frame(1/60);n++;if(seen.some(s=>s.startsWith(type)))break}for(let i=0;i<extra;i++)__gc.frame(1/60);return run(0)};'ok'`;

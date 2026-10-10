@@ -200,6 +200,8 @@ export class Flashes {
   }
 }
 
+const TRAIL_LIFE = 0.7; // seconds a point of the ribbon stays visible
+
 // Ribbon left on the floor behind a top.
 export class Trail {
   constructor(scene, color, n = 64) {
@@ -221,21 +223,26 @@ export class Trail {
     this.mesh.renderOrder = 8;
     scene.add(this.mesh);
   }
-  reset() { this.pts.length = 0; }
+  reset() { this.pts.length = 0; this.rebuild(); }
   // `lift` raises the ribbon off the floor (used while a top is airborne).
   push(x, z, lift = 0) {
     const p = this.pts[0];
-    if (p && Math.hypot(p.x - x, p.z - z) < 0.16 && Math.abs(p.lift - lift) < 0.3) { p.x = x; p.z = z; p.lift = lift; }
+    // A jump (new round, network snap) starts a fresh ribbon instead of
+    // drawing one long streak across the arena.
+    if (p && Math.hypot(p.x - x, p.z - z) > 4) this.pts.length = 0;
+    if (p && this.pts.length && Math.hypot(p.x - x, p.z - z) < 0.16 && Math.abs(p.lift - lift) < 0.3) { p.x = x; p.z = z; p.lift = lift; }
     else {
-      this.pts.unshift({ x, z, lift, w: this.width * (1 + this.boost * 1.6), b: 1 + this.boost * 1.5 });
+      this.pts.unshift({ x, z, lift, age: 0, w: this.width * (1 + this.boost * 1.6), b: 1 + this.boost * 1.5 });
       if (this.pts.length > this.n) this.pts.pop();
     }
-    this.rebuild();
   }
-  fade(dt) {
-    // While nothing is pushed the ribbon is eaten from the tail.
-    this.t = (this.t || 0) + dt;
-    if (this.t > 0.03 && this.pts.length > 1) { this.pts.pop(); this.t = 0; this.rebuild(); }
+  // Call once a frame. Points fade with age and are dropped, so the ribbon
+  // shortens and disappears when its top slows down, stops or leaves.
+  update(dt) {
+    const pts = this.pts;
+    for (let i = 1; i < pts.length; i++) pts[i].age += dt;
+    while (pts.length > 1 && pts[pts.length - 1].age >= TRAIL_LIFE) pts.pop();
+    this.rebuild();
   }
   rebuild() {
     const { pts, n, posArr, colArr, color } = this;
@@ -247,7 +254,7 @@ export class Trail {
       let dx = p.x - q.x, dz = p.z - q.z;
       const d = Math.hypot(dx, dz) || 1;
       dx /= d; dz /= d;
-      const k = 1 - i / n;
+      const k = (1 - i / n) * Math.max(0, 1 - p.age / TRAIL_LIFE);
       const w = p.w * (0.15 + 0.85 * k);
       const y = groundY(p.x, p.z) + 0.07 + p.lift;
       posArr[a] = p.x - dz * w; posArr[a + 1] = y; posArr[a + 2] = p.z + dx * w;
