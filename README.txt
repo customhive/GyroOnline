@@ -30,7 +30,8 @@ GYRO CLASH のオンライン対戦版。ブラウザ同士が直接つながる
   経路     2本のチャンネルを使い分ける。
              確実・順序保証 … ロビー、入力、ヒットや発動などの出来事
              非保証・順不同 … 状態スナップショットと ping（古いものは捨てる）
-  圧縮     スナップショットは量子化したバイナリで 1回およそ 90〜130 バイト、毎秒30回。
+  圧縮     スナップショットは量子化したバイナリで 1回およそ 120〜370 バイト、毎秒30回
+           （砲台・毒の床・砂兵など、場に置かれた物が多いほど増える）。
            回線が詰まると毎秒15回に落とし、溜まりすぎたら送らずに捨てる。
   その他   ホストのタブが裏に回っても演算が止まらないよう Worker で駆動する。
            オンライン中はヒットストップ／スローを演算に掛けない（時間を共有するため）。
@@ -46,10 +47,12 @@ GYRO CLASH のオンライン対戦版。ブラウザ同士が直接つながる
   npm run build         src/ → game.js（画面左下の版表記 = package.json の version ＋ ビルド日時 を埋め込む）
   npm run dev           監視ビルド
   node serve.cjs        http://127.0.0.1:4181
-  npm run simtest       描画なしのバランス確認
-  node tools/nettest.mjs [出力先] [URL] [追加フラグ]
+  npm run simtest       描画なしのバランス確認（全ブレードの総当たり）
+  npm run codectest     スナップショットと出来事が通信を往復しても壊れないことの確認。
+                        スキルやブレードの状態を増やしたら必ず通すこと
+  node tools/nettest.mjs [出力先] [URL] [追加フラグ] [ホストのブレード,ゲストのブレード]
                         ブラウザを2つ起動し、実際に P2P でつないでボット同士を戦わせる。
-                        例: node tools/nettest.mjs shots http://127.0.0.1:4181/ "norender&lag=100&jitter=20&loss=5"
+                        例: node tools/nettest.mjs shots http://127.0.0.1:4181/ "norender&lag=100&jitter=20&loss=5" venom,sand
 
   URL パラメータ（テスト用）
     ?room=XXXXXX  その部屋に参加      ?host   すぐ部屋を作る

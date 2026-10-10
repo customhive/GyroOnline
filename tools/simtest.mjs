@@ -1,6 +1,6 @@
 // Headless balance check: CPU vs CPU rounds for every blade pairing.
 // node tools/simtest.mjs [rounds per pairing]
-import { BLADES, DIFFICULTY, ROUND_TIME } from '../src/config.js';
+import { BLADES, SKILLS, DIFFICULTY, ROUND_TIME } from '../src/config.js';
 import { World } from '../src/sim.js';
 import { CpuBrain } from '../src/ai.js';
 
@@ -11,7 +11,7 @@ const DT = 1 / 120;
 function round(a, b, seed, la, lb) {
   const w = new World(BLADES[a], BLADES[b], seed);
   const brains = [la && new CpuBrain(w, w.tops[0], la), lb && new CpuBrain(w, w.tops[1], lb)];
-  for (const t of w.tops) { for (const k of 'QWER') { const S = t.blade.kit[k]; t.windup[k] = { sonic: 0.42, anchor: 0.45, blitz: 0.48, flare: 0.35, quake: 0.2 }[S] || 0; } t.ult = 0; }
+  for (const t of w.tops) { for (const k of 'QWER') t.windup[k] = SKILLS[t.blade.kit[k]].tele || 0; t.ult = 0; }
   let ults = 0;
   while (!w.result && w.time < ROUND_TIME) {
     for (const br of brains) if (br) br.update(DT);

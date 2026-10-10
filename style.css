@@ -274,3 +274,26 @@ kbd { flex: none; width: 28px; height: 28px; display: grid; place-items: center;
   #blades { grid-template-columns: 1fr; }
   .f-type, .hint { display: none; }
 }
+
+/* ---- many blades: compact cards, details beside the skill list --------- */
+#blades { grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 8px; }
+.blade { min-height: 0; padding: 9px 10px 8px 58px; }
+.b-disc { left: 9px; top: 9px; width: 40px; height: 40px; }
+.b-disc-in { inset: 12px; }
+.b-en { font-size: 15px; }
+.b-type { font-size: 9px; }
+.b-name { font-size: 11px; margin-bottom: 0; }
+.blade.on::after { content: "✓"; padding: 0 6px; font-size: 12px; letter-spacing: 0; }
+#sheet { --c: var(--cyan); display: grid; grid-template-columns: 250px 1fr; gap: 6px 18px; align-items: center; margin-bottom: 12px; padding: 9px 12px; border-left: 3px solid var(--c); background: color-mix(in srgb, var(--c) 8%, transparent); }
+#sheet p { margin: 0; font-size: 12.5px; line-height: 1.55; color: #c9d5f0; }
+#lb-blades { grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); }
+.lb-blade { padding: 7px 10px; }
+.lb-blade b { font-size: 13px; }
+/* stacks, shots left, objects out */
+.s-badge { position: absolute; right: -7px; bottom: -8px; min-width: 20px; height: 20px; padding: 0 5px; display: none; place-items: center; font-size: 12px; font-weight: 700; color: #04101c; background: var(--gold); transform: skewX(-10deg); box-shadow: 0 2px 6px rgba(0, 0, 0, 0.6); white-space: nowrap; }
+.s-badge.on { display: grid; }
+/* recast window open */
+.skill.again { border-color: #fff; box-shadow: 0 0 20px currentColor; animation: ultglow 0.5s ease-in-out infinite alternate; }
+.pop.word.red { color: #ff6a6a; }
+@media (max-height: 820px) { .blade { min-height: 0; } }
+@media (max-width: 900px) { #blades { grid-template-columns: 1fr 1fr; } #sheet { grid-template-columns: 1fr; } }

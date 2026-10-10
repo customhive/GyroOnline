@@ -1,29 +1,32 @@
 // Wire formats for online play.
 //
-// Snapshots: the whole match state packed into ~100 bytes of quantised
+// Snapshots: the whole match state packed into a few hundred bytes of quantised
 // binary, sent many times a second over an unreliable channel. A lost one is
 // simply replaced by the next.
 // Events: one-off happenings (hits, casts, finishes) as small JSON, sent
 // reliably, with object references swapped for ids.
 import { SKILLS, KEYS } from './config.js';
+import { initZone } from './sim.js';
 
-export const PROTOCOL = 3;
+export const PROTOCOL = 4;
 export const PKT_SNAPSHOT = 1, PKT_PING = 2, PKT_PONG = 3;
 
 const SKILL_IDS = Object.keys(SKILLS);
 const KINDS = ['over', 'burst', 'spin', 'time'];
-const ZONES = ['quake', 'sanctuary'];
 const POS = 2000, VEL = 400, DIR = 30000;
 const F_CMD = 1, F_DASH = 2, F_BLINK = 4, F_AIR = 8, F_OUT = 16, F_CHARGE = 32, F_ORBS = 64, F_TETHER = 128;
+const G_TOGGLE = 1, G_EGGUSED = 2, G_CHAN = 4, G_RET = 8, G_DASHHIT = 16;
 const TAU = Math.PI * 2;
 // The gauge travels as one byte. "Full" gets a value of its own: scaling 100
 // into a byte and back lands a hair under 100, and the skill needs exactly 100.
 const ULT_FULL = 255;
 
+const skillAt = (i) => SKILLS[SKILL_IDS[i]];
+const skillNo = (S) => SKILL_IDS.indexOf(S.id);
 const clampInt = (v, lo, hi) => { v = Math.round(v); return v < lo ? lo : v > hi ? hi : v; };
 
 class Writer {
-  constructor(size = 512) { this.view = new DataView(new ArrayBuffer(size)); this.o = 0; }
+  constructor(size = 4096) { this.view = new DataView(new ArrayBuffer(size)); this.o = 0; }
   u8(v) { this.view.setUint8(this.o, clampInt(v, 0, 255)); this.o += 1; }
   u16(v) { this.view.setUint16(this.o, clampInt(v, 0, 65535)); this.o += 2; }
   i16(v) { this.view.setInt16(this.o, clampInt(v, -32768, 32767)); this.o += 2; }
@@ -45,21 +48,33 @@ function writeTop(w, t) {
   w.u8(t.tumble * 100); w.u8(t.launch * 100); w.u8(t.guard * 100); w.u8(t.slow * 100); w.u8(t.hitCd * 1000); w.u8(t.empower * 50);
   w.f32(t.phase);
   for (const k of KEYS) w.u16(t.cd[k] * 1000);
-  w.u16(t.projN);
+  w.u16(t.projN); w.u16(t.zoneN);
+  w.u8(t.up * 100); w.u8(t.ground * 100); w.u8(t.mark * 50); w.u8(t.scar * 80); w.u8(t.poison * 100);
+  w.u8(t.bleed | (t.last << 4)); w.u8(t.bleedT * 25); w.u8(t.shield); w.u8(t.shieldT * 80); w.u8(t.buff * 20);
+  w.u8(t.stack); w.u8(t.stackT * 30); w.u8(t.dmark * 60); w.u16(t.dacc * 50); w.u8(t.egg * 60); w.u8(t.eggHp);
+  for (const k of KEYS) w.u8(Math.ceil(t.re[k] * 20)); // rounded up: an open window must not arrive closed
+  w.u8((t.toggle ? G_TOGGLE : 0) | (t.eggUsed ? G_EGGUSED : 0) | (t.chan ? G_CHAN : 0) | (t.ret ? G_RET : 0) | (t.dash && t.dash.hit ? G_DASHHIT : 0));
   w.u8((t.cmd ? F_CMD : 0) | (t.dash ? F_DASH : 0) | (t.blink ? F_BLINK : 0) | (t.air ? F_AIR : 0) | (t.out ? F_OUT : 0)
     | (t.charge ? F_CHARGE : 0) | (t.orbs ? F_ORBS : 0) | (t.tether ? F_TETHER : 0));
   if (t.cmd) { w.i16(t.cmd.x * POS); w.i16(t.cmd.z * POS); w.u8(t.cmd.t * 100); }
-  for (const d of [t.dash, t.blink]) if (d) { w.i16(d.dx * DIR); w.i16(d.dz * DIR); w.u8(d.t * 250); }
-  if (t.air) { const a = t.air; w.u8(a.t * 200); w.i16(a.sx * POS); w.i16(a.sz * POS); w.i16(a.tx * POS); w.i16(a.tz * POS); }
+  for (const d of [t.dash, t.blink]) if (d) { w.u8(skillNo(d.skill)); w.i16(d.dx * DIR); w.i16(d.dz * DIR); w.u8(d.t * 250); }
+  if (t.air) { const a = t.air; w.u8(skillNo(a.skill) | (a.by << 7)); w.u8(a.t * 200); w.i16(a.sx * POS); w.i16(a.sz * POS); w.i16(a.tx * POS); w.i16(a.tz * POS); }
   if (t.out) { w.u8(t.out.t * 50); w.i16(t.out.y * 100); w.i16(t.out.vy * 100); }
-  if (t.charge) w.u8(t.charge.t * 200);
+  if (t.charge) { w.u8(skillNo(t.charge.skill)); w.u8(t.charge.t * 200); }
   if (t.orbs) { const o = t.orbs; w.u8(o.alive); w.u8(o.t * 40); w.u16((((o.ang % TAU) + TAU) % TAU) * 10000); w.u8(o.cd * 200); }
-  if (t.tether) { const h = t.tether; w.u8(h.t * 80); w.u16(h.acc * 100); w.u8(h.tick * 200); }
+  if (t.tether) { const h = t.tether; w.u8(skillNo(h.skill)); w.u8(h.t * 80); w.u16(h.acc * 100); w.u8(h.tick * 200); }
+  if (t.chan) { const c = t.chan; w.u8(c.t * 60); w.u8(c.n); w.i16(c.dx * DIR); w.i16(c.dz * DIR); }
+  if (t.ret) { w.i16(t.ret.x * POS); w.i16(t.ret.z * POS); }
 }
 
 function readDir(r) {
   const dx = r.i16() / DIR, dz = r.i16() / DIR, n = Math.hypot(dx, dz) || 1;
   return { dx: dx / n, dz: dz / n };
+}
+
+function readDash(r) {
+  const skill = skillAt(r.u8());
+  return { skill, ...readDir(r), speed: skill.speed, t: r.u8() / 250, hit: false };
 }
 
 function readTop(r, t) {
@@ -70,22 +85,36 @@ function readTop(r, t) {
   t.tumble = r.u8() / 100; t.launch = r.u8() / 100; t.guard = r.u8() / 100; t.slow = r.u8() / 100; t.hitCd = r.u8() / 1000; t.empower = r.u8() / 50;
   t.phase = r.f32();
   for (const k of KEYS) t.cd[k] = r.u16() / 1000;
-  t.projN = r.u16();
+  t.projN = r.u16(); t.zoneN = r.u16();
+  t.up = r.u8() / 100; t.ground = r.u8() / 100; t.mark = r.u8() / 50; t.scar = r.u8() / 80; t.poison = r.u8() / 100;
+  const bl = r.u8();
+  t.bleed = bl & 15; t.last = bl >> 4;
+  t.bleedT = r.u8() / 25; t.shield = r.u8(); t.shieldT = r.u8() / 80; t.buff = r.u8() / 20;
+  t.stack = r.u8(); t.stackT = r.u8() / 30; t.dmark = r.u8() / 60; t.dacc = r.u16() / 50; t.egg = r.u8() / 60; t.eggHp = r.u8();
+  for (const k of KEYS) t.re[k] = r.u8() / 20;
+  const g = r.u8();
+  t.toggle = !!(g & G_TOGGLE); t.eggUsed = !!(g & G_EGGUSED);
   const f = r.u8();
   t.cast = null;
   t.cmd = f & F_CMD ? { x: r.i16() / POS, z: r.i16() / POS, t: r.u8() / 100 } : null;
-  t.dash = f & F_DASH ? { ...readDir(r), speed: SKILLS.blitz.speed, t: r.u8() / 250 } : null;
-  t.blink = f & F_BLINK ? { ...readDir(r), speed: SKILLS.phantom.speed, t: r.u8() / 250 } : null;
-  t.air = f & F_AIR ? { t: r.u8() / 200, T: SKILLS.meteor.air, sx: r.i16() / POS, sz: r.i16() / POS, tx: r.i16() / POS, tz: r.i16() / POS } : null;
+  t.dash = f & F_DASH ? readDash(r) : null;
+  if (t.dash) t.dash.hit = !!(g & G_DASHHIT);
+  t.blink = f & F_BLINK ? readDash(r) : null;
+  if (f & F_AIR) {
+    const b = r.u8(), skill = skillAt(b & 127);
+    t.air = { skill, by: b >> 7, t: r.u8() / 200, T: skill.air, sx: r.i16() / POS, sz: r.i16() / POS, tx: r.i16() / POS, tz: r.i16() / POS };
+  } else t.air = null;
   t.out = f & F_OUT ? { t: r.u8() / 50, y: r.i16() / 100, vy: r.i16() / 100 } : null;
-  t.charge = f & F_CHARGE ? { t: r.u8() / 200, T: SKILLS.nova.charge, skill: SKILLS.nova } : null;
+  if (f & F_CHARGE) { const skill = skillAt(r.u8()); t.charge = { t: r.u8() / 200, T: skill.charge, skill }; } else t.charge = null;
   if (f & F_ORBS) {
     const alive = r.u8();
     let n = 0;
     for (let i = 0; i < 8; i++) if (alive & (1 << i)) n++;
     t.orbs = { alive, n, t: r.u8() / 40, ang: r.u16() / 10000, cd: r.u8() / 200, skill: SKILLS.satellite };
   } else t.orbs = null;
-  t.tether = f & F_TETHER ? { t: r.u8() / 80, T: SKILLS.eclipse.dur, skill: SKILLS.eclipse, acc: r.u16() / 100, tick: r.u8() / 200 } : null;
+  if (f & F_TETHER) { const skill = skillAt(r.u8()); t.tether = { t: r.u8() / 80, T: skill.dur, skill, acc: r.u16() / 100, tick: r.u8() / 200 }; } else t.tether = null;
+  t.chan = g & G_CHAN ? { t: r.u8() / 60, n: r.u8(), ...readDir(r), skill: SKILLS.curtaincall } : null;
+  t.ret = g & G_RET ? { x: r.i16() / POS, z: r.i16() / POS } : null;
 }
 
 // meta: { seq, ack, timeLeft }
@@ -97,13 +126,13 @@ export function encodeSnapshot(world, meta) {
   for (const t of world.tops) writeTop(w, t);
   w.u8(world.projectiles.length);
   for (const p of world.projectiles) {
-    w.u16(p.id); w.u8(p.owner.side | (SKILL_IDS.indexOf(p.skill.id) << 1));
+    w.u16(p.id); w.u8(p.owner.side | (skillNo(p.skill) << 1)); w.u8(p.hit ? 1 : 0);
     w.i16(p.x * POS); w.i16(p.z * POS); w.i16(p.dx * DIR); w.i16(p.dz * DIR); w.u16(p.left * 1000); w.u16(p.dmg * 100);
   }
   w.u8(world.zones.length);
   for (const z of world.zones) {
-    w.u8(z.owner.side | (ZONES.indexOf(z.kind) << 1));
-    w.i16(z.x * POS); w.i16(z.z * POS); w.u8(z.t * 40); w.u16((z.healed || 0) * 100); w.u8((z.tick || 0) * 200);
+    w.u16(z.id); w.u8(z.owner.side | (skillNo(z.skill) << 1));
+    w.i16(z.x * POS); w.i16(z.z * POS); w.i16(z.dx * POS); w.i16(z.dz * POS); w.u16(z.t * 1000); w.u16(z.a * 100); w.u8(z.b * 50); w.u8(z.c);
   }
   return w.done();
 }
@@ -133,21 +162,23 @@ export function applySnapshot(world, buf) {
   for (let i = 0; i < n; i++) {
     const id = r.u16(), b = r.u8();
     const p = old.get(id) || { id, dead: false };
-    p.owner = world.tops[b & 1]; p.skill = SKILLS[SKILL_IDS[b >> 1]];
+    p.owner = world.tops[b & 1]; p.skill = skillAt(b >> 1); p.hit = !!r.u8();
     p.x = r.i16() / POS; p.z = r.i16() / POS;
     Object.assign(p, readDir(r));
     p.left = r.u16() / 1000; p.dmg = r.u16() / 100;
     p.speed = p.skill.speed; p.r = p.skill.radius; p.dead = false;
     world.projectiles.push(p);
   }
+  const zones = new Map(world.zones.map((z) => [z.id, z]));
   const zn = r.u8();
   world.zones = [];
   for (let i = 0; i < zn; i++) {
-    const b = r.u8(), kind = ZONES[b >> 1], skill = SKILLS[kind];
-    world.zones.push({
-      kind, skill, owner: world.tops[b & 1], x: r.i16() / POS, z: r.i16() / POS, t: r.u8() / 40, healed: r.u16() / 100, tick: r.u8() / 200,
-      r: kind === 'quake' ? skill.aoe : skill.radius, T: kind === 'quake' ? skill.delay : skill.dur,
-    });
+    const id = r.u16(), b = r.u8();
+    const z = zones.get(id) || { id };
+    z.kind = SKILL_IDS[b >> 1]; z.owner = world.tops[b & 1]; z.dead = false;
+    z.x = r.i16() / POS; z.z = r.i16() / POS; z.dx = r.i16() / POS; z.dz = r.i16() / POS;
+    z.t = r.u16() / 1000; z.a = r.u16() / 100; z.b = r.u8() / 50; z.c = r.u8();
+    world.zones.push(initZone(z));
   }
   return meta;
 }
@@ -166,7 +197,7 @@ export function packEvent(e) {
     else if ('blade' in v) o[k] = { $t: v.side };
     else if ('aim' in v) o[k] = { $s: v.id };
     else if ('left' in v) o[k] = { $p: [v.id, v.owner.side, v.skill.id, round2(v.x), round2(v.z), Math.round(v.dx * 1000) / 1000, Math.round(v.dz * 1000) / 1000] };
-    else if ('kind' in v && 'owner' in v) o[k] = { $z: [v.kind, v.owner.side, round2(v.x), round2(v.z)] };
+    else if ('kind' in v && 'owner' in v) o[k] = { $z: [v.kind, v.owner.side, round2(v.x), round2(v.z), v.id, round2(v.dx), round2(v.dz), v.c] };
   }
   return o;
 }
@@ -182,8 +213,8 @@ export function reviveEvent(o, world) {
       const [id, side, skill, x, z, dx, dz] = v.$p;
       e[k] = world.projectiles.find((p) => p.id === id) || { id, owner: world.tops[side & 1], skill: SKILLS[skill], x, z, dx, dz, left: 0 };
     } else if ('$z' in v) {
-      const [kind, side, x, z] = v.$z, skill = SKILLS[kind];
-      e[k] = { kind, skill, owner: world.tops[side & 1], x, z, t: 0, r: kind === 'quake' ? skill.aoe : skill.radius, T: kind === 'quake' ? skill.delay : skill.dur };
+      const [kind, side, x, z, id, dx, dz, c] = v.$z;
+      e[k] = world.zones.find((q) => q.id === id) || initZone({ id, kind, owner: world.tops[side & 1], x, z, dx, dz, t: 0, a: 0, b: 0, c });
     }
   }
   return e;

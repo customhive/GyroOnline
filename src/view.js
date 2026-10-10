@@ -1,8 +1,8 @@
 // Turns the simulation into pictures: top models, camera, effects, and the
 // floor indicators for aiming and for incoming enemy skills.
 import * as THREE from 'three';
-import { ARENA, SKILLS, ENEMY_COLOR, heightAt, skillOf } from './config.js';
-import { spinRatio } from './sim.js';
+import { ARENA, SKILLS, ENEMY_COLOR, heightAt } from './config.js';
+import { spinRatio, wallOf } from './sim.js';
 import { createStage } from './stage.js';
 import { buildTop, disposeTop } from './topmesh.js';
 import { Particles, Shockwaves, Flashes, Trail, Ground, glowTexture, groundY } from './fx.js';
@@ -16,6 +16,9 @@ const toWall = (x, z, dx, dz) => {
   return c >= 0 ? 0 : -b + Math.sqrt(b * b - c);
 };
 const v3 = new THREE.Vector3();
+// Zones that stand on the floor as an object, not only as a decal.
+const OBJECTS = { shadow: 'clone', arise: 'clone', turret: 'turret', icewall: 'wall', windwall: 'wall', divide: 'wall' };
+const TOXIC = 0x9dff3a, BLOOD = 0xff3040, ICE = 0xcfefff;
 
 export class View {
   constructor(canvas) {
@@ -60,10 +63,18 @@ export class View {
     this.orbGeo = new THREE.SphereGeometry(0.42, 16, 12);
     this.orbMat = new THREE.MeshBasicMaterial({ color: 0xfff3c4 });
     this.cones = [];
+    this.objs = new Map();   // zone id -> its model
+    this.spare = [];         // clone models waiting to be reused
+    this.wallGeo = new THREE.BoxGeometry(1, 1, 1).translate(0, 0.5, 0);
+    this.turretGeo = [new THREE.CylinderGeometry(0.75, 0.95, 0.5, 8).translate(0, 0.25, 0), new THREE.SphereGeometry(0.5, 16, 12).translate(0, 0.95, 0), new THREE.BoxGeometry(1.1, 0.2, 0.2).translate(0.6, 0.95, 0)];
+    this.turretMat = new THREE.MeshStandardMaterial({ color: 0x8a93a8, metalness: 0.9, roughness: 0.35 });
     window.addEventListener('resize', () => this.stage.resize());
   }
 
   setMatch(world, playerSide) {
+    this.clearObjects();
+    for (const c of this.spare) { this.scene.remove(c.group); disposeTop(c); }
+    this.spare = [];
     for (const v of this.tops) {
       this.scene.remove(v.group, v.light, ...v.orbs);
       v.trail.dispose(this.scene);
@@ -77,7 +88,7 @@ export class View {
       const v = buildTop(t.blade, this.glow);
       v.trail = new Trail(this.scene, t.blade.color);
       v.light = new THREE.PointLight(t.blade.color, 26, 13, 1.7);
-      v.drop = 0; v.dropV = 0; v.fall = 0; v.hold = false; v.ox = 0; v.oz = 0;
+      v.drop = 0; v.dropV = 0; v.fall = 0; v.hold = false; v.ox = 0; v.oz = 0; v.hover = 0;
       // Satellite orbs, parked invisible until the skill is used.
       v.orbs = [];
       for (let i = 0; i < SKILLS.satellite.count; i++) {
@@ -103,6 +114,7 @@ export class View {
     this.markers.length = 0;
     this.scorch.length = 0;
     this.cones.length = 0;
+    this.clearObjects();
     this.focus = null;
     for (const v of this.tops) { v.trail.reset(); v.fall = 0; v.shieldAlpha = 0; v.group.visible = true; }
   }
@@ -177,6 +189,14 @@ export class View {
         this.addShake(e.power * (e.slam ? 0.03 : 0.012));
         break;
       }
+      // Running into a wall that stands on the floor.
+      case 'bump': {
+        const y = groundY(e.x, e.z) + 0.7;
+        P.burst(e.x, y, e.z, 10 + e.power * 2, HOT, 6 + e.power * 0.5, { dx: e.nx, dz: e.nz, bias: 0.5, up: 0.8, life: 0.4 });
+        F.flash(e.x, y, e.z, 2 + e.power * 0.15, 0.18, ICE, 0.8, 0);
+        this.addShake(e.power * 0.01);
+        break;
+      }
       case 'cast':
         if (e.windup > 0) this.telegraphs.push({ top: e.top, key: e.key, skill: e.skill, t: 0, T: e.windup, dx: e.dx, dz: e.dz, ax: e.ax, az: e.az });
         break;
@@ -201,7 +221,95 @@ export class View {
           W.spawn(z.x, y + 0.12, z.z, 0.3, z.r * 0.6, 0.4, c, 1);
           P.burst(z.x, y + 0.3, z.z, 80, c, 9, { flat: true, life: 0.6, gravity: -5, drag: 2.5 });
           F.flash(z.x, y + 1, z.z, 9, 0.4, c, 0.9, 120);
+        } else if (z.kind !== 'quake' && z.kind !== 'grenade' && z.kind !== 'lotus') {
+          // Something set down on the floor.
+          W.spawn(z.x, y + 0.1, z.z, 0.4, Math.max(2, z.r), 0.4, c, 0.9);
+          P.burst(z.x, y + 0.4, z.z, 40, c, 8, { up: 1, life: 0.5, gravity: 4 });
+          if (z.skill.ult) { F.flash(z.x, y + 1, z.z, 12, 0.5, c, 1, 220); this.stage.pulseRim(c, 0.8); this.addShake(0.3); }
         }
+        break;
+      }
+      case 'zoneEnd': {
+        const z = e.zone;
+        if (OBJECTS[z.kind]) {
+          const w = wallOf(z), y = groundY(w.x, w.z);
+          P.burst(w.x, y + 0.8, w.z, 36, this.colorOf(z.owner), 8, { up: 1, life: 0.5, gravity: 6 });
+        }
+        break;
+      }
+      // A burst around a point: most area skills end in one of these.
+      case 'blast': {
+        const y = groundY(e.x, e.z), c = this.colorOf(e.top), big = !!e.skill.ult, r = e.r;
+        W.spawn(e.x, y + 0.12, e.z, 0.4, r * 1.2, 0.45, 0xffffff, 0.9);
+        W.spawn(e.x, y + 0.14, e.z, 0.3, r, 0.4, c, 1);
+        P.burst(e.x, y + 0.4, e.z, big ? 220 : 70 + r * 14, c, 10 + r * 3, { up: 0.7, life: 0.6, size: 0.28, gravity: 12 });
+        P.burst(e.x, y + 0.3, e.z, 30 + r * 8, 0xffffff, 8 + r * 4, { flat: true, life: 0.35, gravity: 0, drag: 3 });
+        F.flash(e.x, y + 1, e.z, 3 + r * 2.2, 0.3, c, 1, big ? 380 : 90 + r * 20);
+        this.scorch.push({ x: e.x, z: e.z, t: 0, T: big ? 1.8 : 0.8, color: c, r });
+        if (e.skill.inner) this.scorch.push({ x: e.x, z: e.z, t: 0, T: 0.8, color: 0xffffff, r: e.skill.inner });
+        if (big) { this.stage.pulseRim(c, 1); this.punch = 1; }
+        this.addShake(big ? 0.9 : e.hit ? 0.4 : 0.15);
+        if (e.hit && !big) this.punch = Math.max(this.punch, 0.5);
+        break;
+      }
+      // A single hit on a top that no projectile delivered.
+      case 'strike': {
+        const y = groundY(e.x, e.z) + 0.9, c = this.colorOf(e.src);
+        P.burst(e.x, y, e.z, e.big ? 200 : 70, c, e.big ? 28 : 16, { up: 0.8, life: 0.5, size: 0.28, gravity: 8 });
+        P.burst(e.x, y, e.z, 24, 0xffffff, 10, { up: 1, life: 0.35 });
+        W.spawn(e.x, y - 0.8, e.z, 0.3, e.big ? 7 : 3.2, 0.35, c, 1);
+        F.flash(e.x, y, e.z, e.big ? 14 : 5, 0.25, c, 1, e.big ? 320 : 90);
+        this.addShake(e.big ? 0.9 : 0.22);
+        if (e.big) { this.punch = 1; this.stage.pulseRim(c, 1); }
+        break;
+      }
+      // Gone from one place, there in another.
+      case 'warp': {
+        const t = e.top, c = this.colorOf(t);
+        for (const [x, z] of [[e.fx, e.fz], [t.x, t.z]]) {
+          const y = groundY(x, z);
+          W.spawn(x, y + 0.1, z, 0.5, 3, 0.3, c, 0.9);
+          P.burst(x, y + 0.8, z, 46, Math.random() < 0.5 ? c : 0xffffff, 8, { up: 1, life: 0.45, gravity: -2, drag: 2 });
+        }
+        F.flash(t.x, groundY(t.x, t.z) + 0.8, t.z, 6, 0.22, c, 1, 90);
+        this.tops[t.side].ox = this.tops[t.side].oz = 0;
+        this.tops[t.side].trail.reset();
+        break;
+      }
+      case 'buff': {
+        const t = e.top, y = groundY(t.x, t.z), c = this.colorOf(t);
+        W.spawn(t.x, y + 0.1, t.z, e.off ? 3 : 0.6, e.off ? 0.8 : 3.4, 0.4, c, 0.9);
+        if (!e.off) P.burst(t.x, y + 0.6, t.z, e.skill.ult ? 120 : 40, c, 9, { up: 1, life: 0.6, gravity: -5, drag: 1.5 });
+        if (e.skill.ult) { F.flash(t.x, y + 1, t.z, 10, 0.45, c, 1, 220); this.stage.pulseRim(c, 0.8); this.addShake(0.25); }
+        break;
+      }
+      case 'cone': {
+        const t = e.top, c = this.colorOf(t);
+        this.cones.push({ x: t.x, z: t.z, dx: e.dx, dz: e.dz, t: 0, T: 0.35, color: c, skill: e.skill });
+        if (e.hit) this.siphon(e.target, t, 24, c);
+        this.addShake(e.hit ? 0.3 : 0.1);
+        break;
+      }
+      case 'fling': {
+        const t = e.top, y = groundY(t.x, t.z), c = this.colorOf(t);
+        W.spawn(t.x, y + 0.1, t.z, 0.6, 4, 0.35, c, 1);
+        P.burst(t.x, y + 0.8, t.z, 60, c, 14, { up: 1, life: 0.5, gravity: 6 });
+        this.addShake(0.3);
+        break;
+      }
+      case 'chan': {
+        const t = e.top, y = groundY(t.x, t.z), c = this.colorOf(t);
+        W.spawn(t.x, y + 0.1, t.z, 6, 1, 0.5, c, 0.9);
+        F.flash(t.x, y + 1, t.z, 10, 0.4, c, 1, 200);
+        this.stage.pulseRim(c, 0.8);
+        break;
+      }
+      case 'egg': case 'rebirth': {
+        const t = e.top, y = groundY(t.x, t.z), born = e.type === 'rebirth';
+        W.spawn(t.x, y + 0.1, t.z, born ? 0.6 : 4, born ? 6 : 0.8, 0.6, ICE, 1);
+        P.burst(t.x, y + 0.8, t.z, born ? 200 : 90, ICE, born ? 20 : 9, { up: 1, life: 0.8, size: 0.3, gravity: born ? 8 : -3 });
+        F.flash(t.x, y + 1, t.z, born ? 16 : 8, 0.5, ICE, 1, born ? 360 : 160);
+        if (born) { this.stage.pulseRim(this.colorOf(t), 1); this.addShake(0.5); }
         break;
       }
       case 'quake': {
@@ -225,7 +333,7 @@ export class View {
       }
       case 'charge': {
         const t = e.top, y = groundY(t.x, t.z), c = this.colorOf(t);
-        W.spawn(t.x, y + 0.1, t.z, SKILLS.nova.aoe, 1, e.T, c, 0.8);
+        W.spawn(t.x, y + 0.1, t.z, e.skill.aoe, 1, e.T, c, 0.8);
         F.flash(t.x, y + 1, t.z, 7, 0.4, c, 1, 120);
         this.addShake(0.2);
         break;
@@ -253,7 +361,7 @@ export class View {
           const col = Math.random() < 0.3 ? 0xffffff : Math.random() < 0.5 ? this.colorOf(t) : 0xff6a2a;
           P.emit(t.x + Math.cos(a) * 1.2, y + (Math.random() - 0.5) * 0.6, t.z + Math.sin(a) * 1.2, Math.cos(a) * sp, Math.random() * 3, Math.sin(a) * sp, 0.3 + Math.random() * 0.25, 0.34, col, -3, 3.4);
         }
-        this.cones.push({ x: t.x, z: t.z, dx: e.dx, dz: e.dz, t: 0, T: 0.35, color: this.colorOf(t) });
+        this.cones.push({ x: t.x, z: t.z, dx: e.dx, dz: e.dz, t: 0, T: 0.35, color: this.colorOf(t), skill: S });
         F.flash(t.x + e.dx * 2, y, t.z + e.dz * 2, 8, 0.25, 0xffa040, 1, 140);
         this.addShake(e.hit ? 0.35 : 0.12);
         if (e.hit) this.siphon(e.target, t, 26, HEAL);
@@ -298,7 +406,7 @@ export class View {
         const y = groundY(p.x, p.z) + 0.8;
         P.burst(p.x, y, p.z, 40, c, 16, { dx: p.dx, dz: p.dz, bias: 0.7, up: 0.4, life: 0.35, gravity: 4 });
         F.flash(p.x, y, p.z, 5, 0.18, c, 1, 60);
-        W.spawn(e.top.x, groundY(e.top.x, e.top.z) + 0.1, e.top.z, 0.6, 2.6, 0.3, c, 0.7);
+        W.spawn(p.x - p.dx * 0.9, y - 0.7, p.z - p.dz * 0.9, 0.6, 2.6, 0.3, c, 0.7);
         break;
       }
       case 'reflect': {
@@ -421,6 +529,7 @@ export class View {
         v.mat.color.set(c).multiplyScalar(1.5); v.sprite.material.color.set(c);
       }
       v.group.rotation.y = Math.atan2(-p.dz, p.dx);
+      v.group.scale.setScalar(Math.max(0.6, p.r / 0.85));
     }
     for (const id of [...this.projs.keys()]) if (!live.has(id)) this.dropProj(id);
   }
@@ -435,6 +544,87 @@ export class View {
       const ex = before[i].x + v.ox - t.x, ez = before[i].z + v.oz - t.z;
       if (Math.hypot(ex, ez) > 3.5 || t.air || t.out) { v.ox = v.oz = 0; } else { v.ox = ex; v.oz = ez; }
     });
+  }
+
+  // The same for zones that have a body: clones, turrets and walls.
+  syncObjects(dt) {
+    const live = new Set();
+    for (const z of this.world.zones) {
+      const kind = OBJECTS[z.kind];
+      if (!kind || z.dead) continue;
+      live.add(z.id);
+      let o = this.objs.get(z.id);
+      if (!o) { o = this.makeObject(z, kind); this.objs.set(z.id, o); }
+      const w = wallOf(z), y = groundY(w.x, w.z), c = this.colorOf(z.owner);
+      // Flickers as it is about to go.
+      const left = z.T - z.t, show = left > 0.8 || Math.sin(this.time * 34) > -0.3;
+      o.group.visible = show;
+      o.group.position.set(w.x, y, w.z);
+      if (kind === 'clone') {
+        o.top.spin.rotation.y -= 34 * dt;
+        o.top.blur.rotation.z += 11 * dt;
+        o.group.rotation.set(0.05 * Math.cos(this.time * 3 + z.id), 0, 0.05 * Math.sin(this.time * 3 + z.id));
+      } else if (kind === 'turret') {
+        const foe = this.world.other(z.owner);
+        o.group.rotation.y = Math.atan2(-(foe.z - z.z), foe.x - z.x);
+        o.group.scale.setScalar(z.c ? 1.6 : 1);
+        o.mat.color.set(c).multiplyScalar(z.a > 0 ? 2.4 + Math.sin(this.time * 40) : 1.4);
+      } else {
+        const S = z.skill;
+        o.group.rotation.y = Math.atan2(w.nx, w.nz);
+        o.group.scale.set(S.wall * 2, z.kind === 'windwall' ? 3.2 : 2.3, z.kind === 'windwall' ? 0.25 : 0.7);
+        o.mat.color.set(z.kind === 'icewall' ? ICE : c);
+        o.mat.opacity = (z.kind === 'windwall' ? 0.14 : 0.26) * Math.min(1, z.t / 0.15) * (0.85 + 0.15 * Math.sin(this.time * 9));
+      }
+    }
+    for (const [id, o] of this.objs) {
+      if (live.has(id)) continue;
+      this.dropObject(o);
+      this.objs.delete(id);
+    }
+  }
+
+  makeObject(z, kind) {
+    const c = this.colorOf(z.owner);
+    if (kind === 'clone') {
+      // A copy of the owner's blade. Shadows are the same model, darkened.
+      const key = z.owner.side + z.kind;
+      const i = this.spare.findIndex((s) => s.key === key);
+      let top = i >= 0 ? this.spare.splice(i, 1)[0] : null;
+      if (!top) {
+        top = buildTop(z.owner.blade, this.glow);
+        top.key = key;
+        top.shield.visible = false;
+        if (z.kind === 'shadow') top.group.traverse((m) => { if (m.material && m.material.color && m !== top.aura && m !== top.blur) m.material.color.multiplyScalar(0.22); });
+        top.group.scale.setScalar(z.kind === 'shadow' ? 1 : 0.86);
+        top.aura.material.opacity = 0.35;
+        top.blurMat.opacity = 0.2;
+        this.scene.add(top.group);
+      }
+      return { kind, group: top.group, top };
+    }
+    const group = new THREE.Group();
+    if (kind === 'turret') {
+      const head = new THREE.MeshBasicMaterial({ color: c });
+      group.add(new THREE.Mesh(this.turretGeo[0], this.turretMat), new THREE.Mesh(this.turretGeo[1], head), new THREE.Mesh(this.turretGeo[2], this.turretMat));
+      this.scene.add(group);
+      return { kind, group, mat: head };
+    }
+    const mat = new THREE.MeshBasicMaterial({ color: c, transparent: true, opacity: 0, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide });
+    group.add(new THREE.Mesh(this.wallGeo, mat));
+    this.scene.add(group);
+    return { kind, group, mat };
+  }
+
+  dropObject(o) {
+    if (o.kind === 'clone') { o.group.visible = false; this.spare.push(o.top); return; }
+    this.scene.remove(o.group);
+    o.mat.dispose();
+  }
+
+  clearObjects() {
+    for (const o of this.objs.values()) this.dropObject(o);
+    this.objs.clear();
   }
 
   dropProj(id) {
@@ -457,10 +647,13 @@ export class View {
     if (w) {
       for (const t of w.tops) this.updateTop(t, this.tops[t.side], dt, rdt);
       this.syncProjectiles();
+      this.syncObjects(dt);
       for (const v of this.projs.values()) {
         const p = v.proj, y = groundY(p.x, p.z) + 0.85;
         v.group.position.set(p.x, y, p.z);
         if (p.skill.chain) this.chain(p.owner.x, p.owner.z, p.x, p.z, this.colorOf(p.owner), 1);
+        // Where a recast would go off.
+        if (p.skill.re) { const A = SKILLS[p.skill.re].aoe; G.ring(p.x, p.z, A - 0.1, A, this.dangerOf(p.owner), 0.55); G.ring(p.x, p.z, 0, A, this.dangerOf(p.owner), 0.06); }
         v.group.children[1].rotation.x += dt * 22;
         if (dt > 0) for (let i = 0; i < 3; i++) {
           P.emit(p.x - p.dx * Math.random() * 1.2 + (Math.random() - 0.5) * 0.9, y + (Math.random() - 0.5) * 0.8, p.z - p.dz * Math.random() * 1.2 + (Math.random() - 0.5) * 0.9,
@@ -516,7 +709,7 @@ export class View {
   updateTop(t, v, dt, rdt) {
     const P = this.particles;
     const gy = groundY(t.x, t.z);
-    const sr = spinRatio(t), c = this.colorOf(t);
+    const egg = t.egg > 0, sr = egg ? 0.06 : spinRatio(t), c = this.colorOf(t);
     let lift = 0;
     if (v.hold) {
       // Hovering over the start position until the countdown ends.
@@ -534,8 +727,10 @@ export class View {
       }
     }
     if (t.out) lift = heightAt(ARENA.R) - gy + t.out.y;
-    else if (t.air) lift = Math.sin(Math.PI * Math.min(1, t.air.t / t.air.T)) * 7.5;
-    lift += v.drop;
+    else if (t.air) lift = Math.sin(Math.PI * Math.min(1, t.air.t / t.air.T)) * t.air.skill.height;
+    // Knocked up: it hangs in the air until the timer runs out.
+    v.hover += ((t.up > 0 ? 1 : 0) - v.hover) * Math.min(1, rdt * 16);
+    lift += v.drop + v.hover * (2.1 + 0.25 * Math.sin(this.time * 11));
     const y = gy + lift;
     // Network smoothing offset, fading out quickly.
     const fade = Math.exp(-rdt * 14);
@@ -552,14 +747,14 @@ export class View {
     v.blur.rotation.z += 11 * dt;
     v.blurMat.opacity = (0.05 + 0.2 * sr) * (1 - v.fall);
     v.wobble += (2.4 + 7 * (1 - sr)) * dt;
-    let amp = 0.03 + 0.4 * Math.pow(1 - sr, 2.2) + (t.tumble > 0 ? 0.14 : 0);
+    let amp = egg ? 0 : 0.03 + 0.4 * Math.pow(1 - sr, 2.2) + (t.tumble > 0 || t.up > 0 ? 0.14 : 0);
     amp = amp * (1 - v.fall) + 0.62 * v.fall;
     if (t.out) {
       v.group.rotation.x += rdt * 7; v.group.rotation.z += rdt * 5;
     } else {
       v.group.rotation.set(amp * Math.cos(v.wobble) + t.vz * 0.006, 0, amp * Math.sin(v.wobble) - t.vx * 0.006);
     }
-    v.group.scale.setScalar(t.air ? 1 + 0.35 * Math.sin(Math.PI * Math.min(1, t.air.t / t.air.T)) : 1);
+    v.group.scale.setScalar(t.air ? 1 + 0.35 * Math.sin(Math.PI * Math.min(1, t.air.t / t.air.T)) : egg ? 0.8 : 1);
     // Mid-blink the body is gone; only the streak of light is left.
     v.spin.visible = v.blur.visible = !t.blink;
 
@@ -567,9 +762,9 @@ export class View {
     v.aura.material.opacity = (0.1 + 0.16 * sr + (ready ? 0.22 + 0.14 * Math.sin(this.time * 9) : 0)) * (1 - v.fall);
     v.aura.visible = lift < 0.5;
     v.aura.scale.setScalar(ready ? 7.5 : 5.5);
-    v.body.emissiveIntensity = 0.14 + (ready ? 0.25 + 0.15 * Math.sin(this.time * 9) : 0) + (t.dash ? 0.8 : 0) + (t.empower > 0 ? 0.5 + 0.3 * Math.sin(this.time * 30) : 0) + (t.charge ? 1.2 : 0);
+    v.body.emissiveIntensity = 0.14 + (ready ? 0.25 + 0.15 * Math.sin(this.time * 9) : 0) + (t.dash ? 0.8 : 0) + (t.empower > 0 ? 0.5 + 0.3 * Math.sin(this.time * 30) : 0) + (t.charge || t.chan ? 1.2 : 0) + (t.buff > 0 ? 0.45 + 0.2 * Math.sin(this.time * 14) : 0);
 
-    const target = t.guard > 0 ? 1 : 0;
+    const target = t.guard > 0 || egg ? 1 : t.shield > 0 ? 0.5 : 0;
     v.shieldAlpha += (target - v.shieldAlpha) * Math.min(1, rdt * 14);
     v.shield.visible = v.shieldAlpha > 0.02;
     if (v.shield.visible) {
@@ -586,6 +781,11 @@ export class View {
 
     if (dt <= 0 || t.out) return;
     const sp = Math.hypot(t.vx, t.vz);
+    const mote = (col, vy, n) => { for (let i = 0; i < n; i++) P.emit(t.x + (Math.random() - 0.5) * 1.8, y + 0.3 + Math.random() * 1.2, t.z + (Math.random() - 0.5) * 1.8, 0, vy, 0, 0.5, 0.2, col, vy < 0 ? 6 : -2, 1); };
+    if (t.bleed > 0 && Math.random() < 0.12 * t.bleed) mote(BLOOD, -1, 1);
+    if (t.poison > 0 && Math.random() < 0.5) mote(TOXIC, 1.5, 1);
+    if (t.buff > 0 && Math.random() < 0.5) mote(c, 3, 1);
+    if (t.toggle && Math.random() < 0.7) mote(TOXIC, 0.5, 1);
     if (t.blink) {
       for (let i = 0; i < 8; i++) P.emit(t.x + (Math.random() - 0.5) * 1.2, gy + 0.3 + Math.random() * 1.2, t.z + (Math.random() - 0.5) * 1.2, 0, Math.random(), 0, 0.4, 0.4, Math.random() < 0.3 ? 0xffffff : c, 0, 2);
       return;
@@ -633,7 +833,8 @@ export class View {
     const G = this.ground, P = this.particles, w = this.world;
     for (const z of w.zones) {
       const k = Math.min(1, z.t / z.T);
-      if (z.kind === 'quake') {
+      if (this.drawZone(z, k, dt)) continue;
+      if (z.kind === 'quake' || z.kind === 'grenade') {
         const col = this.dangerOf(z.owner), pulse = 0.5 + 0.5 * Math.sin(this.time * 20);
         G.ring(z.x, z.z, 0, z.r, col, 0.1 + 0.08 * pulse);
         G.ring(z.x, z.z, 0, z.r * k, col, 0.26);
@@ -660,10 +861,11 @@ export class View {
       const v = this.tops[t.side], c = this.colorOf(t), gy = groundY(t.x, t.z);
       if (t.charge) {
         const S = t.charge.skill, k = Math.min(1, t.charge.t / t.charge.T), col = this.dangerOf(t);
-        const pulse = 0.5 + 0.5 * Math.sin(this.time * 22);
-        G.ring(t.x, t.z, 0, S.aoe, col, 0.08 + 0.07 * pulse);
-        G.ring(t.x, t.z, 0, S.aoe * k, col, 0.22);
+        const pulse = 0.5 + 0.5 * Math.sin(this.time * 22), in0 = S.inner || 0;
+        G.ring(t.x, t.z, in0, S.aoe, col, 0.08 + 0.07 * pulse);
+        G.ring(t.x, t.z, in0, in0 + (S.aoe - in0) * k, col, 0.22);
         G.ring(t.x, t.z, S.aoe - 0.14, S.aoe, col, 0.95);
+        if (in0) G.ring(t.x, t.z, in0 - 0.08, in0, col, 0.6);
         // Energy drawn in from all around.
         if (dt > 0) for (let i = 0; i < 6; i++) {
           const a = Math.random() * 6.283, r = 3 + Math.random() * 4, life = 0.3;
@@ -683,19 +885,105 @@ export class View {
       if (t.tether) {
         const o = w.other(t), wob = 0.5 + 0.5 * Math.sin(this.time * 26);
         const dx = o.x - t.x, dz = o.z - t.z, d = Math.hypot(dx, dz) || 1;
-        const strain = clamp((d - t.tether.skill.range) / (t.tether.skill.breakRange - t.tether.skill.range), 0, 1);
+        const TS = t.tether.skill, safe = TS.safe ?? TS.range;
+        const strain = clamp((d - safe) / (TS.breakRange - safe), 0, 1);
         G.rect(t.x, t.z, dx / d, dz / d, d, 0.12 + 0.08 * wob, strain > 0.5 ? 0xffffff : c, 0.95, 0.9);
         G.rect(t.x, t.z, dx / d, dz / d, d, 0.5 + 0.2 * wob, c, 0.2 * (1 - strain * 0.7), 0.88);
         G.ring(o.x, o.z, 1.5, 1.7, c, 0.5 + 0.4 * wob);
-        if (dt > 0) this.siphon(o, t, 2, Math.random() < 0.5 ? c : HEAL);
+        if (dt > 0 && TS.drain) this.siphon(o, t, 2, Math.random() < 0.5 ? c : HEAL);
+        // A chain that pays off when its time is up: show how long is left.
+        if (!TS.drain) G.ring(o.x, o.z, 1.8, 2.0, 0xffffff, 0.8, 0.1, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * (t.tether.t / t.tether.T));
       }
+      const foe = w.other(t);
+      if (t.chan) {
+        // The cone a barrage can turn within, and the beat of its shots.
+        const S = t.chan.skill, col = this.dangerOf(t), a = Math.atan2(t.chan.dz, t.chan.dx);
+        const beat = clamp((t.chan.t - S.first - (t.chan.n - 1) * S.every) / S.every, 0, 1);
+        G.sector(t.x, t.z, t.chan.dx, t.chan.dz, S.range, S.half, col, 0.07, 0.6);
+        G.ring(t.x, t.z, 0, S.range * beat, col, 0.1, 0.09, a - S.half, a + S.half);
+      }
+      // Marks on the other top.
+      if (t.dmark > 0) {
+        const pulse = 0.5 + 0.5 * Math.sin(this.time * 16), k = t.dmark / SKILLS.deathmark.dur;
+        for (const [dx, dz] of [[0.707, 0.707], [0.707, -0.707]]) G.rect(foe.x - dx * 1.9, foe.z - dz * 1.9, dx, dz, 3.8, 0.12, BLOOD, 0.7 + 0.3 * pulse, 0.12);
+        G.ring(foe.x, foe.z, 2.0, 2.2, BLOOD, 0.9, 0.1, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * k);
+      }
+      if (foe.mark > 0) G.ring(foe.x, foe.z, 1.6, 1.85, c, 0.6 + 0.3 * Math.sin(this.time * 12));
+      if (foe.bleed > 0) for (let i = 0; i < foe.bleed; i++) { const a = -Math.PI / 2 + (i - (foe.bleed - 1) / 2) * 0.42; G.ring(foe.x + Math.cos(a) * 2.1, foe.z + Math.sin(a) * 2.1, 0, 0.2, BLOOD, 0.95, 0.12); }
+      // Where a return trip would end.
+      if (t.ret && t.side === this.playerSide) { G.ring(t.ret.x, t.ret.z, 1.1, 1.25, c, 0.7); G.ring(t.ret.x, t.ret.z, 0, 1.1, c, 0.1); }
     }
     for (const cn of this.cones) {
       cn.t += dt;
       const k = cn.t / cn.T;
-      if (k < 1) G.sector(cn.x, cn.z, cn.dx, cn.dz, SKILLS.flare.range, SKILLS.flare.half, cn.color, 0.5 * (1 - k) * (1 - k), 0.9 * (1 - k));
+      if (k < 1) G.sector(cn.x, cn.z, cn.dx, cn.dz, cn.skill.range, cn.skill.half, cn.color, 0.5 * (1 - k) * (1 - k), 0.9 * (1 - k));
     }
     if (this.cones.length && this.cones[0].t > this.cones[0].T) this.cones.shift();
+  }
+
+  // Floor decals for the zones the newer blades place. Returns false for the
+  // kinds drawn by the caller.
+  drawZone(z, k, dt) {
+    const G = this.ground, P = this.particles, S = z.skill;
+    const c = this.colorOf(z.owner), col = this.dangerOf(z.owner), mine = z.owner.side === this.playerSide;
+    const fade = Math.min(1, (z.T - z.t) / 0.5, z.t / 0.2), gy = groundY(z.x, z.z);
+    const speck = (color, vy, grav) => { const a = Math.random() * 6.283, r = Math.sqrt(Math.random()) * z.r; P.emit(z.x + Math.cos(a) * r, gy + 0.1, z.z + Math.sin(a) * r, 0, vy, 0, 0.8, 0.18, color, grav, 0.5); };
+    const timer = () => G.ring(z.x, z.z, z.r - 0.42, z.r - 0.28, 0xffffff, 0.6 * fade, 0.1, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * (1 - k));
+    switch (z.kind) {
+      case 'lotus':
+        if (z.c) {
+          // Sprung: a blast is coming.
+          const kk = Math.min(1, (z.t - z.a) / S.fuse), pulse = 0.5 + 0.5 * Math.sin(this.time * 22);
+          G.ring(z.x, z.z, 0, z.r, col, 0.1 + 0.08 * pulse);
+          G.ring(z.x, z.z, 0, z.r * kk, col, 0.26);
+          G.ring(z.x, z.z, z.r - 0.13, z.r, col, 0.95);
+        } else {
+          // Hard to see from the other side until it is stepped on.
+          const a = (mine ? 0.8 : 0.16) * Math.min(1, z.t / S.arm);
+          G.ring(z.x, z.z, S.trig - 0.1, S.trig, c, a);
+          G.ring(z.x, z.z, 0, 0.35, c, a);
+          for (let i = 0; i < 4; i++) { const an = this.time * 0.8 + i * 1.571; G.ring(z.x + Math.cos(an) * 0.8, z.z + Math.sin(an) * 0.8, 0, 0.28, c, a * 0.8); }
+        }
+        return true;
+      case 'blizzard':
+        G.ring(z.x, z.z, 0, z.r, ICE, (0.05 + 0.02 * Math.sin(this.time * 5)) * fade);
+        G.ring(z.x, z.z, z.r - 0.14, z.r, col, 0.9 * fade);
+        timer();
+        if (dt > 0) for (let i = 0; i < 5; i++) { const a = Math.random() * 6.283, r = Math.sqrt(Math.random()) * z.r; P.emit(z.x + Math.cos(a) * r, gy + 2 + Math.random() * 2.5, z.z + Math.sin(a) * r, 5, -5, 2, 0.7, 0.2, Math.random() < 0.5 ? 0xffffff : ICE, 0, 0.2); }
+        return true;
+      case 'poison':
+        G.ring(z.x, z.z, 0, z.r, TOXIC, 0.2 * Math.min(1, (z.T - z.t) / 1.2));
+        if (dt > 0 && Math.random() < 0.06) speck(TOXIC, 1 + Math.random() * 2, -1);
+        return true;
+      case 'glue':
+        G.ring(z.x, z.z, 0, z.r, 0xffe9a8, 0.13 * fade);
+        G.ring(z.x, z.z, z.r - 0.14, z.r, col, 0.85 * fade);
+        G.ring(z.x, z.z, z.r * 0.45, z.r * 0.5, 0xffe9a8, 0.3 * fade);
+        timer();
+        return true;
+      case 'turret':
+        if (mine) G.ring(z.x, z.z, S.reach - 0.05, S.reach, c, 0.12);
+        G.ring(z.x, z.z, 1.2, 1.35, col, 0.7);
+        return true;
+      case 'arise': {
+        const idle = !(z.c & 1) && Math.hypot(z.owner.x - z.x, z.owner.z - z.z) > S.leash;
+        G.ring(z.x, z.z, S.reach - 0.1, S.reach, col, idle ? 0.2 : 0.7);
+        G.ring(z.x, z.z, 0, S.reach, col, idle ? 0.02 : 0.06);
+        if (z.c & 1) G.ring(z.dx, z.dz, 0.5, 0.65, col, 0.8);
+        return true;
+      }
+      case 'shadow':
+        G.ring(z.x, z.z, 1.3, 1.45, c, 0.5 * fade);
+        if (dt > 0 && Math.random() < 0.4) speck(0x30304a, 2, -2);
+        return true;
+      case 'icewall': case 'windwall': case 'divide': {
+        const w = wallOf(z);
+        G.rect(w.x + w.nz * S.wall, w.z - w.nx * S.wall, -w.nz, w.nx, S.wall * 2, z.kind === 'windwall' ? 0.15 : 0.4, z.kind === 'icewall' ? ICE : c, 0.5 * fade, 0.1);
+        if (w.moving) G.lane(w.x, w.z, w.nx, w.nz, S.travel - Math.min(z.t * S.speed, S.travel), S.wall, col, 0.08, 0.7);
+        return true;
+      }
+    }
+    return false;
   }
 
   // Enemy wind-ups and incoming meteors, drawn on the floor so they can be dodged.
@@ -717,6 +1005,8 @@ export class View {
         if (S.aim === 'cone') {
           G.sector(t.x, t.z, g.dx, g.dz, S.range, S.half, col, 0.12, 0.85);
           G.ring(t.x, t.z, 0, S.range * k, col, 0.25, 0.09, Math.atan2(g.dz, g.dx) - S.half, Math.atan2(g.dz, g.dx) + S.half);
+        } else if (S.wall && S.aim !== 'line') {
+          G.rect(g.ax + g.dz * S.wall, g.az - g.dx * S.wall, -g.dz, g.dx, S.wall * 2, 0.4, col, 0.7);
         } else if (S.aim === 'ground') {
           G.ring(g.ax, g.az, S.aoe - 0.13, S.aoe, col, 0.9);
           G.ring(g.ax, g.az, 0, S.aoe, col, 0.1);
@@ -735,11 +1025,11 @@ export class View {
   // The player's aiming indicator. It shows only what the skill will cover:
   // reading where the enemy is headed is left to the player.
   drawAim(aim, me, w) {
-    const G = this.ground, key = aim.key, S = skillOf(me, key);
+    const G = this.ground, key = aim.key, S = w.aimSkill(me, key);
     let dx = aim.x - me.x, dz = aim.z - me.z;
     const d = Math.hypot(dx, dz);
     if (d < 0.01) { dx = 0; dz = -1; } else { dx /= d; dz /= d; }
-    const ok = me.cd[key] <= 0.25 && (!S.ult || me.ult >= 100);
+    const ok = w.ready(me, key, 0.25);
     const col = ok ? AIM : 0x8088a0;
     if (S.aim === 'blink') {
       const len = Math.min(toWall(me.x, me.z, dx, dz) - me.radius, clamp(d, 2, S.range));
@@ -749,18 +1039,27 @@ export class View {
       G.ring(me.x, me.z, S.range - 0.05, S.range, AIM, 0.25);
     } else if (S.aim === 'cone') {
       G.sector(me.x, me.z, dx, dz, S.range, S.half, col, ok ? 0.16 : 0.07, ok ? 0.9 : 0.4);
+    } else if (S.wall && !S.travel) {
+      // A wall across the aim: ahead of the top, or at the chosen spot.
+      const tg = S.aim === 'line' ? { x: me.x + dx * S.ahead, z: me.z + dz * S.ahead } : w.groundTarget(me, S, aim.x, aim.z);
+      if (S.aim !== 'line') G.ring(me.x, me.z, S.range - 0.06, S.range, AIM, 0.35);
+      G.rect(tg.x + dz * S.wall, tg.z - dx * S.wall, -dz, dx, S.wall * 2, 0.4, col, ok ? 0.8 : 0.35);
     } else if (S.aim === 'line' || S.aim === 'dash') {
       const line = S.aim === 'line';
       const len = Math.min(toWall(me.x, me.z, dx, dz), line ? S.range : clamp(d, S.minDist, S.dist));
       const hw = line ? S.radius : 1.25;
       G.lane(me.x + dx * 1.4, me.z + dz * 1.4, dx, dz, len - 1.4, hw, col, ok ? 0.16 : 0.07, ok ? 0.9 : 0.4);
       if (!line) G.ring(me.x + dx * len, me.z + dz * len, 1.2, 1.33, col, 0.8);
+      if (!line && S.aoe) G.ring(me.x + dx * len, me.z + dz * len, S.aoe - 0.1, S.aoe, col, 0.5);
+      if (S.id === 'shuriken') for (const q of w.own(me, 'shadow')) this.chain(q.x, q.z, aim.x, aim.z, col, 0.5);
     } else if (S.aim === 'leap' || S.aim === 'ground') {
       const tg = w.groundTarget(me, S, aim.x, aim.z);
       G.ring(me.x, me.z, S.range - 0.06, S.range, AIM, 0.35);
       G.ring(tg.x, tg.z, 0, S.aoe, col, ok ? 0.14 : 0.06);
       G.ring(tg.x, tg.z, S.aoe - 0.12, S.aoe, col, 0.95);
       if (S.aim === 'leap') G.ring(tg.x, tg.z, 1.9, 2.0, col, 0.55);
+      // Shadows throw too: show their lines to the same spot.
+      if (S.id === 'shadow' || S.id === 'conquer') for (const q of w.own(me, S.id === 'shadow' ? 'shadow' : 'arise')) this.chain(q.x, q.z, tg.x, tg.z, col, 0.5);
     }
   }
 

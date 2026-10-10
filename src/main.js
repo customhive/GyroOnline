@@ -19,8 +19,6 @@ import { PROTOCOL, PKT_SNAPSHOT, encodeSnapshot, applySnapshot, snapshotHeader, 
 // Filled in by tools/build.mjs.
 const VERSION = `v${__VERSION__} · ${__BUILD__}`;
 const STEP = 1 / 120;
-// Seconds the CPU telegraphs each aimed skill before it fires.
-const CPU_WINDUP = { sonic: 0.42, anchor: 0.45, blitz: 0.48, flare: 0.36, quake: 0.2 };
 const SNAP_RATE = 30, SNAP_RATE_SLOW = 15;   // snapshots per second, normal / congested link
 const MAX_LEAD = 0.25;                       // most the guest will simulate ahead of a snapshot
 const params = new URLSearchParams(location.search);
@@ -117,7 +115,7 @@ function startCpuMatch(bladeId, levelIdx) {
   beginMatch(w, 0, 'CPU', level.name);
   const c = rival();
   // The CPU winds up before firing so its skills can be read and dodged.
-  for (const k of KEYS) c.windup[k] = (CPU_WINDUP[skillOf(c, k).id] || 0) * level.windup;
+  for (const k of KEYS) c.windup[k] = (skillOf(c, k).tele || 0) * level.windup;
   game.brain = new CpuBrain(w, c, level);
   game.autoBrain = params.has('auto') ? new CpuBrain(w, player(), DIFFICULTY[1]) : null;
   startRound(1);
@@ -516,11 +514,12 @@ function tryCast(key, x, z, buffered) {
   if (!doCast(key, x, z)) {
     // Pressed a moment too early (still reeling or mid-dash): hold the input
     // briefly and fire as soon as the top can act.
-    const S = skillOf(me, key);
-    const far = S.id === 'eclipse' && !game.world.busy(me) && me.cd[key] <= 0 && me.ult >= 100;
-    const soon = !far && me.cd[key] <= 0.25 && (!S.ult || me.ult >= 100) && !me.air && !me.out;
+    const w = game.world;
+    // Ready, but something about the situation rules it out (out of range, no soldier...).
+    const why = !w.busy(me) && w.ready(me, key) ? w.blocked(me, key) : null;
+    const soon = !why && w.ready(me, key, 0.25) && !me.air && !me.out;
     if (soon && !buffered) game.buffer = { key, x, z, t: 0.45 };
-    else if (!buffered) { audio.denied(); ui.denied(key); if (far) popAt(me, '射程外', 'word dim'); }
+    else if (!buffered) { audio.denied(); ui.denied(key); if (why) popAt(me, why, 'word dim'); }
     return false;
   }
   game.buffer = null;
@@ -548,10 +547,11 @@ window.addEventListener('keydown', (e) => {
   if (k === 'M') { audio.unlock(); audio.setMuted(!audio.muted); ui.setMuted(audio.muted); return; }
   if (game.state !== 'fight' || game.paused || !KEYS.includes(k)) return;
   audio.unlock();
-  const me = player(), S = skillOf(me, k);
+  // What the key does can change mid-fight (a second stage, a copied skill).
+  const me = player(), S = game.world.aimSkill(me, k);
   if (S.aim === 'self') { tryCast(k, me.x, me.z); return; }
   // Aiming is allowed while briefly unable to act; only a real cooldown refuses.
-  if (me.cd[k] > 0.25 || (S.ult && me.ult < 100) || me.air || me.out) { audio.denied(); ui.denied(k); return; }
+  if (!game.world.ready(me, k, 0.25) || me.air || me.out) { audio.denied(); ui.denied(k); return; }
   game.aimKey = k;
 });
 window.addEventListener('keyup', (e) => {
@@ -605,7 +605,7 @@ function onEvent(e) {
       } else if (e.kind === 'dash' || e.kind === 'empower') {
         audio.projHit();
         game.hitstop = 0.14;
-        popAt(e.src === e.a ? e.b : e.a, e.kind === 'dash' ? 'DASH HIT!' : 'PHANTOM STRIKE!', 'word');
+        popAt(e.src === e.a ? e.b : e.a, e.kind === 'dash' ? 'DASH HIT!' : e.src.blade.emp.id === 'phantom' ? 'PHANTOM STRIKE!' : e.src.blade.emp.en + '!', 'word');
         ui.flash(e.src.blade.css, 0.22);
       } else if (e.power > 9) {
         game.hitstop = Math.max(game.hitstop, Math.min(0.1, 0.015 + e.power * 0.0035));
@@ -616,22 +616,60 @@ function onEvent(e) {
       dmgPop(e.top, e.dmg);
       if (e.slam && e.dmg > 8) { popAt(e.top, 'WALL SLAM', 'word red'); game.hitstop = Math.max(game.hitstop, 0.07); }
       break;
+    case 'bump': audio.wall(e.power * 0.6, false); break;
     case 'cast':
       if (e.windup > 0) audio.windup();
-      if (e.skill.ult) ui.cutIn(e.skill, e.top.blade.css, !mine(e.top));
+      if (e.ult) ui.cutIn(e.base, e.top.blade.css, !mine(e.top));
       break;
     case 'blink': audio.blink(); break;
     case 'blinkEnd': if (mine(e.top)) popAt(e.top, 'POWER UP', 'word gold'); break;
-    case 'zone':
-      if (e.zone.kind === 'sanctuary') audio.heal(); else audio.windup();
+    case 'zone': {
+      const k = e.zone.kind;
+      if (k === 'sanctuary') audio.heal(); else if (k === 'quake' || k === 'grenade') audio.windup(); else if (e.zone.skill.ult) audio.leap(); else audio.guard();
+      break;
+    }
+    case 'blast':
+      if (e.skill.ult) { audio.meteor(); ui.flash('#fff', 0.4); } else audio.quake();
+      if (e.hit) { dmgPop(e.target, e.hit); game.hitstop = e.skill.ult ? 0.18 : 0.1; }
+      break;
+    case 'strike':
+      audio.projHit();
+      dmgPop(e.top, e.dmg);
+      game.hitstop = e.big ? 0.18 : 0.07;
+      if (e.big) ui.flash(e.src.blade.css, 0.3);
+      break;
+    case 'say': popAt(e.top, e.text, 'word ' + (e.tone || '')); break;
+    case 'dot': dmgPop(e.top, e.dmg); break;
+    case 'warp': audio.blink(); break;
+    case 'buff':
+      if (e.off) audio.move(); else audio.guard();
+      if (e.skill.ult && mine(e.top)) popAt(e.top, 'POWER UP', 'word gold');
+      break;
+    case 'cone':
+      audio.flare();
+      if (e.hit) { dmgPop(e.target, e.hit); game.hitstop = 0.07; }
+      break;
+    case 'fling': audio.dash(); break;
+    case 'chan':
+      audio.leap();
+      game.slow = { s: 0.4, t: 0.25 };
+      break;
+    case 'egg':
+      audio.guard();
+      popAt(e.top, 'EGG', 'word gold');
+      ui.flash(e.top.blade.css, 0.3);
+      break;
+    case 'rebirth':
+      audio.heal();
+      popAt(e.top, 'REBIRTH!', 'word gold');
+      ui.flash(e.top.blade.css, 0.4);
       break;
     case 'quake':
       audio.quake();
       if (e.hit) { dmgPop(e.target, e.hit); popAt(e.target, 'STUN', 'word red'); game.hitstop = 0.12; }
       break;
     case 'charge':
-      audio.leap();
-      game.slow = { s: 0.4, t: 0.25 };
+      if (e.skill.ult) { audio.leap(); game.slow = { s: 0.4, t: 0.25 }; } else audio.windup();
       break;
     case 'nova':
       audio.meteor();

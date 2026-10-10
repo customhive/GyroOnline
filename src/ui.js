@@ -18,6 +18,56 @@ const ICONS = {
   sanctuary: svg('<circle cx="24" cy="24" r="19" stroke-width="3" stroke-dasharray="6 5"/><path d="M24 13v22M13 24h22" stroke-width="7"/>'),
   satellite: svg('<circle cx="24" cy="24" r="7" stroke-width="3.5"/><circle cx="24" cy="6" r="5" fill="currentColor" stroke="none"/><circle cx="8.5" cy="33" r="5" fill="currentColor" stroke="none"/><circle cx="39.5" cy="33" r="5" fill="currentColor" stroke="none"/>'),
   eclipse: svg('<circle cx="29" cy="19" r="13" fill="currentColor" stroke="none"/><circle cx="23" cy="24" r="12" fill="#0a0f1e" stroke="currentColor" stroke-width="2.5"/><path d="M6 42c6-2 8-6 12-9" stroke-width="3.5" opacity=".7"/>'),
+  // GALE RONDO
+  galeq: svg('<path d="M4 24h30" stroke-width="5"/><path d="M30 12l14 12-14 12z" fill="currentColor" stroke="none"/><path d="M6 12h14M6 36h14" stroke-width="2.5" opacity=".55"/>'),
+  windwall: svg('<path d="M10 6c8 6-8 12 0 18s-8 12 0 18M24 6c8 6-8 12 0 18s-8 12 0 18M38 6c8 6-8 12 0 18s-8 12 0 18" stroke-width="4"/>'),
+  sweep: svg('<circle cx="24" cy="24" r="8" stroke-width="3" stroke-dasharray="4 4" opacity=".6"/><path d="M3 34L45 14" stroke-width="5"/><path d="M36 9l9 5-5 9" stroke-width="4"/>'),
+  lastbreath: svg('<path d="M24 3l5 15h15l-12 9 5 16-13-10-13 10 5-16L4 18h15z" fill="currentColor" stroke="none"/><path d="M8 44h32" stroke-width="3" opacity=".6"/>'),
+  // NOX SHADE
+  shuriken: svg('<path d="M24 3l5 16 16 5-16 5-5 16-5-16-16-5 16-5z" fill="currentColor" stroke="none"/><circle cx="24" cy="24" r="4" fill="#0a0f1e" stroke="none"/>'),
+  shadow: svg('<circle cx="16" cy="24" r="10" fill="currentColor" stroke="none"/><circle cx="33" cy="24" r="10" stroke-width="3" stroke-dasharray="4 4" opacity=".7"/><path d="M14 40h20" stroke-width="3" opacity=".5"/>'),
+  slash: svg('<path d="M6 30a18 18 0 0 1 36 0" stroke-width="6"/><path d="M12 38a12 12 0 0 1 24 0" stroke-width="3" opacity=".6"/>'),
+  deathmark: svg('<path d="M8 8l32 32M40 8L8 40" stroke-width="7"/><circle cx="24" cy="24" r="20" stroke-width="2.5" opacity=".6"/>'),
+  // CURTAIN CALL
+  fourshot: svg('<circle cx="12" cy="12" r="6" fill="currentColor" stroke="none"/><circle cx="36" cy="12" r="6" fill="currentColor" stroke="none"/><circle cx="12" cy="36" r="6" fill="currentColor" stroke="none"/><circle cx="36" cy="36" r="8" fill="currentColor" stroke="none"/><circle cx="36" cy="36" r="11" stroke-width="2" opacity=".7"/>'),
+  flourish: svg('<path d="M3 24h42" stroke-width="3"/><path d="M34 16l11 8-11 8" stroke-width="4"/><path d="M8 14l6 10-6 10M18 14l6 10-6 10" stroke-width="2.5" opacity=".6"/>'),
+  lotus: svg('<path d="M24 6c6 8 6 16 0 24-6-8-6-16 0-24z" fill="currentColor" stroke="none"/><path d="M6 20c10 0 16 4 18 12-10 0-16-4-18-12zM42 20c-10 0-16 4-18 12 10 0 16-4 18-12z" fill="currentColor" stroke="none" opacity=".65"/><path d="M8 40h32" stroke-width="3"/>'),
+  curtaincall: svg('<path d="M4 44L24 4l20 40" stroke-width="3" opacity=".6"/><path d="M24 40V10" stroke-width="5"/><path d="M15 18l9-10 9 10" stroke-width="5"/>'),
+  // FROST PHOENIX
+  flashfrost: svg('<circle cx="28" cy="24" r="11" fill="currentColor" stroke="none"/><path d="M2 24h12M5 14h8M5 34h8" stroke-width="3" opacity=".6"/><path d="M28 8v-5M28 45v-5M44 24h3" stroke-width="3"/>'),
+  icewall: svg('<path d="M8 40V18l7-10 7 10v22zM26 40V14l7-10 7 10v26z" fill="currentColor" stroke="none"/><path d="M3 43h42" stroke-width="3"/>'),
+  frostbite: svg('<path d="M24 3v42M6 13l36 22M42 13L6 35" stroke-width="4"/><path d="M18 7l6 6 6-6M18 41l6-6 6 6" stroke-width="3"/>'),
+  blizzard: svg('<circle cx="24" cy="24" r="20" stroke-width="3" stroke-dasharray="5 5"/><path d="M24 10v28M12 17l24 14M36 17L12 31" stroke-width="4"/>'),
+  // BROKEN EDGE
+  brokenwings: svg('<path d="M4 12l10 12L4 36M18 12l10 12-10 12M32 12l10 12-10 12" stroke-width="5"/>'),
+  kiburst: svg('<circle cx="24" cy="24" r="6" fill="currentColor" stroke="none"/><path d="M24 3v9M24 36v9M3 24h9M36 24h9M9 9l6 6M33 33l6 6M39 9l-6 6M15 33l-6 6" stroke-width="4"/>'),
+  valor: svg('<path d="M26 5l15 5v12c0 9-6 15-15 19-9-4-15-10-15-19V10z" stroke-width="3.5"/><path d="M2 20h10M2 28h8" stroke-width="3" opacity=".6"/>'),
+  exile: svg('<path d="M10 44L30 4l8 6-18 36z" fill="currentColor" stroke="none"/><path d="M26 20l14 4M22 28l12 4" stroke-width="3" stroke="#0a0f1e"/><path d="M6 30l8 4" stroke-width="4"/>'),
+  // MIRAGE TRICK
+  sigil: svg('<circle cx="24" cy="24" r="18" stroke-width="3"/><path d="M24 8l14 24H10z" stroke-width="3"/><circle cx="24" cy="24" r="4" fill="currentColor" stroke="none"/>'),
+  distort: svg('<path d="M6 34c10-26 26-26 36 0" stroke-width="4"/><path d="M36 22l6 12-13 1" stroke-width="4"/><path d="M42 40c-10 6-26 6-36 0" stroke-width="2.5" stroke-dasharray="4 4" opacity=".7"/>'),
+  ethereal: svg('<ellipse cx="12" cy="24" rx="8" ry="5" stroke-width="4"/><ellipse cx="24" cy="24" rx="8" ry="5" stroke-width="4" opacity=".7"/><ellipse cx="36" cy="24" rx="8" ry="5" stroke-width="4"/>'),
+  mimic: svg('<path d="M24 5l5 12 13 1-10 9 3 13-11-7-11 7 3-13-10-9 13-1z" stroke-width="3"/><path d="M24 15l3 7 7 1-5 5 1 7-6-4-6 4 1-7-5-5 7-1z" fill="currentColor" stroke="none"/>'),
+  // GUILLOTINE LORD
+  decimate: svg('<circle cx="24" cy="24" r="19" stroke-width="7"/><circle cx="24" cy="24" r="7" stroke-width="2" stroke-dasharray="3 3" opacity=".6"/>'),
+  cripple: svg('<path d="M30 4L14 26h10l-6 18 18-24H26z" fill="currentColor" stroke="none"/>'),
+  apprehend: svg('<path d="M44 8L10 24l34 16" stroke-width="3" opacity=".5"/><path d="M40 24H10" stroke-width="5"/><path d="M20 14L8 24l12 10" stroke-width="5"/>'),
+  guillotine: svg('<path d="M6 4h36v18L6 34z" fill="currentColor" stroke="none"/><path d="M6 4v40M42 4v40" stroke-width="4"/><path d="M4 44h40" stroke-width="3"/>'),
+  // VENOM TRAIL
+  poison: svg('<path d="M4 34c8-10 12 6 20-4s12 6 20-4" stroke-width="6"/><circle cx="12" cy="14" r="4" fill="currentColor" stroke="none"/><circle cx="26" cy="9" r="3" fill="currentColor" stroke="none" opacity=".7"/><circle cx="38" cy="15" r="4" fill="currentColor" stroke="none"/>'),
+  glue: svg('<path d="M6 30c0-10 8-16 18-16s18 6 18 16-8 10-18 10S6 40 6 30z" fill="currentColor" stroke="none" opacity=".5"/><path d="M14 30c4-4 6 4 10 0s6 4 10 0" stroke-width="4"/>'),
+  fling: svg('<circle cx="10" cy="36" r="6" fill="currentColor" stroke="none"/><path d="M12 28C14 8 34 8 38 26" stroke-width="4"/><path d="M30 22l8 6 5-9" stroke-width="4"/><circle cx="38" cy="38" r="5" stroke-width="3"/>'),
+  insanity: svg('<path d="M19 4h10v12l9 18c2 5-1 10-7 10H17c-6 0-9-5-7-10l9-18z" stroke-width="3.5"/><path d="M13 32h22l2 4c1 3-1 5-4 5H15c-3 0-5-2-4-5z" fill="currentColor" stroke="none"/>'),
+  // TURRET ENGINEER
+  turret: svg('<path d="M10 44h28l-4-12H14z" fill="currentColor" stroke="none"/><circle cx="24" cy="24" r="9" stroke-width="4"/><path d="M30 20L44 8" stroke-width="6"/>'),
+  rockets: svg('<path d="M6 40L20 8M16 42l8-34M26 42l2-34M36 42L32 8M44 38L36 8" stroke-width="3.5"/>'),
+  grenade: svg('<circle cx="22" cy="28" r="14" fill="currentColor" stroke="none"/><path d="M26 14l6-8h8" stroke-width="4"/><path d="M40 4l4 2M42 10l4-2" stroke-width="2.5"/>'),
+  upgrade: svg('<path d="M24 4l16 16H30v12H18V20H8z" fill="currentColor" stroke="none"/><path d="M12 38h24M16 44h16" stroke-width="4"/>'),
+  // SAND EMPEROR
+  conquer: svg('<circle cx="10" cy="14" r="6" fill="currentColor" stroke="none"/><circle cx="10" cy="34" r="6" fill="currentColor" stroke="none"/><path d="M18 14l20 8M18 34l20-8" stroke-width="4"/><circle cx="40" cy="24" r="5" stroke-width="3"/>'),
+  arise: svg('<circle cx="24" cy="16" r="9" fill="currentColor" stroke="none"/><path d="M24 26v10" stroke-width="5"/><path d="M4 42c6-6 12-6 20 0s14 6 20 0" stroke-width="4"/>'),
+  shift: svg('<circle cx="38" cy="24" r="7" stroke-width="3" stroke-dasharray="4 3"/><path d="M4 24h24" stroke-width="5"/><path d="M20 15l10 9-10 9" stroke-width="5"/>'),
+  divide: svg('<path d="M10 6v36M18 6v36M26 6v36" stroke-width="5"/><path d="M32 24h12M38 17l7 7-7 7" stroke-width="4"/>'),
 };
 const FINISH = {
   over: ['OVER FINISH', '場外へ吹き飛ばした！'],
@@ -87,21 +137,24 @@ export class UI {
       const S = kitOf(blade)[KEYS.indexOf(k)];
       const how = S.aim === 'self' ? '押すと即発動' : '長押しで照準 → 離して発動';
       const b = el('div', 'skill' + (S.ult ? ' ult' : ''));
-      b.innerHTML = `<div class="s-ring"></div><div class="s-icon">${ICONS[S.id]}</div><div class="s-cd"></div><div class="s-num"></div><div class="s-key">${k}</div>
+      b.innerHTML = `<div class="s-ring"></div><div class="s-icon">${ICONS[S.id]}</div><div class="s-cd"></div><div class="s-num"></div><div class="s-key">${k}</div><div class="s-badge"></div>
         <div class="s-tip"><b>${S.name}</b><i>${S.en}</i><p>${S.desc}</p><span>${S.ult ? 'ゲージ 100%' : 'クールダウン ' + +(S.cd * blade.cdMul).toFixed(1) + '秒'}　／　${how}</span></div>`;
       bar.appendChild(b);
-      this.skills[k] = { root: b, cd: $('.s-cd', b), num: $('.s-num', b), ring: $('.s-ring', b), ready: true };
+      this.skills[k] = { root: b, cd: $('.s-cd', b), num: $('.s-num', b), ring: $('.s-ring', b), badge: $('.s-badge', b), ready: true, note: '' };
     }
   }
 
   buildTitle() {
     const cards = $('#blades');
+    // With this many blades the cards only name them; the selected one is
+    // described in full beside the skill list.
+    this.sheets = {};
     for (const b of Object.values(BLADES)) {
       const c = el('button', 'blade');
       c.style.setProperty('--c', b.css);
       const bar = (label, v) => `<div class="stat"><span>${label}</span><div>${'<i class="on"></i>'.repeat(v)}${'<i></i>'.repeat(5 - v)}</div></div>`;
-      c.innerHTML = `<div class="b-disc"><div class="b-disc-in"></div></div><div class="b-type">${b.type}</div><div class="b-en">${b.en}</div><div class="b-name">${b.name}</div>
-        <div class="b-stats">${bar('攻撃', b.bars.atk)}${bar('防御', b.bars.def)}${bar('持久', b.bars.sta)}${bar('速度', b.bars.spd)}</div><p>${b.desc}</p>`;
+      c.innerHTML = `<div class="b-disc"><div class="b-disc-in"></div></div><div class="b-type">${b.type}</div><div class="b-en">${b.en}</div><div class="b-name">${b.name}</div>`;
+      this.sheets[b.id] = `<div class="b-stats">${bar('攻撃', b.bars.atk)}${bar('防御', b.bars.def)}${bar('持久', b.bars.sta)}${bar('速度', b.bars.spd)}</div><p>${b.desc}</p>`;
       c.onclick = () => { this.blade = b.id; this.h.ui(); this.refreshTitle(); };
       c.dataset.id = b.id;
       cards.appendChild(c);
@@ -124,6 +177,8 @@ export class UI {
     const b = BLADES[this.blade];
     $('#how').style.setProperty('--c', b.css);
     $('#how-name').textContent = b.name + ' のスキル';
+    $('#sheet').style.setProperty('--c', b.css);
+    $('#sheet').innerHTML = this.sheets[b.id];
     $('#how').innerHTML = kitOf(b).map((S, i) => `<div class="how-row"><kbd>${KEYS[i]}</kbd><div class="how-icon">${ICONS[S.id]}</div><div><b>${S.name}</b><span>${S.desc}</span></div></div>`).join('');
   }
 
@@ -307,10 +362,15 @@ export class UI {
     for (const k of KEYS) {
       const S = skillOf(me, k);
       const s = this.skills[k], cd = me.cd[k], total = S.cd * me.blade.cdMul;
-      const charging = S.ult && me.ult < 100;
-      const ready = cd <= 0 && !charging;
-      s.cd.style.setProperty('--p', charging ? 0 : Math.min(1, cd / total));
-      s.num.textContent = charging ? Math.floor(me.ult) + '%' : cd > 0 ? (cd < 1 ? cd.toFixed(1) : Math.ceil(cd)) : '';
+      // While the recast window is open the key is live again, whatever the cooldown says.
+      const again = !!S.re && me.re[k] > 0;
+      const charging = !again && S.ult && me.ult < 100;
+      const ready = again || (cd <= 0 && !charging);
+      s.cd.style.setProperty('--p', charging || again ? 0 : Math.min(1, cd / total));
+      s.num.textContent = again ? '' : charging ? Math.floor(me.ult) + '%' : cd > 0 ? (cd < 1 ? cd.toFixed(1) : Math.ceil(cd)) : '';
+      s.root.classList.toggle('again', again);
+      const note = this.note(world, me, S, k);
+      if (note !== s.note) { s.note = note; s.badge.textContent = note; s.badge.classList.toggle('on', note !== ''); }
       if (S.ult) s.ring.style.setProperty('--p', me.ult / 100);
       if (ready !== s.ready) {
         s.ready = ready;
@@ -328,6 +388,26 @@ export class UI {
     }
     const danger = Math.max(0, 1 - me.spin / me.spinMax / 0.25);
     this.vignette.style.opacity = world.result ? 0 : danger * 0.9;
+  }
+
+  // The small counter on a skill button: stacks, shots left, objects out.
+  note(world, me, S, key) {
+    const foe = world.other(me);
+    switch (S.id) {
+      case 'galeq': return me.stack >= S.stacks ? '竜巻' : me.stack ? String(me.stack) : '';
+      case 'fourshot': return String(S.shots - me.stack);
+      case 'brokenwings': return me.re[key] > 0 ? String(3 - me.stack) : '';
+      case 'shadow': case 'distort': return me.re[key] > 0 ? '↩' : '';
+      case 'flashfrost': return me.re[key] > 0 ? '炸裂' : '';
+      case 'exile': return me.re[key] > 0 ? Math.ceil(me.re[key]) + 's' : '';
+      case 'mimic': return KEYS[me.last];
+      case 'guillotine': return foe.bleed ? '出血' + foe.bleed : '';
+      case 'poison': return me.toggle ? 'ON' : '';
+      case 'insanity': case 'upgrade': return me.buff > 0 ? Math.ceil(me.buff) + 's' : '';
+      case 'lotus': case 'turret': case 'arise': { const n = world.own(me, S.id).length; return n ? String(n) : ''; }
+      case 'conquer': case 'shift': return world.own(me, 'arise').length ? '' : '—';
+    }
+    return '';
   }
 
   showResult(won, score, world, stats) {

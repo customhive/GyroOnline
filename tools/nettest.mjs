@@ -1,7 +1,7 @@
 // End-to-end check of online play: opens a host tab and a guest tab in one
 // headless Edge, lets them find each other through the real PeerJS broker and
 // plays a bot-vs-bot match over WebRTC.
-//   node tools/nettest.mjs [outDir] [baseUrl]
+//   node tools/nettest.mjs [outDir] [baseUrl] [extraFlags] [hostBlade,guestBlade]
 import { spawn } from 'node:child_process';
 import fs from 'node:fs';
 import os from 'node:os';
@@ -11,6 +11,7 @@ const outDir = process.argv[2] || 'screenshots';
 const base = process.argv[3] || 'http://127.0.0.1:4181/';
 // Extra URL flags for both tabs, e.g. "norender&lag=100&jitter=20&loss=5".
 const extra = process.argv[4] ? '&' + process.argv[4] : '';
+const [hostBlade, guestBlade] = (process.argv[5] || 'gaia,sol').split(',');
 fs.mkdirSync(outDir, { recursive: true });
 const edge = ['C:/Program Files (x86)/Microsoft/Edge/Application/msedge.exe', 'C:/Program Files/Microsoft/Edge/Application/msedge.exe'].find((p) => fs.existsSync(p));
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
@@ -89,8 +90,8 @@ try {
   if (!gs.conn) throw new Error('guest could not connect');
   await host.shot('net-lobby-host'); await guest.front(); await guest.shot('net-lobby-guest');
 
-  await host.eval(`document.querySelector('.lb-blade[data-id=gaia]').click(); document.getElementById('lb-ready').click()`);
-  await guest.eval(`document.querySelector('.lb-blade[data-id=sol]').click(); document.getElementById('lb-ready').click()`);
+  await host.eval(`document.querySelector('.lb-blade[data-id=${hostBlade}]').click(); document.getElementById('lb-ready').click()`);
+  await guest.eval(`document.querySelector('.lb-blade[data-id=${guestBlade}]').click(); document.getElementById('lb-ready').click()`);
   let shots = 0, maxDiff = 0, sumDiff = 0, samples = 0;
   const t0 = Date.now();
   while (Date.now() - t0 < 300000) {
