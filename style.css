@@ -213,7 +213,9 @@ kbd { flex: none; width: 28px; height: 28px; display: grid; place-items: center;
 #res-stats tr { border-bottom: 1px solid rgba(120, 160, 255, 0.12); }
 #res-stats .head td { font-size: 13px; }
 .res-btns { display: grid; grid-template-columns: 1.4fr 1fr; gap: 10px; align-items: stretch; }
-.res-btns button:not(.primary) { background: #080c18; border: 1px solid var(--line); font-size: 14px; letter-spacing: 0.08em; }
+.res-btns.three { grid-template-columns: 1.3fr 1fr 0.8fr; }
+.res-btns.three .primary { font-size: 17px; letter-spacing: 0.04em; }
+.res-btns button:not(.primary) { padding: 10px 6px; background: #080c18; border: 1px solid var(--line); font-size: 14px; letter-spacing: 0.08em; }
 .res-btns button:not(.primary):hover { border-color: var(--cyan); }
 .pause-title { font-size: 54px; font-weight: 700; font-style: italic; letter-spacing: 0.1em; margin-bottom: 18px; }
 

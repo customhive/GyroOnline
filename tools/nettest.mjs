@@ -111,8 +111,16 @@ try {
   await host.front(); await host.shot('net-result-host'); await guest.front(); await guest.shot('net-result-guest');
 
   // Rematch through the lobby, then the guest leaves mid-match.
-  await host.eval(`document.getElementById('btn-again').click()`);
+  // The host goes back to the lobby without readying up; the guest asks for a
+  // straight rematch. Nothing may start until the host is ready too.
+  await host.eval(`document.getElementById('btn-lobby').click()`);
   await guest.eval(`document.getElementById('btn-again').click()`);
+  await sleep(2500);
+  [hs, gs] = await Promise.all([read(host), read(guest)]);
+  console.log('back in lobby:', hs.state, gs.state, '| host sees rival ready:', hs.peer && hs.peer.ready, '| guest sees host ready:', gs.peer && gs.peer.ready);
+  if (hs.state !== 'lobby' || gs.state !== 'lobby') throw new Error('both should be waiting in the lobby');
+  await host.shot('net-lobby-after');
+  await host.eval(`document.querySelector('.lb-blade[data-id=azure]').click(); document.getElementById('lb-ready').click()`);
   for (let i = 0; i < 40; i++) { await sleep(250); gs = await read(guest); if (gs.state === 'fight') break; }
   console.log('rematch started:', gs.state === 'fight', 'round', gs.round);
   await guest.eval(`document.getElementById('btn-quit').click()`);

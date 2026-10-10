@@ -49,6 +49,7 @@ export class UI {
     $('#btn-resume').onclick = () => this.h.pause();
     $('#btn-quit').onclick = () => this.h.quit();
     $('#btn-again').onclick = () => this.h.again();
+    $('#btn-lobby').onclick = () => this.h.lobby();
     $('#btn-back').onclick = () => this.h.quit();
     $('#btn-host').onclick = () => this.h.host();
     $('#lb-leave').onclick = () => this.h.quit();
@@ -186,7 +187,9 @@ export class UI {
     $('#pause-title').textContent = online ? 'MENU' : 'PAUSE';
     $('#pause-note').textContent = online ? 'オンライン対戦中は一時停止できません。' : '';
     $('#btn-quit').textContent = online ? '対戦をやめる' : 'タイトルへ';
-    $('#btn-again').textContent = online ? 'もう一度（ロビーへ）' : 'もう一度';
+    $('#btn-again').textContent = online ? '同じブレードで再戦' : 'もう一度';
+    $('#btn-lobby').classList.toggle('hidden', !online);
+    $('#btn-again').parentElement.classList.toggle('three', online);
     $('#btn-back').textContent = online ? '退出する' : 'ブレード選択へ';
   }
 

@@ -60,7 +60,10 @@ const rival = () => game.world.tops[1 - game.side];
 
 const ui = new UI({
   start: (blade, level) => { audio.unlock(); audio.ui(); startCpuMatch(blade, level); },
+  // Online, "again" goes to the lobby already marked ready (same blade);
+  // "lobby" goes there unready, to change blade or just regroup.
   again: () => { audio.ui(); if (online()) backToLobby(true); else startCpuMatch(game.blade, game.level); },
+  lobby: () => { audio.ui(); backToLobby(false); },
   quit: () => { audio.ui(); leaveOnline(); toTitle(); },
   pause: () => togglePause(),
   mute: () => { audio.unlock(); audio.setMuted(!audio.muted); ui.setMuted(audio.muted); },
@@ -354,7 +357,7 @@ function netMessage(m) {
       lb.peer = { blade: m.blade, ready: !!m.ready };
       // Seeing the other side in the lobby while still on the result screen
       // means they want a rematch.
-      if (game.state === 'result' && m.ready) ui.toast('相手が再戦を待っています');
+      if (game.state === 'result') ui.toast(m.ready ? '相手が再戦を待っています' : '相手がロビーに戻りました');
       lobbyRefresh();
       break;
     case 'full': netStatus('failed', 'full'); break;
