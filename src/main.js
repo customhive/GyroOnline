@@ -7,7 +7,7 @@
 // (rewind to the host's state, re-apply inputs the host has not seen yet,
 // simulate forward by the measured delay).
 import { BLADES, DIFFICULTY, ROUND_TIME, ROUNDS_TO_WIN, KEYS, skillOf } from './config.js';
-import { World, intercept, predictAt, spinRatio, targetable } from './sim.js';
+import { World, spinRatio } from './sim.js';
 import { CpuBrain } from './ai.js';
 import { View } from './view.js';
 import { UI } from './ui.js';
@@ -69,7 +69,6 @@ const ui = new UI({
   mute: () => { audio.unlock(); audio.setMuted(!audio.muted); ui.setMuted(audio.muted); },
   ui: () => { audio.unlock(); audio.ui(); },
   hover: () => audio.hover(),
-  skillClick: (k) => clickSkill(k),
   host: () => { audio.unlock(); audio.ui(); openRoom(); },
   ready: () => { audio.unlock(); audio.ui(); setReady(!game.lobby.me.ready); },
   pick: (id) => { audio.unlock(); audio.ui(); if (!game.lobby.me.ready) { game.lobby.me.blade = id; ui.blade = id; lobbyChanged(); } },
@@ -527,22 +526,6 @@ function tryCast(key, x, z, buffered) {
   game.buffer = null;
   ui.castFx(key);
   return true;
-}
-
-// Clicking a skill button aims it for you, using the same prediction the
-// indicator shows.
-function clickSkill(key) {
-  audio.unlock();
-  if (game.state !== 'fight' || game.paused) return;
-  const me = player(), foe = rival();
-  const S = skillOf(me, key);
-  let p = { x: foe.x, z: foe.z };
-  if (targetable(foe)) {
-    if (S.aim === 'line' || S.aim === 'dash') p = intercept(me.x, me.z, foe, me, S.speed);
-    else if (S.aim === 'leap') p = predictAt(foe, me, S.air);
-    else if (S.aim === 'ground') p = predictAt(foe, me, S.delay);
-  }
-  tryCast(key, p.x, p.z);
 }
 
 canvas.addEventListener('mousemove', (e) => { game.cursor.sx = e.clientX; game.cursor.sy = e.clientY; });

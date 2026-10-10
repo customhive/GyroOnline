@@ -33,7 +33,6 @@ export class UI {
     this.labels = $('#labels');
     this.announceEl = $('#announce');
     this.cutin = $('#cutin');
-    this.lockEl = $('#lock');
     this.vignette = $('#vignette');
     this.flashEl = $('#flash');
     this.blade = 'azure';
@@ -90,7 +89,6 @@ export class UI {
       const b = el('div', 'skill' + (S.ult ? ' ult' : ''));
       b.innerHTML = `<div class="s-ring"></div><div class="s-icon">${ICONS[S.id]}</div><div class="s-cd"></div><div class="s-num"></div><div class="s-key">${k}</div>
         <div class="s-tip"><b>${S.name}</b><i>${S.en}</i><p>${S.desc}</p><span>${S.ult ? 'ゲージ 100%' : 'クールダウン ' + +(S.cd * blade.cdMul).toFixed(1) + '秒'}　／　${how}</span></div>`;
-      b.addEventListener('mousedown', (e) => { e.stopPropagation(); e.preventDefault(); this.h.skillClick(k); });
       bar.appendChild(b);
       this.skills[k] = { root: b, cd: $('.s-cd', b), num: $('.s-num', b), ring: $('.s-ring', b), ready: true };
     }
@@ -327,13 +325,6 @@ export class UI {
       const c = $('#time');
       c.textContent = tl;
       c.classList.toggle('hurry', tl <= 10);
-    }
-    const a = view.aimInfo;
-    if (a && a.lock) {
-      this.lockEl.style.opacity = 1;
-      this.lockEl.style.transform = `translate(${a.x.toFixed(1)}px,${a.y.toFixed(1)}px)`;
-    } else {
-      this.lockEl.style.opacity = 0;
     }
     const danger = Math.max(0, 1 - me.spin / me.spinMax / 0.25);
     this.vignette.style.opacity = world.result ? 0 : danger * 0.9;

@@ -55,8 +55,7 @@ button { font-family: inherit; color: inherit; cursor: pointer; }
 /* ---- skill bar -------------------------------------------------------- */
 .bottom { position: absolute; left: 0; right: 0; bottom: 14px; display: flex; flex-direction: column; align-items: center; gap: 8px; }
 #skillbar { --c: var(--cyan); display: flex; gap: 12px; padding: 10px 14px; background: linear-gradient(180deg, rgba(14, 20, 40, 0.9), rgba(6, 9, 20, 0.92)); border: 1px solid var(--line); border-top-color: color-mix(in srgb, var(--c) 60%, transparent); box-shadow: 0 10px 40px rgba(0, 0, 0, 0.6); pointer-events: auto; clip-path: polygon(14px 0, calc(100% - 14px) 0, 100% 14px, 100% 100%, 0 100%, 0 14px); }
-.skill { position: relative; width: 66px; height: 66px; color: var(--c); background: radial-gradient(circle at 50% 35%, color-mix(in srgb, var(--c) 28%, #0b1226), #070b18 75%); border: 2px solid color-mix(in srgb, var(--c) 70%, #fff); cursor: pointer; transition: transform 0.08s; }
-.skill:hover { transform: translateY(-2px); }
+.skill { position: relative; width: 66px; height: 66px; color: var(--c); background: radial-gradient(circle at 50% 35%, color-mix(in srgb, var(--c) 28%, #0b1226), #070b18 75%); border: 2px solid color-mix(in srgb, var(--c) 70%, #fff); cursor: default; transition: transform 0.08s; }
 .skill.ult { width: 76px; height: 76px; margin-top: -10px; color: var(--gold); border-color: var(--gold); background: radial-gradient(circle at 50% 35%, #4b3a10, #0a0b16 75%); }
 .s-icon { position: absolute; inset: 11px; filter: drop-shadow(0 0 6px currentColor); }
 .s-icon svg { width: 100%; height: 100%; display: block; }
@@ -108,8 +107,6 @@ button { font-family: inherit; color: inherit; cursor: pointer; }
 .pop.word.gold { color: var(--gold); }
 .pop.word.red { color: #ff7a5a; }
 .pop.word.dim { color: var(--dim); font-size: 18px; }
-#lock { inset: auto; position: fixed; left: 0; top: 0; width: 0; height: 0; opacity: 0; pointer-events: none; font-size: 0; }
-#lock::after { content: "LOCK ON"; position: absolute; left: -50px; width: 100px; bottom: 0; text-align: center; font-size: 13px; font-weight: 700; letter-spacing: 0.2em; color: #1b1200; background: var(--gold); transform: skewX(-12deg); box-shadow: 0 0 16px var(--gold); }
 
 /* ---- announcer -------------------------------------------------------- */
 #announce { display: grid; place-content: center; text-align: center; opacity: 0; }

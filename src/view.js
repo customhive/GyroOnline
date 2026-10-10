@@ -2,7 +2,7 @@
 // floor indicators for aiming and for incoming enemy skills.
 import * as THREE from 'three';
 import { ARENA, SKILLS, ENEMY_COLOR, heightAt, skillOf } from './config.js';
-import { spinRatio, intercept, predictAt, predictPath, targetable } from './sim.js';
+import { spinRatio } from './sim.js';
 import { createStage } from './stage.js';
 import { buildTop, disposeTop } from './topmesh.js';
 import { Particles, Shockwaves, Flashes, Trail, Ground, glowTexture, groundY } from './fx.js';
@@ -42,7 +42,6 @@ export class View {
     this.look = new THREE.Vector3(0, 0.6, 0.8);
     this.zoom = 1.12;
     this.focus = null;
-    this.aimInfo = null;
     this.raycaster = new THREE.Raycaster();
 
     this.pillars = [];
@@ -454,7 +453,6 @@ export class View {
     this.time += rdt;
     const G = this.ground, P = this.particles, w = this.world;
     G.begin();
-    this.aimInfo = null;
 
     if (w) {
       for (const t of w.tops) this.updateTop(t, this.tops[t.side], dt, rdt);
@@ -471,7 +469,7 @@ export class View {
       }
       this.drawTelegraphs(dt);
       this.drawOngoing(dt);
-      const me = w.tops[this.playerSide], foe = w.other(me);
+      const me = w.tops[this.playerSide];
       if (!w.result && !me.out) {
         // Selection ring and the standing move order.
         if (!me.air) G.ring(me.x, me.z, 1.55, 1.63, 0xffffff, 0.45);
@@ -481,7 +479,7 @@ export class View {
           const dx = me.cmd.x - me.x, dz = me.cmd.z - me.z, d = Math.hypot(dx, dz);
           if (d > 1.6) G.rect(me.x + (dx / d) * 1.4, me.z + (dz / d) * 1.4, dx / d, dz / d, d - 1.8, 0.035, AIM, 0.35);
         }
-        if (aim) this.drawAim(aim, me, foe, w);
+        if (aim) this.drawAim(aim, me, w);
       }
     }
 
@@ -734,77 +732,35 @@ export class View {
     if (this.telegraphs.some((g) => g.done)) this.telegraphs = this.telegraphs.filter((g) => !g.done);
   }
 
-  // The player's aiming indicator, plus where the enemy is predicted to be
-  // when the skill would arrive. Turns gold when the two line up.
-  drawAim(aim, me, foe, w) {
+  // The player's aiming indicator. It shows only what the skill will cover:
+  // reading where the enemy is headed is left to the player.
+  drawAim(aim, me, w) {
     const G = this.ground, key = aim.key, S = skillOf(me, key);
     let dx = aim.x - me.x, dz = aim.z - me.z;
     const d = Math.hypot(dx, dz);
     if (d < 0.01) { dx = 0; dz = -1; } else { dx /= d; dz /= d; }
     const ok = me.cd[key] <= 0.25 && (!S.ult || me.ult >= 100);
-    const can = targetable(foe);
-    const grey = 0x8088a0;
-    let lock = false, ghost = null, T = 0;
+    const col = ok ? AIM : 0x8088a0;
     if (S.aim === 'blink') {
-      // No target needed: just show where the step ends.
       const len = Math.min(toWall(me.x, me.z, dx, dz) - me.radius, clamp(d, 2, S.range));
-      const col = ok ? AIM : grey;
       G.lane(me.x + dx * 1.4, me.z + dz * 1.4, dx, dz, Math.max(0, len - 1.4), 0.5, col, 0.1, 0.6);
       G.ring(me.x + dx * len, me.z + dz * len, 1.2, 1.33, col, 0.9);
       G.ring(me.x + dx * len, me.z + dz * len, 0, 1.2, col, 0.12);
       G.ring(me.x, me.z, S.range - 0.05, S.range, AIM, 0.25);
-      return;
-    }
-    if (S.aim === 'cone') {
-      if (can) {
-        const p = predictAt(foe, me, 0.08);
-        ghost = { x: p.x, z: p.z };
-        const gx = p.x - me.x, gz = p.z - me.z, gd = Math.hypot(gx, gz) || 1;
-        const ang = Math.acos(clamp((gx * dx + gz * dz) / gd, -1, 1));
-        lock = gd < S.range + foe.radius * 0.6 && ang < S.half + Math.atan2(foe.radius * 0.8, Math.max(gd, 0.5));
-      }
-      const col = !ok ? grey : lock ? LOCK : AIM;
+    } else if (S.aim === 'cone') {
       G.sector(me.x, me.z, dx, dz, S.range, S.half, col, ok ? 0.16 : 0.07, ok ? 0.9 : 0.4);
     } else if (S.aim === 'line' || S.aim === 'dash') {
       const line = S.aim === 'line';
       const len = Math.min(toWall(me.x, me.z, dx, dz), line ? S.range : clamp(d, S.minDist, S.dist));
       const hw = line ? S.radius : 1.25;
-      if (can) {
-        ghost = intercept(me.x, me.z, foe, me, S.speed);
-        T = ghost.t;
-        const gx = ghost.x - me.x, gz = ghost.z - me.z;
-        const along = gx * dx + gz * dz, side = Math.abs(gx * -dz + gz * dx);
-        lock = along > 0 && along < len + (line ? 0.5 : 1.6) && side < hw + foe.radius * 0.8;
-      }
-      const col = !ok ? grey : lock ? LOCK : AIM;
       G.lane(me.x + dx * 1.4, me.z + dz * 1.4, dx, dz, len - 1.4, hw, col, ok ? 0.16 : 0.07, ok ? 0.9 : 0.4);
       if (!line) G.ring(me.x + dx * len, me.z + dz * len, 1.2, 1.33, col, 0.8);
     } else if (S.aim === 'leap' || S.aim === 'ground') {
       const tg = w.groundTarget(me, S, aim.x, aim.z);
-      const delay = S.aim === 'leap' ? S.air : S.delay;
-      if (can) {
-        const p = predictAt(foe, me, delay);
-        ghost = { x: p.x, z: p.z };
-        T = delay;
-        lock = Math.hypot(p.x - tg.x, p.z - tg.z) < S.aoe + foe.radius * 0.3;
-      }
-      const col = !ok ? grey : lock ? LOCK : AIM;
       G.ring(me.x, me.z, S.range - 0.06, S.range, AIM, 0.35);
       G.ring(tg.x, tg.z, 0, S.aoe, col, ok ? 0.14 : 0.06);
       G.ring(tg.x, tg.z, S.aoe - 0.12, S.aoe, col, 0.95);
       if (S.aim === 'leap') G.ring(tg.x, tg.z, 1.9, 2.0, col, 0.55);
-    } else {
-      return;
-    }
-    if (ghost && ok) {
-      const col = lock ? LOCK : 0xffffff;
-      const n = 24;
-      G.path([{ x: foe.x, z: foe.z }, ...predictPath(foe, me, Math.min(T, 1.4), n)], col, lock ? 0.95 : 0.55);
-      const pulse = lock ? 0.5 + 0.5 * Math.sin(this.time * 16) : 0;
-      G.ring(ghost.x, ghost.z, 1.15 + pulse * 0.1, 1.3 + pulse * 0.1, col, lock ? 1 : 0.6);
-      G.ring(ghost.x, ghost.z, 0, 0.16, col, lock ? 1 : 0.6);
-      const s = this.toScreen(ghost.x, groundY(ghost.x, ghost.z) + 1.6, ghost.z);
-      this.aimInfo = { lock, x: s.x, y: s.y };
     }
   }
 
