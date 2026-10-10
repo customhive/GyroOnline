@@ -1,0 +1,118 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>GYRO CLASH ONLINE</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<canvas id="stage"></canvas>
+<div id="vignette"></div>
+<div id="flash"></div>
+<div id="labels"></div>
+
+<div id="hud" class="hidden">
+  <div class="top-bar">
+    <div class="fighter left" id="f0"></div>
+    <div class="clock"><div id="round">ROUND 1</div><div id="time">75</div></div>
+    <div class="fighter right" id="f1"></div>
+  </div>
+  <div class="bottom">
+    <div id="skillbar"></div>
+    <div class="hint"><b>クリック</b> 移動　<b>Q W E R</b> スキル（照準が出るものは長押し → 離して発動）　<b>右クリック</b> 照準キャンセル</div>
+  </div>
+</div>
+
+<div id="lock">LOCK ON</div>
+<div id="announce"></div>
+<div id="cutin"></div>
+
+<div id="toast"></div>
+
+<div id="sys">
+  <span id="netstat" class="hidden"></span>
+  <button id="btn-mute">♪ ON</button>
+  <button id="btn-pause">Ⅱ</button>
+</div>
+
+<div id="title" class="screen">
+  <div class="logo">
+    <div class="logo-sub">ONLINE SPIN BATTLE</div>
+    <h1>GYRO<span>CLASH</span></h1>
+    <div class="logo-ja">ジャイロクラッシュ</div>
+  </div>
+  <div class="panel">
+    <h2><i>01</i> ブレードを選ぶ</h2>
+    <div id="blades"></div>
+    <div class="row">
+      <div class="col">
+        <h2><i>02</i> オンライン対戦</h2>
+        <button id="btn-host" class="primary">ルームを作る</button>
+        <p class="note">招待URLを友だちに送るだけ。開いた相手とそのまま対戦できます。</p>
+        <h2 class="gap"><i>or</i> CPUと練習</h2>
+        <div id="levels"></div>
+        <button id="btn-start" class="plain">CPUと対戦</button>
+      </div>
+      <div class="col wide">
+        <h2><i>03</i> あそびかた</h2>
+        <p class="lead">コマは放っておいても自動で戦います。<b>フィールドをクリック</b>するとその地点へ向かい、<b>Q W E R</b> のスキルで流れを変えましょう。回転を削り切るか、場外へ吹き飛ばせば勝ち。2ラウンド先取。</p>
+        <h3 id="how-name"></h3>
+        <div id="how"></div>
+        <p class="lead small">照準中、相手の<b>予測位置</b>が点線とリングで表示されます。照準と重なって<b>金色（LOCK ON）</b>になった瞬間が撃ちどき。赤い予告範囲は相手のスキル。クリックで移動して避けよう。</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="lobby" class="screen hidden">
+  <div class="panel lobby">
+    <h2><i>ONLINE</i> 対戦ロビー</h2>
+    <div id="lb-status" class="lb-status"></div>
+    <div id="lb-invite" class="hidden">
+      <label for="lb-url">招待URL</label>
+      <div class="lb-urlrow"><input id="lb-url" readonly><button id="lb-copy">コピー</button></div>
+      <p class="note">このURLを対戦相手に送ってください。ブラウザで開くだけで、このルームに参加できます。</p>
+    </div>
+    <div class="lb-players">
+      <div class="lb-p" id="lb-me"></div>
+      <div class="lb-vs">VS</div>
+      <div class="lb-p" id="lb-peer"></div>
+    </div>
+    <div id="lb-blades"></div>
+    <div id="lb-kit"></div>
+    <div class="res-btns">
+      <button id="lb-ready" class="primary">準備OK</button>
+      <button id="lb-leave">退出する</button>
+    </div>
+  </div>
+</div>
+
+<div id="result" class="screen hidden">
+  <div class="res">
+    <div id="res-title">VICTORY</div>
+    <div id="res-sub"></div>
+    <div id="res-score"></div>
+    <div id="res-finish"></div>
+    <table id="res-stats"></table>
+    <div class="res-btns">
+      <button id="btn-again" class="primary">もう一度</button>
+      <button id="btn-back">ブレード選択へ</button>
+    </div>
+  </div>
+</div>
+
+<div id="pause" class="screen hidden">
+  <div class="res small">
+    <div class="pause-title" id="pause-title">PAUSE</div>
+    <p id="pause-note"></p>
+    <div class="res-btns">
+      <button id="btn-resume" class="primary">つづける</button>
+      <button id="btn-quit">タイトルへ</button>
+    </div>
+  </div>
+</div>
+
+<script src="game.js"></script>
+</body>
+</html>
