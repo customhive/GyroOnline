@@ -298,12 +298,17 @@ export class View {
       case 'cone': {
         const t = e.top, c = this.colorOf(t);
         if (e.skill.rapid) {
-          // A continuous breath: a stream of motes rather than a flash per tick.
-          const a0 = Math.atan2(e.dz, e.dx), y = groundY(t.x, t.z) + 0.8;
-          for (let i = 0; i < 14; i++) { const a = a0 + (Math.random() * 2 - 1) * e.skill.half, sp = e.skill.range * (2.5 + Math.random() * 2); P.emit(t.x + Math.cos(a) * 1.2, y, t.z + Math.sin(a) * 1.2, Math.cos(a) * sp, Math.random() * 2, Math.sin(a) * sp, 0.3, 0.3, Math.random() < 0.35 ? 0xffffff : c, 0, 2.5); }
+          // A continuous breath: a roaring stream, with a white-hot core and a lit floor under it.
+          const a0 = Math.atan2(e.dz, e.dx), y = groundY(t.x, t.z) + 0.8, R = e.skill.range;
+          this.cones.push({ x: t.x, z: t.z, dx: e.dx, dz: e.dz, t: 0, T: 0.2, color: c, skill: e.skill });
+          this.beams.push({ x: t.x + e.dx * 1.2, z: t.z + e.dz * 1.2, dx: e.dx, dz: e.dz, len: R - 1.2, hw: 0.5, color: c, t: 0, T: 0.18 });
+          for (let i = 0; i < 10; i++) { const k = 1.2 + Math.random() * (R - 1.2), w2 = (Math.random() - 0.5) * 0.6; P.emit(t.x + e.dx * k - e.dz * w2, y + (Math.random() - 0.5) * 0.5, t.z + e.dz * k + e.dx * w2, e.dx * 22, 1 + Math.random() * 3, e.dz * 22, 0.22, 0.36, 0xffffff, 0, 3); }
+          F.flash(t.x + e.dx * 1.6, y, t.z + e.dz * 1.6, 3.4, 0.14, c, 0.9, e.hit ? 60 : 0);
+          if (e.hit) { P.burst(e.target.x, groundY(e.target.x, e.target.z) + 0.9, e.target.z, e.hit >= 12 ? 70 : 14, c, e.hit >= 12 ? 18 : 9, { up: 0.9, life: 0.4, size: 0.28, gravity: 6 }); if (e.hit >= 12) { W.spawn(e.target.x, groundY(e.target.x, e.target.z) + 0.1, e.target.z, 0.4, 3.4, 0.35, c, 1); this.addShake(0.25); } }
+          for (let i = 0; i < 26; i++) { const a = a0 + (Math.random() * 2 - 1) * e.skill.half, sp = e.skill.range * (2.5 + Math.random() * 2); P.emit(t.x + Math.cos(a) * 1.2, y, t.z + Math.sin(a) * 1.2, Math.cos(a) * sp, Math.random() * 2, Math.sin(a) * sp, 0.3, 0.3, Math.random() < 0.35 ? 0xffffff : c, 0, 2.5); }
           break;
         }
-        this.cones.push({ x: t.x, z: t.z, dx: e.dx, dz: e.dz, t: 0, T: 0.35, color: c, skill: e.skill });
+        this.cones.push({ x: e.x ?? t.x, z: e.z ?? t.z, dx: e.dx, dz: e.dz, t: 0, T: 0.35, color: c, skill: e.skill });
         if (e.hit) this.siphon(e.target, t, 24, c);
         this.addShake(e.hit ? 0.3 : 0.1);
         break;

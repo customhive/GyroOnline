@@ -643,5 +643,63 @@ console.log('STAR FORGER (Aurelion Sol)');
   check(foe.up > 0 && foe.slowK === 0.5, 'R at 75: a knock-up and a 50% slow instead');
 }
 
+console.log('SAND EMPEROR (Azir): the shuffle');
+{
+  const { w, me, foe } = setup('sand', 20);
+  w.cast(me, 'W', me.x, me.z - 7);
+  me.cd.E = 0; w.cast(me, 'E', me.x, me.z);
+  for (let i = 0; i < 6; i++) w.step(DT);
+  check(!!me.dash && w.canCast(me, 'Q'), 'E: mid-dash, Q can still be given');
+  me.cd.Q = 0; w.cast(me, 'Q', me.x + 7, me.z - 4);
+  const goal = { x: w.zones[0].dx, z: w.zones[0].dz };
+  let end = null;
+  for (let i = 0; i < 120 && !end; i++) { w.step(DT); if (!me.dash) end = { x: me.x, z: me.z }; }
+  check(end && Math.hypot(end.x - goal.x, end.z - goal.z) < 2.5, 'E then Q: the emperor follows the soldier to where it was sent');
+}
+
+console.log('STAR FORGER: flight and gravity');
+{
+  let { w, me, foe, run } = setup('cosmos', 22);
+  const z0 = me.z;
+  w.cast(me, 'W', me.x, me.z - 40);
+  for (let i = 0; i < 240 && me.dash; i++) w.step(DT);
+  check(z0 - me.z > 18, `W: a long flight across the arena (${(z0 - me.z).toFixed(1)})`);
+  ({ w, me, foe, run } = setup('cosmos', 22));
+  w.cast(me, 'W', me.x, me.z - 40);
+  for (let i = 0; i < 40; i++) w.step(DT);
+  const mid = me.z;
+  check(w.cast(me, 'W', me.x, me.z) && !me.dash, 'W again: it lands on the spot');
+  for (let i = 0; i < 10; i++) w.step(DT);
+  check(Math.abs(me.z - mid) < 2, 'W again: and stays there');
+  ({ w, me, foe, run } = setup('cosmos', 22));
+  for (let i = 0; i < 30; i++) { w.cast(me, 'Q', foe.x, foe.z); w.step(DT); }
+  w.cast(me, 'W', me.x + 30, me.z);
+  let ticks = 0; for (let i = 0; i < 60; i++) { if (w.cast(me, 'Q', foe.x, foe.z)) ticks++; w.step(DT); }
+  check(!!me.dash || ticks >= 3, 'W during Q: the breath goes on');
+  check(ticks >= 3, `W during Q: it keeps ticking in flight (${ticks})`);
+  ({ w, me, foe, run } = setup('cosmos', 6));
+  foe.x = 3; foe.z = -3;
+  w.cast(me, 'E', 0, -3);
+  for (let i = 0; i < 120; i++) { w.step(DT); w.issueMove(foe, 12, -3); }
+  check(foe.x < 6.5, `E: a top trying to walk out is held back hard (${foe.x.toFixed(1)} after a second of walking away)`);
+}
+
+console.log('SPARK SURGE: the laser');
+{
+  const { w, me, foe, run } = setup('spark', 12);
+  w.cast(me, 'W', foe.x, foe.z); run(0.3);
+  check(!!me.charge && foe.slow === 0, 'W: a moment of lining up');
+  run(0.2);
+  check(foe.slowK === 0.5 && foe.spin < foe.spinMax - 30 && !w.projectiles.length, 'W: then a laser that lands at once and slows 50%');
+}
+
+console.log('VAULT BREAKER: the shockwave');
+{
+  const { w, me, foe, saw } = setup('gauntlet', 2.6);
+  w.cast(me, 'E', me.x, me.z); me.vz = -8; for (let i = 0; i < 30; i++) w.step(DT);
+  setup.last.seen.push(...w.events.splice(0));
+  check(setup.last.seen.some((e) => e.type === 'cone' && e.skill.id === 'relentwave' && e.dz < -0.9), 'E: a shockwave fans out behind the target');
+}
+
 console.log(bad ? `\n${bad} of ${n} checks failed` : `\nall ${n} checks passed`);
 process.exit(bad ? 1 : 0);

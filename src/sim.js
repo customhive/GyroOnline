@@ -352,7 +352,7 @@ export class World {
     if (this.busy(t) || !this.ready(t, key)) return false;
     const base = skillOf(t, key);
     if (base.passive || (base.stock && t.stk <= 0)) return false;
-    if (t.dash && base.aim === 'dash') return false;
+    if (t.dash && this.aimSkill(t, key).aim === 'dash') return false;
     if (t.hold && t.hold.key !== key) return false;
     if (skillOf(t, key).id !== 'aegis' && t.tumble > 0) return false;
     return !this.blocked(t, key);
@@ -599,7 +599,7 @@ export class World {
       case 'shift': {
         let best = null, bd = 1e9;
         for (const q of this.own(t, 'arise')) { const d = Math.hypot(q.x - t.x, q.z - t.z); if (d < bd) { bd = d; best = q; } }
-        if (best && bd > 0.5) this.startDash(t, S, (best.x - t.x) / bd, (best.z - t.z) / bd, bd);
+        if (best && bd > 0.5) { this.startDash(t, S, (best.x - t.x) / bd, (best.z - t.z) / bd, bd); t.dash.to = best.id; }
         break;
       }
       case 'phantom': {
@@ -652,6 +652,8 @@ export class World {
         break;
       case 'conquer': {
         const own = this.own(t, 'arise');
+        // Ordered mid-dash, the soldier it is flying to moves on, and it follows: the emperor's shuffle.
+        if (t.dash && t.dash.to !== undefined) t.dash.chase = t.dash.to;
         // Side by side, so two soldiers do not end up on one spot.
         own.forEach((q, i) => {
           const off = (i - (own.length - 1) / 2) * 1.6;
@@ -832,6 +834,9 @@ export class World {
         // A tap swings the hammer up; a hold sends a wave that hurls the target away.
         if (c.held < S.wind.min) this.coneHit(t, SKILLS[S.tap], c.dx, c.dz);
         else this.fire(t, SKILLS.verdictwave, c.dx, c.dz, { left: c.reach });
+        break;
+      case 'flightstop':
+        this.stopDash(t);
         break;
       case 'soulrelease':
         t.buff = 0;
@@ -1416,6 +1421,13 @@ export class World {
     if (t.chan) this.updateChan(t, opp, dt);
     if (t.orbs) this.updateOrbs(t, opp, dt);
     if (t.tether) this.updateTether(t, opp, dt);
+    if (t.dash && t.dash.chase !== undefined) {
+      const q = this.zones.find((z) => z.id === t.dash.chase && !z.dead);
+      if (q) {
+        const dx = q.x - t.x, dz = q.z - t.z, d = Math.hypot(dx, dz);
+        if (d > 0.7) { t.dash.dx = dx / d; t.dash.dz = dz / d; t.dash.t = d / t.dash.speed; } else t.dash.t = 0;
+      }
+    }
     const blink = t.blink, dash = t.dash;
     if (t.charm > 0 && !fixed(t)) {
       // Not its own master: it drifts toward (or away from) the other top.
@@ -1995,6 +2007,9 @@ export class World {
       if (E.hitHeal) this.mend(s, E.hitHeal * s.spinMax);
       // Landing it opens the follow-up on the same key.
       if (E.re) { const k = this.keyOf(s, E.id); if (k) s.re[k] = E.window; }
+      // A shockwave fans out behind the target. One on one there is nobody there;
+      // with more tops in the ring, this is where they would be hit.
+      if (E.wave) { const dx = v.x - s.x, dz = v.z - s.z, d2 = Math.hypot(dx, dz) || 1; this.emit('cone', { top: s, skill: SKILLS[E.wave], x: v.x, z: v.z, dx: dx / d2, dz: dz / d2, hit: 0, target: null }); }
     } else {
       special = false;
     }

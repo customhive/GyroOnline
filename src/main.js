@@ -38,6 +38,7 @@ const game = {
   seq: null,           // countdown script: [{ at, run }]
   seqT: 0,
   aimKey: null, buffer: null,
+  rapidKey: null,      // a held-to-fire key; it keeps firing while other skills are aimed and cast
   cursor: { sx: innerWidth / 2, sy: innerHeight / 2, x: 0, z: 0 },
   mouseDown: false, moveRepeat: 0,
   ultWasReady: false,
@@ -557,27 +558,28 @@ window.addEventListener('keydown', (e) => {
   if (game.state !== 'fight' || game.paused || !KEYS.includes(k)) return;
   audio.unlock();
   // What the key does can change mid-fight (a second stage, a copied skill).
-  const me = player(), S = game.world.aimSkill(me, k);
+  const me = player(), S = game.world.aimSkill(me, k), base = skillOf(me, k);
+  if (base.passive) return; // always on: the key does nothing
+  // Held-to-fire: it needs no aiming indicator (the stream itself shows where
+  // it goes) and leaves the other keys free.
+  if (base.rapid) { game.rapidKey = k; return; }
   if (S.aim === 'self') { tryCast(k, me.x, me.z); return; }
   // Aiming is allowed while briefly unable to act; only a real cooldown refuses.
-  const base = skillOf(me, k);
-  if (base.passive) return; // always on: the key does nothing
-  if (!base.rapid && (!game.world.ready(me, k, 0.25) || me.air || me.out)) { audio.denied(); ui.denied(k); return; }
+  if (!game.world.ready(me, k, 0.25) || me.air || me.out) { audio.denied(); ui.denied(k); return; }
   game.aimKey = k;
   // Some skills wind up for as long as the key stays down.
   if (S.wind) doHold(k);
 });
 window.addEventListener('keyup', (e) => {
   const k = e.key.toUpperCase();
+  if (k === game.rapidKey) { game.rapidKey = null; return; }
   if (k !== game.aimKey) return;
   game.aimKey = null;
-  // Held-to-fire skills have been firing all along; letting go just stops them.
-  if (game.world && skillOf(player(), k).rapid) return;
   refreshCursor();
   tryCast(k, game.cursor.x, game.cursor.z);
 });
 window.addEventListener('blur', () => {
-  game.aimKey = null; game.mouseDown = false;
+  game.aimKey = null; game.rapidKey = null; game.mouseDown = false;
   if (game.state === 'fight' && !game.paused && !online() && !params.has('auto')) togglePause();
 });
 
@@ -802,9 +804,9 @@ function frame(rdt, draw = true) {
         if (tryCast(game.buffer.key, game.buffer.x, game.buffer.z, true) || (game.buffer && game.buffer.t <= 0)) game.buffer = null;
       }
       // A key held on a rapid-fire skill shoots at the cursor every time it comes off cooldown.
-      if (game.aimKey && game.state === 'fight' && !game.paused && skillOf(player(), game.aimKey).rapid && w.canCast(player(), game.aimKey)) {
+      if (game.rapidKey && game.state === 'fight' && !game.paused && w.canCast(player(), game.rapidKey)) {
         refreshCursor();
-        if (doCast(game.aimKey, game.cursor.x, game.cursor.z)) ui.castFx(game.aimKey);
+        doCast(game.rapidKey, game.cursor.x, game.cursor.z);
       }
       if (game.mouseDown && game.state === 'fight' && !game.paused) {
         game.moveRepeat -= rdt;
@@ -853,7 +855,7 @@ function frame(rdt, draw = true) {
   }
   view.update(dt, frozen() ? 0 : rdt, aim);
   if (w && ['countdown', 'fight', 'finish'].includes(game.state)) {
-    ui.update(w, view, game.timeLeft, game.aimKey, rdt);
+    ui.update(w, view, game.timeLeft, game.aimKey || game.rapidKey, rdt);
     audio.intensity = 1 - Math.min(spinRatio(player()), spinRatio(rival()));
   }
   if (net && net.connected && net.rttKnown) {

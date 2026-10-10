@@ -301,7 +301,7 @@ export const BLADES = {
     id: 'cosmos', kit: { Q: 'breath', W: 'flight', E: 'blackhole', R: 'fallingstar' },
     name: 'スターフォージ', en: 'STAR FORGER', type: 'STAMINA', typeJa: 'スタミナ',
     color: 0x5a6cff, css: '#5a6cff', teeth: 6,
-    atk: 1.25, def: 1.05, mass: 1.05, speed: 13, decay: 5.4, spinMax: 1000, cdMul: 1.0, guardMul: 1.0,
+    atk: 1.1, def: 1.0, mass: 1.05, speed: 13, decay: 5.6, spinMax: 1000, cdMul: 1.0, guardMul: 1.0,
     bars: { atk: 3, def: 3, sta: 5, spd: 2 },
     desc: '息吹を吐き続け、重力の穴に引き込み、星を落とす。当てるほど星屑が溜まり、技が大きくなる。',
   },
@@ -651,8 +651,8 @@ export const SKILLS = {
   },
   shift: {
     name: '流砂', en: 'SHIFTING SANDS', aim: 'self', cd: 9, need: 'soldier',
-    speed: 36, dmg: 30, keep: 0.5, kb: 3, liftUp: 0.7, shield: 60, hold: 2,
-    desc: '一番近い砂兵へ突進する。途中で相手に当たると打ち上げ、バリアを得る。',
+    speed: 36, dmg: 30, keep: 0.5, kb: 3, liftUp: 0.7, shield: 60, hold: 2, fly: true,
+    desc: '一番近い砂兵へ突進する。途中で相手に当たると打ち上げ、バリアを得る。突進中にQで砂兵を動かすと、その砂兵を追いかけて飛び続ける。',
   },
   divide: {
     name: '皇帝の分砂嶺', en: "EMPEROR'S DIVIDE", aim: 'line', cd: 2, ult: true, tele: 0.3,
@@ -988,9 +988,9 @@ export const SKILLS = {
     desc: '押している間、カーソルへ向けて小さな弾を撃ち続ける。当てるたびにEのクールダウンが0.5秒縮む。',
   },
   ultrashock: {
-    name: 'ウルトラショックレーザー', en: 'ULTRASHOCK LASER', aim: 'line', kind: 'shot', icon: 'beam', cd: 8,
-    tele: 0.4, range: 9.9, speed: 50, radius: 0.7, dmg: 46, slow: 2, slowPct: 0.5,
-    desc: '電磁パルスを放ち、当たった相手を2秒間50%のスロウにする。',
+    name: 'ウルトラショックレーザー', en: 'ULTRASHOCK LASER', aim: 'line', kind: 'beam', icon: 'beam', cd: 8,
+    tele: 0.2, charge: 0.4, root: true, range: 15, radius: 1.0, dmg: 46, slow: 2, slowPct: 0.5,
+    desc: '一瞬構えて、長いレーザーを放つ。当たった相手を2秒間50%のスロウにする。',
   },
   surge: {
     name: 'スパークサージ', en: 'SPARK SURGE', aim: 'dash', kind: 'dash', icon: 'dash', cd: 18,
@@ -1130,13 +1130,13 @@ export const SKILLS = {
     desc: '押している間、カーソルへ向けて息吹を吐き続ける（最大3.25秒）。同じ相手に1秒当て続けるごとに爆発し、星屑を2つ得る。',
   },
   flight: {
-    name: '天空への飛翔', en: 'ASTRAL FLIGHT', aim: 'dash', kind: 'dash', icon: 'leap', cd: 16,
-    dist: 15, minDist: 6, speed: 15, through: true, fly: true,
-    desc: '狙った方向へ飛ぶ。飛んでいる間もスキルを使え、Qは時間切れにならない。',
+    name: '天空への飛翔', en: 'ASTRAL FLIGHT', aim: 'dash', kind: 'dash', icon: 'leap', cd: 16, re: 'flightstop',
+    dist: 24, minDist: 6, speed: 16, through: true, fly: true, window: 2,
+    desc: '狙った方向へ長い距離を飛ぶ。途中でもう一度押すとその場で降りる。飛んでいる間もスキルを使え、Qは途切れず、時間切れにもならない。',
   },
   blackhole: {
     name: '特異点', en: 'SINGULARITY', aim: 'ground', kind: 'field', icon: 'field', cd: 12,
-    tele: 0.1, range: 7.4, aoe: 4, dur: 5, dps: 26, pullIn: 6, slowIn: true, star: true, gain: 1, core: 1.4, line: 0.05, perLine: 0.00026,
+    tele: 0.1, range: 7.4, aoe: 4, dur: 5, dps: 15, pullIn: 75, slowIn: true, star: true, gain: 1, core: 1.4, line: 0.05, perLine: 0.00026,
     desc: '5秒間のブラックホールを置く。中の相手は中心へ引かれ続け、中にいる間は毎秒星屑を1つ得る。中心で回転が5%を切った相手は即KO。星屑が多いほど広がる。',
   },
   fallingstar: {
@@ -1144,6 +1144,7 @@ export const SKILLS = {
     tele: 0.1, range: 12.5, aoe: 5, delay: 0.9, dmg: 150, stun: 0.6, star: true, gain: 5, evolve: 'skies', evolveAt: 75,
     desc: '【必殺技】指定地点に星を落とし、巻き込んだ相手をスタンさせる。当てると星屑を5つ得る。星屑が多いほど広がり、75個で「崩れ落つ天穹」になって相手を打ち上げる。星屑は次のラウンドにも持ち越す。',
   },
+  flightstop: { name: '着地', en: 'LAND', aim: 'self', hidden: true },
   skies: {
     name: '崩れ落つ天穹', en: 'THE SKIES DESCEND', aim: 'ground', kind: 'blast', hidden: true,
     aoe: 6.5, delay: 0.9, dmg: 170, up: 0.6, slow: 1, slowPct: 0.5, star: true, gain: 5,
@@ -1181,14 +1182,15 @@ export const SKILLS = {
   },
   relentless: {
     name: '無慈悲な連撃', en: 'RELENTLESS FORCE', aim: 'self', kind: 'buff', icon: 'buff', cd: 1,
-    stock: { max: 2, every: 8 }, empower: 7, bonus: 30, kb: 6,
-    desc: '7秒間、次の体当たりを強化する。2回ぶん溜めておける（8秒で1回ぶん戻る）。',
+    stock: { max: 2, every: 8 }, empower: 7, bonus: 30, kb: 6, wave: 'relentwave',
+    desc: '7秒間、次の体当たりを強化する。当てると相手の後ろへ扇状の衝撃波が抜ける。2回ぶん溜めておける（8秒で1回ぶん戻る）。',
   },
   cease: {
     name: '突入捜査', en: 'CEASE AND DESIST', aim: 'self', kind: 'strike', icon: 'star', cd: 2, ult: true,
     need: 'range', range: 9.25, tp: true, dmg: 115, up: 0.8,
     desc: '【必殺技】近くの相手へ一瞬で詰め寄り、打ち上げる。',
   },
+  relentwave: { name: '衝撃波', en: 'SHOCKWAVE', aim: 'cone', hidden: true, range: 4.5, half: 0.5, dmg: 20 },
   // ---- ARCANE SHOOTER: land the shot, get everything back --------------------
   mystic: {
     name: 'ミスティックショット', en: 'MYSTIC SHOT', aim: 'line', kind: 'shot', icon: 'shot', cd: 4.5,
