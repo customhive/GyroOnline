@@ -147,9 +147,11 @@ export const BLADES = {
     id: 'reaper', kit: { Q: 'bonehook', W: 'ghostwater', E: 'undertow', R: 'deathbelow' },
     name: 'ブラッドハーバー・リーパー', en: 'HARBOR REAPER', type: 'ATTACK', typeJa: 'アタック',
     color: 0x1fae8c, css: '#1fae8c', teeth: 3,
-    atk: 1.3, def: 1.0, mass: 0.96, speed: 15.5, decay: 6.7, spinMax: 1000, cdMul: 1.0, guardMul: 1.0,
+    atk: 1.36, def: 1.02, mass: 0.96, speed: 15.5, decay: 6.5, spinMax: 1000, cdMul: 1.0, guardMul: 1.0,
     bars: { atk: 5, def: 2, sta: 2, spd: 5 },
-    desc: '鉤で引き寄せ、弱った相手を必殺技で「処刑」する。回転が一定以下の相手は即KO。',
+    store: { taken: 0.25, dealt: 0, max: 120, fade: 0 },
+    grey: { rate: 45, far: 10 },
+    desc: '溜めて伸ばす銛で引き寄せ、弱った相手を必殺技で「処刑」する。受けたダメージの25%は「灰色の回転」として残り、加速中か相手から離れている間に戻ってくる。',
   },
   barrel: {
     id: 'barrel', kit: { Q: 'cask', W: 'drunk', E: 'bodyslam', R: 'bigkeg' },
@@ -163,10 +165,12 @@ export const BLADES = {
     id: 'chrono', kit: { Q: 'timewinder', W: 'parallel', E: 'phasedive', R: 'rewind' },
     name: 'クロノ・リワインド', en: 'CHRONO REWIND', type: 'STAMINA', typeJa: 'スタミナ',
     color: 0x4af0e0, css: '#4af0e0', teeth: 4,
-    atk: 1.18, def: 1.0, mass: 0.98, speed: 15, decay: 5.8, spinMax: 1000, cdMul: 1.0, guardMul: 1.0,
+    atk: 1.13, def: 1.0, mass: 0.98, speed: 15, decay: 5.9, spinMax: 1000, cdMul: 1.0, guardMul: 1.0,
     bars: { atk: 3, def: 3, sta: 4, spd: 4 },
     rewind: 4,
-    desc: '時間を巻き戻して被弾をなかったことにする。必殺技で4秒前の位置に戻り、失った回転の一部を取り返す。',
+    zdrive: { dmg: 32, haste: 2.5, lock: 4 },
+    reap: { below: 0.3, dmg: 8 },
+    desc: '4秒前の自分がホログラムとして付いて回り、必殺技でそこへ戻れる。体当たりやスキルを3回当てると追加ダメージと加速。回転30%以下の相手への体当たりは威力が上がる。',
   },
   iron: {
     id: 'iron', kit: { Q: 'obliterate', W: 'indestructible', E: 'deathgrasp', R: 'realm' },
@@ -341,6 +345,7 @@ export const BLEED = { max: 5, dur: 8, dps: 3 };
 // (see World.generic and World.genericZone in sim.js):
 //   shot / bolts / dash / blink / blast / field / burst / cone / buff / leap / beam / kick / strike / throw
 //   icon    which stock glyph the HUD draws for it
+//   wind    { min, full, max }: the key is held to wind the skill up (see World.hold)
 export const SKILLS = {
   // ---- AZURE FANG: hit-and-run attacker ------------------------------------
   sonic: {
@@ -693,28 +698,36 @@ export const SKILLS = {
   },
   // ---- HARBOR REAPER: hook, drown, execute -----------------------------------
   bonehook: {
-    name: '骨の鉤', en: 'BONE SKEWER', aim: 'line', kind: 'shot', icon: 'hook', cd: 8,
-    tele: 0.45, range: 12, speed: 32, radius: 0.8, dmg: 40, chain: true, pull: 18, slow: 1.2,
-    desc: '鉤を撃ち、当たった相手を引き寄せる。',
+    name: '骨の銛', en: 'BONE SKEWER', aim: 'line', kind: 'shot', icon: 'hook', cd: 8, tele: 0.45,
+    wind: { min: 0.5, full: 1, max: 4 }, tap: 'bonestab', near: 3.7, range: 9.3, speed: 34, radius: 0.8, dmg: 46, chain: true, pull: 20, pullDist: 5.5, slow: 1,
+    desc: '長押しで溜めるほど射程が伸びる銛（溜め中は少し遅くなり、4秒で不発）。当たった相手を一定距離だけ手前へ引く。すぐ離すと近距離の突きになる。',
+  },
+  bonestab: {
+    name: '突き', en: 'STAB', aim: 'line', hidden: true,
+    range: 2, speed: 60, radius: 1.1, dmg: 46, slow: 1,
   },
   ghostwater: {
-    name: '幽海の潜行', en: 'GHOSTWATER DIVE', aim: 'self', kind: 'buff', icon: 'heal', cd: 11,
-    haste: 4, heal: 0.15,
-    desc: '4秒間加速し、減った回転の15%を取り戻す。',
+    name: 'ゴーストウォーター', en: 'GHOSTWATER DIVE', aim: 'self', kind: 'buff', icon: 'buff', cd: 10,
+    haste: 5,
+    desc: '5秒間加速する。加速している間は「灰色の回転」が戻ってくる。',
   },
   undertow: {
-    name: '亡霊の引き波', en: 'PHANTOM UNDERTOW', aim: 'dash', kind: 'dash', icon: 'dash', cd: 9,
-    dist: 6.5, minDist: 4, speed: 36, through: true, phantom: 'wraith',
-    desc: '相手をすり抜けて突進する。残した亡霊が後から同じ道を追いかけ、触れた相手をスタンさせる。',
+    name: '亡者の引き波', en: 'PHANTOM UNDERTOW', aim: 'dash', kind: 'dash', icon: 'dash', cd: 11,
+    dist: 5.5, minDist: 5.5, speed: 36, through: true, echo: 'undertowz',
+    desc: 'その場に亡霊を残し、相手をすり抜けて跳ぶ。亡霊は1秒後に自分のいる所へ飛んできて、通り道の相手をスタンさせる。',
+  },
+  undertowz: {
+    name: '亡霊', en: 'PHANTOM', aim: 'ground', hidden: true,
+    aoe: 1.2, delay: 1,
   },
   wraith: {
     name: '亡霊', en: 'PHANTOM', aim: 'line', hidden: true,
-    range: 8, speed: 22, radius: 1.1, dmg: 36, stun: 1.0, pierce: true,
+    range: 30, speed: 26, radius: 1.1, dmg: 44, stun: 0.75, pierce: true,
   },
   deathbelow: {
-    name: '水底の死', en: 'DEATH FROM BELOW', aim: 'ground', kind: 'blast', icon: 'cross', cd: 2, ult: true,
-    tele: 0.2, range: 9, aoe: 3.2, delay: 0.5, dmg: 115, line: 0.2,
-    desc: '【必殺技】指定地点を十字に断つ。回転が20%を切っている相手は即KO。',
+    name: '水底の急襲', en: 'DEATH FROM BELOW', aim: 'ground', icon: 'cross', cd: 2, ult: true,
+    ai: 'blast', tele: 0.2, range: 7.5, aoe: 3.6, arm: 3.6, width: 0.95, delay: 0.5, dmg: 115, line: 0.2,
+    desc: '【必殺技】指定地点をX字に断つ。X字の中に相手がいれば、その地点へ瞬時に移動する。回転が20%を切って印の付いた相手は即KO。',
   },
   // ---- BARREL BRUISER: throw them wherever you like --------------------------
   cask: {
@@ -743,24 +756,28 @@ export const SKILLS = {
   },
   // ---- CHRONO REWIND: undo the last four seconds -----------------------------
   timewinder: {
-    name: 'タイムワインダー', en: 'TIMEWINDER', aim: 'line', kind: 'shot', icon: 'orb', cd: 6,
-    tele: 0.35, range: 10, speed: 28, radius: 0.9, dmg: 32, pierce: true, ret: true, slow: 1, backMul: 1.4,
-    desc: '行って戻る弾。往復とも当たってスロウにし、戻りのほうが痛い。',
+    name: 'タイムワインダー', en: 'TIMEWINDER', aim: 'line', kind: 'shot', icon: 'orb', cd: 7, tele: 0.35,
+    range: 7, speed: 40, radius: 0.9, dmg: 30, pierce: true, ret: true, backMul: 1.3, crawl: 3, linger: 1.6, field: 2.4,
+    desc: '速く飛び、相手に当たるか射程の端で減速フィールドに変わってゆっくり進む。そのあと手元へ戻り、戻りでも当たる。',
   },
   parallel: {
-    name: '並行世界', en: 'PARALLEL CONVERGENCE', aim: 'ground', kind: 'field', icon: 'field', cd: 13,
-    range: 9, aoe: 3.6, dur: 2.2, endDmg: 30, endStun: 1.4, endShield: 80,
-    desc: '2.2秒後に発動する領域を置く。中の相手をスタンさせ、自分が中にいればバリアを得る。',
+    name: 'パラレルトラップ', en: 'PARALLEL CONVERGENCE', aim: 'ground', icon: 'field', cd: 14,
+    ai: 'ground', range: 12, aoe: 3.6, arm: 3, reveal: 2.5, dur: 4.5, stun: 1.35, shield: 90,
+    desc: '3秒後に領域が現れる（相手には直前まで見えない）。中の相手はスロウ。自分が中へ入ると爆発し、相手をスタンさせてバリアを得る。',
   },
   phasedive: {
-    name: '位相ダイブ', en: 'PHASE DIVE', aim: 'dash', kind: 'dash', icon: 'dash', cd: 8,
-    dist: 5, minDist: 3, speed: 34, empower: 3, bonus: 50, kb: 7,
-    desc: '短く突進し、3秒間、次の体当たりを強化する。',
+    name: 'フェイズダイブ', en: 'PHASE DIVE', aim: 'dash', kind: 'dash', icon: 'dash', cd: 7, re: 'phasehit',
+    dist: 4, minDist: 4, speed: 34, window: 3,
+    desc: '短く跳ぶ。3秒以内にもう一度押すと、近くの相手の元へワープして殴る。',
+  },
+  phasehit: {
+    name: 'フェイズダイブ', en: 'PHASE DIVE', aim: 'self', kind: 'strike', hidden: true,
+    need: 'range', grab: 5.2, tp: true, dmg: 38,
   },
   rewind: {
     name: 'クロノブレイク', en: 'CHRONOBREAK', aim: 'self', icon: 'star', cd: 2, ult: true,
-    back: 0.5, flat: 60, aoe: 4.2, dmg: 135, kb: 8,
-    desc: '【必殺技】4秒前にいた場所へ戻り、その間に失った回転の半分を取り返す。戻った場所の周囲にダメージ。',
+    air: 0.35, height: 0, base: 60, aoe: 4.2, dmg: 125, kb: 8,
+    desc: '【必殺技】ホログラム（4秒前の自分）の場所へ無敵で戻り、周囲にダメージを与えて回復する。直前4秒で失った回転が多いほど回復が増える。',
   },
   // ---- IRON REVENANT: every blow is banked -----------------------------------
   obliterate: {

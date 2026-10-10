@@ -435,7 +435,7 @@ export class UI {
     if (S.re) return me.re[key] > 0 ? '↩' : '';
     if (S.permHit) return me.perm ? String(me.perm) : '';
     if (S.id === 'purgatory') return Math.round((S.line + S.per * me.perm) * 100) + '%';
-    if (S.storeShield || S.storeHit) return me.store >= 1 ? String(Math.round(me.store)) : '';
+    if (S.storeShield || S.storeHit || (me.blade.grey && key === 'W')) return me.store >= 1 ? String(Math.round(me.store)) : '';
     if (S.perTag) return foe.tag ? '釘' + foe.tag : '';
     if (S.id === 'bladecaller') { const n = world.own(me, 'feather').length; return n ? String(n) : ''; }
     if (S.id === 'keg') { const n = world.own(me, 'keg').length; return n ? String(n) : ''; }

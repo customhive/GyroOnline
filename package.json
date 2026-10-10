@@ -1,6 +1,6 @@
 {
   "name": "gyro-clash-online",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "private": true,
   "type": "module",
   "scripts": {
@@ -8,7 +8,8 @@
     "dev": "node tools/build.mjs --watch",
     "serve": "node serve.cjs",
     "simtest": "node tools/simtest.mjs",
-    "codectest": "node tools/codectest.mjs"
+    "codectest": "node tools/codectest.mjs",
+    "fidelity": "node tools/fidelity.mjs"
   },
   "devDependencies": {
     "esbuild": "^0.28.2",

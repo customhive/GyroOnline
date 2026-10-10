@@ -77,6 +77,7 @@ export class View {
     for (const c of this.spare) { this.scene.remove(c.group); disposeTop(c); }
     this.spare = [];
     for (const v of this.tops) {
+      if (v.holo) { this.scene.remove(v.holo.group); disposeTop(v.holo); }
       this.scene.remove(v.group, v.light, ...v.orbs);
       v.trail.dispose(this.scene);
       disposeTop(v);
@@ -675,6 +676,7 @@ export class View {
         v.group.position.set(p.x, y, p.z);
         if (p.skill.chain) this.chain(p.owner.x, p.owner.z, p.x, p.z, this.colorOf(p.owner), 1);
         // Where a recast would go off.
+        if (p.crawl) { G.ring(p.x, p.z, 0, p.skill.field, this.colorOf(p.owner), 0.1); G.ring(p.x, p.z, p.skill.field - 0.1, p.skill.field, this.dangerOf(p.owner), 0.7); }
         if (p.skill.re && SKILLS[p.skill.re].aoe) { const A = SKILLS[p.skill.re].aoe; G.ring(p.x, p.z, A - 0.1, A, this.dangerOf(p.owner), 0.55); G.ring(p.x, p.z, 0, A, this.dangerOf(p.owner), 0.06); }
         v.group.children[1].rotation.x += dt * 22;
         if (dt > 0) for (let i = 0; i < 3; i++) {
@@ -797,6 +799,23 @@ export class View {
       v.shield.rotation.y += rdt * 2;
     }
 
+    if (t.blade.rewind) {
+      // The hologram: where this top stood a few seconds ago, and where its ultimate returns to.
+      if (!v.holo) {
+        v.holo = buildTop(t.blade, this.glow);
+        v.holo.shield.visible = false; v.holo.aura.visible = false;
+        v.holo.group.traverse((m) => { if (m.material && m !== v.holo.shield) { m.material.transparent = true; m.material.opacity = 0.28; m.material.depthWrite = false; m.castShadow = false; } });
+        this.scene.add(v.holo.group);
+      }
+      const h = t.hist[0];
+      v.holo.group.visible = !!h && !t.out && !t.air && !this.world.result && Math.hypot(h.x - t.x, h.z - t.z) > 0.6;
+      if (h) {
+        // Eased, so it glides rather than hopping from sample to sample.
+        const g = v.holo.group.position, k = Math.min(1, rdt * 6);
+        g.set(g.x + (h.x - g.x) * k, groundY(h.x, h.z), g.z + (h.z - g.z) * k);
+        v.holo.spin.rotation.y -= 30 * dt;
+      }
+    }
     v.trail.boost = t.dash || t.blink ? 1 : t.air ? 0.6 : t.empower > 0 ? 0.5 : 0;
     if (!t.out && v.drop <= 0) v.trail.push(t.x + v.ox, t.z + v.oz, lift);
     v.trail.update(rdt);
@@ -925,6 +944,15 @@ export class View {
         if (!TS.drain) G.ring(o.x, o.z, 1.8, 2.0, 0xffffff, 0.8, 0.1, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * (t.tether.t / t.tether.T));
       }
       const foe = w.other(t);
+      // Winding something up: the other side sees how far it reaches by now.
+      if (t.hold && t.side !== this.playerSide) { const R = w.holdRange(t, t.hold.key); G.ring(t.x, t.z, R - 0.08, R, this.dangerOf(t), 0.5 + 0.3 * Math.sin(this.time * 18)); }
+      // Low enough to be executed: marked for all to see.
+      const X = SKILLS[t.blade.kit.R];
+      if (X.line && !X.per && foe.egg <= 0 && !foe.out && spinRatio(foe) < X.line) {
+        const pulse = 0.6 + 0.4 * Math.sin(this.time * 12);
+        for (const [dx, dz] of [[0.707, 0.707], [0.707, -0.707]]) G.rect(foe.x - dx * 1.5, foe.z - dz * 1.5, dx, dz, 3, 0.1, BLOOD, pulse, 0.12);
+        G.ring(foe.x, foe.z, 2.0, 2.15, BLOOD, pulse);
+      }
       if (t.chan) {
         // The cone a barrage can turn within, and the beat of its shots.
         const S = t.chan.skill, col = this.dangerOf(t), a = Math.atan2(t.chan.dz, t.chan.dx);
@@ -1020,6 +1048,25 @@ export class View {
         return true;
       }
     }
+    if (z.kind === 'parallel') {
+      // Its owner sees it from the start; the other side only just before it forms.
+      if (!mine && z.t < S.reveal) return true;
+      const formed = z.t >= S.arm;
+      G.ring(z.x, z.z, 0, z.r, c, (formed ? 0.14 : 0.05) * fade);
+      G.ring(z.x, z.z, z.r - 0.13, z.r, formed ? col : c, (formed ? 0.9 : 0.45) * fade);
+      if (!formed) G.ring(z.x, z.z, z.r - 0.45, z.r - 0.3, 0xffffff, 0.6, 0.1, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * (z.t / S.arm));
+      else if (mine) G.ring(z.x, z.z, 0.9, 1.05, 0xffffff, 0.5 + 0.4 * Math.sin(this.time * 10));
+      return true;
+    }
+    if (z.kind === 'deathbelow') {
+      const s = Math.SQRT1_2, pulse = 0.5 + 0.5 * Math.sin(this.time * 22);
+      for (const [dx, dz] of [[(z.dx - z.dz) * s, (z.dz + z.dx) * s], [(z.dx + z.dz) * s, (z.dz - z.dx) * s]]) {
+        G.lane(z.x - dx * S.arm, z.z - dz * S.arm, dx, dz, S.arm * 2, S.width, col, 0.12 + 0.08 * pulse, 0.9);
+        G.rect(z.x - dx * S.arm, z.z - dz * S.arm, dx, dz, S.arm * 2 * k, S.width, col, 0.25);
+      }
+      return true;
+    }
+    if (z.kind === 'undertowz') { G.ring(z.x, z.z, 0.9, 1.05, c, 0.7); G.ring(z.x, z.z, 0, 0.9 * k, c, 0.25); if (dt > 0 && Math.random() < 0.5) speck(c, 2, -2); return true; }
     if (z.kind === 'feather') { G.ring(z.x, z.z, 0, 0.3, c, 0.95 * fade, 0.12); G.ring(z.x, z.z, 0.5, 0.6, c, 0.45 * fade); return true; }
     if (z.kind === 'keg') { G.ring(z.x, z.z, S.aoe - 0.06, S.aoe, col, mine ? 0.35 : 0.2); G.ring(z.x, z.z, 1.3, 1.45, col, 0.7); return true; }
     if (z.kind === 'purgatory') {
@@ -1101,8 +1148,10 @@ export class View {
       G.rect(tg.x + dz * S.wall, tg.z - dx * S.wall, -dz, dx, S.wall * 2, 0.4, col, ok ? 0.8 : 0.35);
     } else if (S.aim === 'line' || S.aim === 'dash') {
       const line = S.aim === 'line';
-      const len = Math.min(toWall(me.x, me.z, dx, dz), line ? S.range : clamp(d, S.minDist, S.dist));
+      const len = Math.min(toWall(me.x, me.z, dx, dz), line ? w.holdRange(me, key) : clamp(d, S.minDist, S.dist));
       const hw = line ? S.radius : 1.25;
+      // How far a wound-up skill could reach at full stretch.
+      if (S.wind) G.ring(me.x, me.z, S.range - 0.05, S.range, AIM, 0.2);
       G.lane(me.x + dx * 1.4, me.z + dz * 1.4, dx, dz, len - 1.4, hw, col, ok ? 0.16 : 0.07, ok ? 0.9 : 0.4);
       if (!line) G.ring(me.x + dx * len, me.z + dz * len, 1.2, 1.33, col, 0.8);
       if (!line && S.aoe) G.ring(me.x + dx * len, me.z + dz * len, S.aoe - 0.1, S.aoe, col, 0.5);

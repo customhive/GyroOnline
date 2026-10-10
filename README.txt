@@ -50,6 +50,8 @@ GYRO CLASH のオンライン対戦版。ブラウザ同士が直接つながる
   npm run simtest       描画なしのバランス確認（全ブレードの総当たり）
   npm run codectest     スナップショットと出来事が通信を往復しても壊れないことの確認。
                         スキルやブレードの状態を増やしたら必ず通すこと
+  npm run fidelity      LoL由来のブレードが、合意した対応表どおりに動くかを1行ずつ確認する。
+                        ブレードを作り直したら、その表の各行をここに足すこと
   node tools/nettest.mjs [出力先] [URL] [追加フラグ] [ホストのブレード,ゲストのブレード]
                         ブラウザを2つ起動し、実際に P2P でつないでボット同士を戦わせる。
                         例: node tools/nettest.mjs shots http://127.0.0.1:4181/ "norender&lag=100&jitter=20&loss=5" venom,sand

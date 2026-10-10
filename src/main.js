@@ -389,6 +389,7 @@ function netMessage(m) {
       if (game.mode !== 'host' || !w || game.state !== 'fight') return;
       const t = w.tops[1];
       if (m.k === 'm') w.issueMove(t, num(m.x), num(m.z));
+      else if (m.k === 'h' && KEYS.includes(m.key)) w.hold(t, m.key);
       else if (m.k === 'c' && KEYS.includes(m.key)) w.cast(t, m.key, num(m.x), num(m.z));
       game.ack = m.s | 0;
       break;
@@ -438,7 +439,7 @@ function reconcile() {
   game.pending = game.pending.filter((p) => { const d = (p.s - ack) & 0xffff; return d !== 0 && d < 0x8000; });
   const me = player();
   for (const p of game.pending) {
-    if (p.k === 'm') w.issueMove(me, p.x, p.z); else w.cast(me, p.key, p.x, p.z);
+    if (p.k === 'm') w.issueMove(me, p.x, p.z); else if (p.k === 'h') w.hold(me, p.key); else w.cast(me, p.key, p.x, p.z);
   }
   // The snapshot left the host half a round trip ago and has waited here
   // since it arrived.
@@ -461,6 +462,7 @@ function remoteControlled(world) {
   return new Proxy(world, {
     get(target, prop) {
       if (prop === 'cast') return (top, key, x, z) => doCast(key, x, z);
+      if (prop === 'hold') return (top, key) => doHold(key);
       if (prop === 'issueMove') return (top, x, z) => doMove(x, z);
       const v = target[prop];
       return typeof v === 'function' ? v.bind(target) : v;
@@ -482,6 +484,13 @@ function doCast(key, x, z) {
   const w = game.world;
   if (!w.cast(player(), key, x, z)) return false;
   if (game.mode === 'guest') { w.events.length = 0; sendInput({ k: 'c', key, x, z }); }
+  return true;
+}
+
+// Begins winding up a skill that is charged by holding its key.
+function doHold(key) {
+  if (!game.world.hold(player(), key)) return false;
+  if (game.mode === 'guest') { game.world.events.length = 0; sendInput({ k: 'h', key, x: 0, z: 0 }); }
   return true;
 }
 
@@ -531,7 +540,7 @@ canvas.addEventListener('mousemove', (e) => { game.cursor.sx = e.clientX; game.c
 canvas.addEventListener('mousedown', (e) => {
   audio.unlock();
   game.cursor.sx = e.clientX; game.cursor.sy = e.clientY;
-  if (e.button === 2 && game.aimKey) { game.aimKey = null; return; }
+  if (e.button === 2 && game.aimKey && !(game.world && player().hold)) { game.aimKey = null; return; }
   if (e.button !== 0 && e.button !== 2) return;
   game.mouseDown = true; game.moveRepeat = 0.12;
   orderMove(false);
@@ -542,7 +551,7 @@ window.addEventListener('contextmenu', (e) => e.preventDefault());
 window.addEventListener('keydown', (e) => {
   if (e.repeat || e.target.tagName === 'INPUT') return;
   const k = e.key.toUpperCase();
-  if (k === 'ESCAPE') { if (game.aimKey) game.aimKey = null; else togglePause(); return; }
+  if (k === 'ESCAPE') { if (game.aimKey) { if (!(game.world && player().hold)) game.aimKey = null; } else togglePause(); return; }
   if (k === 'P') return togglePause();
   if (k === 'M') { audio.unlock(); audio.setMuted(!audio.muted); ui.setMuted(audio.muted); return; }
   if (game.state !== 'fight' || game.paused || !KEYS.includes(k)) return;
@@ -553,6 +562,8 @@ window.addEventListener('keydown', (e) => {
   // Aiming is allowed while briefly unable to act; only a real cooldown refuses.
   if (!game.world.ready(me, k, 0.25) || me.air || me.out) { audio.denied(); ui.denied(k); return; }
   game.aimKey = k;
+  // Some skills wind up for as long as the key stays down.
+  if (S.wind) doHold(k);
 });
 window.addEventListener('keyup', (e) => {
   const k = e.key.toUpperCase();
@@ -617,6 +628,7 @@ function onEvent(e) {
       if (e.slam && e.dmg > 8) { popAt(e.top, 'WALL SLAM', 'word red'); game.hitstop = Math.max(game.hitstop, 0.07); }
       break;
     case 'bump': audio.wall(e.power * 0.6, false); break;
+    case 'hold': audio.windup(); break;
     case 'cast':
       if (e.windup > 0) audio.windup();
       if (e.ult) ui.cutIn(e.base, e.top.blade.css, !mine(e.top));

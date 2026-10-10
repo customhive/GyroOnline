@@ -60,10 +60,10 @@ ids.forEach((id, n) => {
     const tag = `${id} vs ${foe} @${w.time.toFixed(2)}`;
     w.tops.forEach((t, s) => {
       const o = m.tops[s];
-      for (const f in TOP) check(near(t[f], o[f], TOP[f]), `${tag} top${s}.${f}: ${t[f]} -> ${o[f]}`);
+      for (const f in TOP) check(near(f === 'spin' ? Math.max(0, t[f]) : t[f], o[f], TOP[f]), `${tag} top${s}.${f}: ${t[f]} -> ${o[f]}`);
       for (const k of KEYS) { check(near(t.cd[k], o.cd[k], 0.001), `${tag} top${s}.cd.${k}`); check(near(t.re[k], o.re[k], 0.051), `${tag} top${s}.re.${k}: ${t.re[k]} -> ${o.re[k]}`); }
       check(t.toggle === o.toggle && t.eggUsed === o.eggUsed, `${tag} top${s} flags`);
-      for (const f of ['cmd', 'dash', 'blink', 'air', 'out', 'charge', 'orbs', 'tether', 'chan', 'ret']) check(!!t[f] === !!o[f], `${tag} top${s}.${f} presence`);
+      for (const f of ['cmd', 'dash', 'blink', 'air', 'out', 'charge', 'orbs', 'tether', 'chan', 'ret', 'hold']) check(!!t[f] === !!o[f], `${tag} top${s}.${f} presence`);
       for (const f of ['dash', 'blink', 'air', 'charge', 'tether', 'chan']) if (t[f] && o[f]) check(t[f].skill === o[f].skill, `${tag} top${s}.${f}.skill`);
       if (t.dash && o.dash) check(t.dash.hit === o.dash.hit && near(t.dash.t, o.dash.t, 0.005), `${tag} top${s}.dash`);
       if (t.air && o.air) check(t.air.by === o.air.by && near(t.air.tx, o.air.tx, 0.01), `${tag} top${s}.air`);
@@ -75,7 +75,7 @@ ids.forEach((id, n) => {
     w.projectiles.forEach((p, j) => {
       const q = m.projectiles[j];
       if (!q) return;
-      check(p.id === q.id && p.skill.id === q.skill.id && p.owner.side === q.owner.side && p.hit === q.hit && p.back === q.back, `${tag} proj ${j} identity`);
+      check(p.id === q.id && p.skill.id === q.skill.id && p.owner.side === q.owner.side && p.hit === q.hit && p.back === q.back && p.crawl === q.crawl, `${tag} proj ${j} identity`);
       check(near(p.x, q.x, 0.01) && near(p.z, q.z, 0.01) && near(p.left, q.left, 0.001) && near(p.dmg, q.dmg, 0.006) && p.speed === q.speed && p.r === q.r, `${tag} proj ${j} values`);
     });
     check(w.zones.length === m.zones.length, `${tag} zone count`);

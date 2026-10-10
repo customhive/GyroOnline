@@ -8,14 +8,14 @@
 import { SKILLS, KEYS } from './config.js';
 import { initZone } from './sim.js';
 
-export const PROTOCOL = 5;
+export const PROTOCOL = 6;
 export const PKT_SNAPSHOT = 1, PKT_PING = 2, PKT_PONG = 3;
 
 const SKILL_IDS = Object.keys(SKILLS);
 const KINDS = ['over', 'burst', 'spin', 'time'];
 const POS = 2000, VEL = 400, DIR = 30000;
 const F_CMD = 1, F_DASH = 2, F_BLINK = 4, F_AIR = 8, F_OUT = 16, F_CHARGE = 32, F_ORBS = 64, F_TETHER = 128;
-const G_TOGGLE = 1, G_EGGUSED = 2, G_CHAN = 4, G_RET = 8, G_DASHHIT = 16, G_FEAR = 32;
+const G_TOGGLE = 1, G_EGGUSED = 2, G_CHAN = 4, G_RET = 8, G_DASHHIT = 16, G_FEAR = 32, G_HOLD = 64;
 const TAU = Math.PI * 2;
 // The gauge travels as one byte. "Full" gets a value of its own: scaling 100
 // into a byte and back lands a hair under 100, and the skill needs exactly 100.
@@ -54,7 +54,7 @@ function writeTop(w, t) {
   w.u8(t.stack); w.u8(t.stackT * 30); w.u8(t.dmark * 60); w.u16(t.dacc * 50); w.u8(t.egg * 60); w.u8(t.eggHp);
   for (const k of KEYS) w.u8(Math.ceil(t.re[k] * 20)); // rounded up: an open window must not arrive closed
   w.u8(t.haste * 50); w.u8(Math.ceil(t.charm * 100)); w.u8(t.pin * 100); w.u8(t.store); w.u8(t.tag); w.u8(t.tagT * 25); w.u8(t.perm);
-  w.u8((t.toggle ? G_TOGGLE : 0) | (t.eggUsed ? G_EGGUSED : 0) | (t.chan ? G_CHAN : 0) | (t.ret ? G_RET : 0) | (t.dash && t.dash.hit ? G_DASHHIT : 0) | (t.charmDir < 0 ? G_FEAR : 0));
+  w.u8((t.toggle ? G_TOGGLE : 0) | (t.eggUsed ? G_EGGUSED : 0) | (t.chan ? G_CHAN : 0) | (t.ret ? G_RET : 0) | (t.dash && t.dash.hit ? G_DASHHIT : 0) | (t.charmDir < 0 ? G_FEAR : 0) | (t.hold ? G_HOLD : 0));
   w.u8((t.cmd ? F_CMD : 0) | (t.dash ? F_DASH : 0) | (t.blink ? F_BLINK : 0) | (t.air ? F_AIR : 0) | (t.out ? F_OUT : 0)
     | (t.charge ? F_CHARGE : 0) | (t.orbs ? F_ORBS : 0) | (t.tether ? F_TETHER : 0));
   if (t.cmd) { w.i16(t.cmd.x * POS); w.i16(t.cmd.z * POS); w.u8(t.cmd.t * 100); }
@@ -66,6 +66,7 @@ function writeTop(w, t) {
   if (t.tether) { const h = t.tether; w.u8(skillNo(h.skill)); w.u8(h.t * 80); w.u16(h.acc * 100); w.u8(h.tick * 200); }
   if (t.chan) { const c = t.chan; w.u8(c.t * 60); w.u8(c.n); w.i16(c.dx * DIR); w.i16(c.dz * DIR); }
   if (t.ret) { w.i16(t.ret.x * POS); w.i16(t.ret.z * POS); }
+  if (t.hold) { w.u8(KEYS.indexOf(t.hold.key)); w.u8(t.hold.t * 50); }
 }
 
 function readDir(r) {
@@ -117,6 +118,7 @@ function readTop(r, t) {
   if (f & F_TETHER) { const skill = skillAt(r.u8()); t.tether = { t: r.u8() / 80, T: skill.dur, skill, acc: r.u16() / 100, tick: r.u8() / 200 }; } else t.tether = null;
   t.chan = g & G_CHAN ? { t: r.u8() / 60, n: r.u8(), ...readDir(r), skill: SKILLS.curtaincall } : null;
   t.ret = g & G_RET ? { x: r.i16() / POS, z: r.i16() / POS } : null;
+  t.hold = g & G_HOLD ? { key: KEYS[r.u8() & 3], t: r.u8() / 50 } : null;
 }
 
 // meta: { seq, ack, timeLeft }
@@ -128,7 +130,7 @@ export function encodeSnapshot(world, meta) {
   for (const t of world.tops) writeTop(w, t);
   w.u8(world.projectiles.length);
   for (const p of world.projectiles) {
-    w.u16(p.id); w.u8(skillNo(p.skill)); w.u8(p.owner.side | (p.hit ? 2 : 0) | (p.back ? 4 : 0));
+    w.u16(p.id); w.u8(skillNo(p.skill)); w.u8(p.owner.side | (p.hit ? 2 : 0) | (p.back ? 4 : 0) | (p.crawl ? 8 : 0));
     w.i16(p.x * POS); w.i16(p.z * POS); w.i16(p.dx * DIR); w.i16(p.dz * DIR); w.u16(p.left * 1000); w.u16(p.dmg * 100);
   }
   w.u8(world.zones.length);
@@ -164,11 +166,11 @@ export function applySnapshot(world, buf) {
   for (let i = 0; i < n; i++) {
     const id = r.u16(), sk = r.u8(), b = r.u8();
     const p = old.get(id) || { id, dead: false };
-    p.owner = world.tops[b & 1]; p.skill = skillAt(sk); p.hit = !!(b & 2); p.back = !!(b & 4);
+    p.owner = world.tops[b & 1]; p.skill = skillAt(sk); p.hit = !!(b & 2); p.back = !!(b & 4); p.crawl = !!(b & 8);
     p.x = r.i16() / POS; p.z = r.i16() / POS;
     Object.assign(p, readDir(r));
     p.left = r.u16() / 1000; p.dmg = r.u16() / 100;
-    p.speed = p.skill.speed * (p.back ? 1.3 : 1); p.r = p.skill.radius; p.dead = false;
+    p.speed = p.crawl ? p.skill.crawl : p.skill.speed * (p.back ? 1.3 : 1); p.r = p.skill.radius; p.dead = false;
     world.projectiles.push(p);
   }
   const zones = new Map(world.zones.map((z) => [z.id, z]));

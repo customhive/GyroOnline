@@ -269,7 +269,7 @@ export class CpuBrain {
       const base = skillOf(me, k);
       if (!base.icon || !w.canCast(me, k)) continue;
       const S = w.aimSkill(me, k), again = me.re[k] > 0, wind = me.windup[k];
-      const go = (x = me.x, z = me.z) => w.cast(me, k, x, z);
+      const go = (x = me.x, z = me.z) => w.cast(me, k, x, z, S.wind ? S.wind.full : 0);
       const at = (p) => go(p.x, p.z);
       if (guarded && S.kind !== 'buff' && S.kind !== 'field') continue;
       switch (S.ai || S.kind || S.id) {
@@ -375,6 +375,9 @@ export class CpuBrain {
       if (Math.hypot(me.x - own.x, me.z - own.z) > own.r * 0.6) w.issueMove(me, own.x, own.z);
       return;
     }
+    // Its own trap is ready and the other top is on it: step in to set it off.
+    const trap = w.own(me, 'parallel').find((z) => z.t >= z.skill.arm - 0.4 && Math.hypot(foe.x - z.x, foe.z - z.z) < z.r + 1);
+    if (trap) { w.issueMove(me, trap.x, trap.z); return; }
     // Do not walk into the other side's sanctuary just to be slowed.
     const theirs = w.zones.find((z) => z.owner === foe && z.kind === 'sanctuary');
     if (theirs && Math.hypot(foe.x - theirs.x, foe.z - theirs.z) < theirs.r && r() < L.dodge * 0.6) return;
