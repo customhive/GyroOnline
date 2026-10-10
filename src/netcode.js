@@ -7,7 +7,7 @@
 // reliably, with object references swapped for ids.
 import { SKILLS, KEYS } from './config.js';
 
-export const PROTOCOL = 2;
+export const PROTOCOL = 3;
 export const PKT_SNAPSHOT = 1, PKT_PING = 2, PKT_PONG = 3;
 
 const SKILL_IDS = Object.keys(SKILLS);
@@ -16,6 +16,9 @@ const ZONES = ['quake', 'sanctuary'];
 const POS = 2000, VEL = 400, DIR = 30000;
 const F_CMD = 1, F_DASH = 2, F_BLINK = 4, F_AIR = 8, F_OUT = 16, F_CHARGE = 32, F_ORBS = 64, F_TETHER = 128;
 const TAU = Math.PI * 2;
+// The gauge travels as one byte. "Full" gets a value of its own: scaling 100
+// into a byte and back lands a hair under 100, and the skill needs exactly 100.
+const ULT_FULL = 255;
 
 const clampInt = (v, lo, hi) => { v = Math.round(v); return v < lo ? lo : v > hi ? hi : v; };
 
@@ -38,7 +41,7 @@ class Reader {
 
 function writeTop(w, t) {
   w.i16(t.x * POS); w.i16(t.z * POS); w.i16(t.vx * VEL); w.i16(t.vz * VEL);
-  w.u16(t.spin * 50); w.u8(Math.floor(t.ult * 2.55));
+  w.u16(t.spin * 50); w.u8(t.ult >= 100 ? ULT_FULL : Math.min(ULT_FULL - 1, Math.floor(t.ult * 2.5)));
   w.u8(t.tumble * 100); w.u8(t.launch * 100); w.u8(t.guard * 100); w.u8(t.slow * 100); w.u8(t.hitCd * 1000); w.u8(t.empower * 50);
   w.f32(t.phase);
   for (const k of KEYS) w.u16(t.cd[k] * 1000);
@@ -61,7 +64,9 @@ function readDir(r) {
 
 function readTop(r, t) {
   t.x = r.i16() / POS; t.z = r.i16() / POS; t.vx = r.i16() / VEL; t.vz = r.i16() / VEL;
-  t.spin = r.u16() / 50; t.ult = Math.min(100, r.u8() / 2.55);
+  t.spin = r.u16() / 50;
+  const ult = r.u8();
+  t.ult = ult === ULT_FULL ? 100 : ult / 2.5;
   t.tumble = r.u8() / 100; t.launch = r.u8() / 100; t.guard = r.u8() / 100; t.slow = r.u8() / 100; t.hitCd = r.u8() / 1000; t.empower = r.u8() / 50;
   t.phase = r.f32();
   for (const k of KEYS) t.cd[k] = r.u16() / 1000;

@@ -7,7 +7,8 @@
     "build": "esbuild src/main.js --bundle --format=iife --minify --target=es2020 --outfile=game.js",
     "dev": "esbuild src/main.js --bundle --format=iife --sourcemap --target=es2020 --outfile=game.js --watch",
     "serve": "node serve.cjs",
-    "simtest": "node tools/simtest.mjs"
+    "simtest": "node tools/simtest.mjs",
+    "codectest": "node tools/codectest.mjs"
   },
   "devDependencies": {
     "esbuild": "^0.28.2",
