@@ -37,6 +37,9 @@ export function makeTop(side, blade) {
     ground: 0,             // stuck in adhesive: slower still, no dashes
     mark: 0, scar: 0, poison: 0, bleed: 0, bleedT: 0,
     frost: 0,              // iced over: FROSTBITE bites twice as deep
+    doom: 0,               // marked for execution the moment its spin drops below the line
+    markK: 1,              // how hard the mark on this top goes off
+    empN: 0, empS: null,   // empowered body hits left, and the skill that empowered them
     ret2: null,            // a second place to return to, left by a mimicked jump
     shield: 0, shieldT: 0, buff: 0,
     stack: 0, stackT: 0,   // per-blade counter: wind stacks, shots fired, dashes chained
@@ -260,8 +263,9 @@ export class World {
       t.spin = t.spinMax;
       t.cmd = t.cast = t.dash = t.air = t.out = t.blink = t.charge = t.orbs = t.tether = t.chan = t.ret = t.hold = null;
       t.tumble = t.launch = t.guard = t.slow = t.hitCd = t.empower = 0;
-      t.up = t.ground = t.mark = t.scar = t.poison = t.bleed = t.bleedT = t.shield = t.shieldT = t.buff = t.frost = 0;
-      t.ret2 = null;
+      t.up = t.ground = t.mark = t.scar = t.poison = t.bleed = t.bleedT = t.shield = t.shieldT = t.buff = t.frost = t.doom = t.empN = 0;
+      t.markK = 1;
+      t.ret2 = t.empS = null;
       t.stack = t.stackT = t.last = t.dmark = t.dacc = t.egg = t.eggHp = t.dot = t.dotT = t.drop = 0;
       t.haste = t.charm = t.pin = t.store = t.tag = t.tagT = t.histT = t.stun = t.snare = t.slowK = 0;
       t.hist = [];
@@ -384,7 +388,7 @@ export class World {
     const p = {
       id: t.side * 30000 + (t.projN = (t.projN + 1) % 30000), skill: S, owner: t,
       x: (o.x ?? t.x) + dx * 0.9, z: (o.z ?? t.z) + dz * 0.9, dx, dz,
-      speed: S.speed, left: o.left ?? S.range, r: S.radius, dmg: (o.dmg ?? S.dmg) * t.blade.atk, hit: false, back: false, crawl: false, dead: false,
+      speed: S.speed, left: o.left ?? S.range, r: S.radius, dmg: (o.dmg ?? S.dmg) * t.blade.atk, hit: false, back: false, crawl: false, dead: false, x2: !!o.x2,
     };
     this.projectiles.push(p);
     if (!o.quiet) this.emit('shoot', { top: t, proj: p });
@@ -508,7 +512,8 @@ export class World {
     if (big) t.buff = 0;
     switch (S.id) {
       case 'sonic': case 'anchor': case 'galeq': case 'frostbite': case 'sigil': case 'ethereal': case 'flourish':
-        this.fire(t, S, c.dx, c.dz);
+        // A mimicked sigil leaves a mark that goes off twice as hard.
+        this.fire(t, S, c.dx, c.dz, { x2: skillOf(t, c.key).id === 'mimic' });
         break;
       case 'tornado':
         t.stack = 0;
@@ -803,6 +808,20 @@ export class World {
       case 'keg': case 'parallel':
         this.zone(t, S, c.ax, c.az);
         break;
+      case 'hshock':
+        // The ground is struck now, and bursts again along the same line a second later.
+        this.lineHit(t, S, t.x, t.z, c.dx, c.dz);
+        this.zone(t, S, t.x, t.z, { dx: c.dx, dz: c.dz });
+        break;
+      case 'verdict':
+        // A tap swings the hammer up; a hold sends a wave that hurls the target away.
+        if (c.held < S.wind.min) this.coneHit(t, SKILLS[S.tap], c.dx, c.dz);
+        else this.fire(t, SKILLS.verdictwave, c.dx, c.dz, { left: c.reach });
+        break;
+      case 'soulrelease':
+        t.buff = 0;
+        this.release(t);
+        break;
       case 'deathbelow':
         this.zone(t, S, c.ax, c.az, { dx: c.dx, dz: c.dz });
         break;
@@ -815,11 +834,6 @@ export class World {
           q.dead = true;
         }
         this.emit('buff', { top: t, skill: S });
-        break;
-      }
-      case 'purgatory': {
-        this.zone(t, S, c.ax, c.az);
-        if (this.burst(t, S, c.ax, c.az, S.aoe)) { opp.tag = 3; opp.tagT = S.dur + 2; }
         break;
       }
       default:
@@ -861,7 +875,7 @@ export class World {
         break;
       case 'blink': {
         const dist = clamp(c.dist, 2, S.range);
-        if (S.re) { t.ret = { x: t.x, z: t.z }; t.re[c.key] = S.window; }
+        if (S.re) { if (S.re === 'recall') t.ret = { x: t.x, z: t.z }; t.re[c.key] = S.window; }
         t.blink = { dx: c.dx, dz: c.dz, speed: S.speed, t: dist / S.speed, skill: S };
         t.cmd = null; t.tumble = 0;
         this.emit('blink', { top: t, dx: c.dx, dz: c.dz, dist });
@@ -878,24 +892,15 @@ export class World {
         if (hit && S.reHit) t.re[c.key] = S.reHit;
         break;
       }
-      case 'cone': {
-        let hit = 0;
-        if (this.inCone(t, opp, c.dx, c.dz, S)) {
-          const g = opp.guard > 0 ? 0.3 : 1;
-          // Banked damage goes out with the punch and comes back as a shield.
-          const extra = S.storeHit ? t.store * S.storeHit : 0;
-          hit = this.hurt(opp, ((S.dmg * t.blade.atk + extra) * g) / opp.blade.def, t, S.id);
-          if (g === 1) { if (S.pull) this.pull(opp, t, S.pull); this.affect(t, opp, S, c.dx, c.dz); }
-          t.stats.skillHits++;
-        }
-        if (S.storeHit) { t.shield = t.store; t.shieldT = S.hold; t.store = 0; }
-        this.emit('cone', { top: t, skill: S, dx: c.dx, dz: c.dz, hit, target: hit ? opp : null });
+      case 'cone':
+        // Some are thrown only after a wind-up.
+        if (S.charge) { t.charge = { t: 0, T: S.charge, skill: S, dx: c.dx, dz: c.dz }; this.emit('charge', { top: t, T: S.charge, skill: S }); }
+        else this.coneHit(t, S, c.dx, c.dz);
         break;
-      }
       case 'buff':
-        if (S.re) t.re[c.key] = S.window;
+        if (S.re && !S.bonus) t.re[c.key] = S.window;
         if (S.dur) t.buff = S.dur;
-        if (S.empower) t.empower = S.empower;
+        if (S.empower) { t.empower = S.empower; t.empN = S.empN || 1; t.empS = S.bonus ? S : null; }
         if (S.heal) this.mend(t, S.heal * (t.spinMax - t.spin) + (S.flat || 0));
         if (S.healMax) this.mend(t, S.healMax * t.spinMax);
         if (S.cleanse) t.slow = t.ground = t.poison = t.bleed = t.bleedT = t.mark = t.tag = t.tagT = t.charm = 0;
@@ -931,18 +936,69 @@ export class World {
           this.emit('warp', { top: t, fx, fz });
         }
         const k = S.exec ? 1 + S.exec * Math.min(1, (1 - spinRatio(opp)) / (S.execCap || 1)) : 1;
-        const dmg = this.hurt(opp, (S.dmg * k * t.blade.atk) / opp.blade.def, t, S.id);
+        const dmg = this.hurt(opp, ((S.dmg + (S.perTag || 0) * opp.tag) * k * t.blade.atk) / opp.blade.def, t, S.id);
+        if (S.perTag) opp.tag = opp.tagT = 0;
         this.affect(t, opp, S, 0, 0);
         t.stats.skillHits++;
         this.emit('strike', { top: opp, src: t, skill: S, x: opp.x, z: opp.z, dmg, big: !!S.ult });
         break;
       }
-      case 'throw':
+      case 'throw': {
+        // With no aim of its own, the target is carried on past where it stood.
+        if (S.aim === 'self') {
+          const dx = opp.x - t.x, dz = opp.z - t.z, d = Math.hypot(dx, dz) || 1;
+          let x = opp.x + (dx / d) * S.carry, z = opp.z + (dz / d) * S.carry;
+          const lim = ARENA.R - 1.6, r = Math.hypot(x, z);
+          if (r > lim) { x *= lim / r; z *= lim / r; }
+          c.ax = x; c.az = z;
+        }
         opp.air = { t: 0, T: S.air, sx: opp.x, sz: opp.z, tx: c.ax, tz: c.az, skill: S, by: t.side };
         opp.cmd = opp.dash = opp.cast = opp.chan = opp.charge = null; opp.vx = opp.vz = 0; opp.up = 0;
         this.emit('fling', { top: t, target: opp, tx: c.ax, tz: c.az });
         break;
+      }
     }
+  }
+
+  // The end of SOUL IGNITION: everything banked comes back, and a little more.
+  release(t) {
+    this.mend(t, t.store + t.blade.ignite.bonus);
+    t.store = 0;
+  }
+
+  // Everything standing in a strip from (x, z) along (dx, dz) is hit at once.
+  lineHit(t, S, x, z, dx, dz, mul = 1) {
+    const opp = this.other(t);
+    let hit = 0;
+    const rx = opp.x - x, rz = opp.z - z, along = rx * dx + rz * dz, side = Math.abs(-rx * dz + rz * dx);
+    if (targetable(opp) && !this.result && along > -1 && along < S.range + opp.radius && side < S.radius + opp.radius * 0.6) {
+      const g = opp.guard > 0 ? 0.3 : 1;
+      hit = this.hurt(opp, (S.dmg * mul * g * t.blade.atk) / opp.blade.def, t, S.id);
+      if (g === 1) this.affect(t, opp, S, dx, dz);
+      t.stats.skillHits++;
+    }
+    this.emit('beam', { top: t, skill: S, x, z, dx, dz, hit, target: hit ? opp : null });
+    return hit;
+  }
+
+  // A cone from the top. Some carry banked damage, and some cut through
+  // defence along their centre line.
+  coneHit(t, S, dx, dz) {
+    const opp = this.other(t);
+    let hit = 0;
+    if (this.inCone(t, opp, dx, dz, S)) {
+      const g = opp.guard > 0 ? 0.3 : 1;
+      const extra = S.storeHit ? t.store * S.storeHit : 0;
+      const ox = opp.x - t.x, oz = opp.z - t.z, od = Math.hypot(ox, oz) || 1;
+      const core = S.core && Math.acos(clamp((ox * dx + oz * dz) / od, -1, 1)) < S.half * S.core;
+      hit = this.hurt(opp, ((S.dmg * t.blade.atk + extra) * g) / (core ? 1 : opp.blade.def), t, S.id);
+      if (g === 1) { if (S.pull) this.pull(opp, t, S.pull); this.affect(t, opp, S, dx, dz); }
+      t.stats.skillHits++;
+    }
+    // Banked damage goes out with the punch and comes back as a shield.
+    if (S.storeHit) { t.shield = t.store; t.shieldT = S.hold; t.store = 0; }
+    this.emit('cone', { top: t, skill: S, dx, dz, hit, target: hit ? opp : null });
+    return hit;
   }
 
   // Gives spin back and says so.
@@ -962,7 +1018,10 @@ export class World {
       if (from.blade.might && t.bleed >= BLEED.max) dmg *= from.blade.might;
       // Growth: within the round (ramp) or for the whole match (perm).
       const R = from.blade.ramp;
-      if (R) { dmg *= 1 + R.per * from.stack; if (kind !== 'clash' && dmg >= 8) from.stack = Math.min(R.max, from.stack + 1); }
+      if (R) {
+        dmg *= 1 + R.per * from.stack * (from.stack >= R.max ? 2 : 1);
+        if (kind !== 'clash' && dmg >= 8) { from.stack = Math.min(R.max, from.stack + 1); if (R.expire) from.stackT = R.expire; }
+      }
       if (from.blade.permDmg) dmg *= 1 + from.blade.permDmg * from.perm;
     }
     if (t.charge) dmg *= t.charge.skill.armor ?? 1;
@@ -978,7 +1037,7 @@ export class World {
       if (t.eggHp <= 0) { t.egg = 0; t.spin = 0; }
     } else t.spin -= dmg;
     t.stats.taken += dmg;
-    if (t.blade.store) t.store = Math.min(t.blade.store.max, t.store + dmg * t.blade.store.taken);
+    if (t.blade.store && (!t.blade.store.whileBuff || t.buff > 0)) t.store = Math.min(t.blade.store.max, t.store + dmg * t.blade.store.taken);
     if (foe && from.blade.store) from.store = Math.min(from.blade.store.max, from.store + dmg * from.blade.store.dealt);
     t.ult = Math.min(100, t.ult + dmg * 0.06);
     if (from) {
@@ -1081,10 +1140,10 @@ export class World {
     // A sigil goes off on the next skill that lands.
     if (v.mark > 0) {
       v.mark = 0;
-      const dmg = this.hurt(v, (SKILLS.sigil.pop * s.blade.atk) / v.blade.def, s, 'sigil');
+      const dmg = this.hurt(v, (SKILLS.sigil.pop * v.markK * s.blade.atk) / v.blade.def, s, 'sigil');
       this.emit('strike', { top: v, src: s, skill: SKILLS.sigil, x: v.x, z: v.z, dmg });
     }
-    if (S.mark) v.mark = S.mark;
+    if (S.mark) { v.mark = S.mark; v.markK = s.x2 ? 2 : 1; }
     // Stun first: it stops the top dead, and the knockback then carries it off.
     if (S.stun) this.stun(v, S.stun);
     if (S.kb && shove) {
@@ -1101,7 +1160,8 @@ export class World {
       v.cmd = null; v.dash = null; v.cast = null; v.chan = null; v.hold = null;
       this.emit('say', { top: v, text: S.charm ? 'CHARM' : 'FEAR', tone: 'red' });
     }
-    if (S.nail) { v.tag = Math.min(3, v.tag + 1); v.tagT = 6; v.slow = Math.max(v.slow, S.nail * v.tag); }
+    // Nails: one slows a little, two or more slow hard.
+    if (S.nail) { v.tag = Math.min(3, v.tag + 1); v.tagT = 4; if (v.tag >= 2) this.slowBy(v, 2, 0.6); else this.slowBy(v, 1, 0.25); }
   }
 
   finish(winner, loser, kind) {
@@ -1132,7 +1192,7 @@ export class World {
       for (const t of this.tops) {
         if (t.spin > 0 || t.out) continue;
         // FROST PHOENIX gets one second chance per round.
-        if (t.blade.egg && !t.eggUsed) { this.layEgg(t); continue; }
+        if (t.blade.egg && !t.eggUsed && t.stack >= (t.blade.egg.needStack || 0)) { this.layEgg(t); continue; }
         t.spin = 0;
         const h = t.lastHit;
         const burst = h && this.time - h.time < 0.35 && h.dmg >= 55;
@@ -1151,7 +1211,14 @@ export class World {
   }
 
   updateTop(t, dt, opp) {
-    for (const k of KEYS) { t.cd[k] = Math.max(0, t.cd[k] - dt); t.re[k] = Math.max(0, t.re[k] - dt); }
+    for (const k of KEYS) {
+      t.cd[k] = Math.max(0, t.cd[k] - dt);
+      if (t.re[k] <= 0) continue;
+      t.re[k] = Math.max(0, t.re[k] - dt);
+      // A window that closes with uses left over gives some of the cooldown back.
+      const S = skillOf(t, k);
+      if (t.re[k] <= 0 && S.refundUnused && t.stack < S.casts) t.cd[k] *= 1 - S.refundUnused * (S.casts - t.stack);
+    }
     t.tumble = Math.max(0, t.tumble - dt);
     t.launch = Math.max(0, t.launch - dt);
     t.slow = Math.max(0, t.slow - dt);
@@ -1166,7 +1233,25 @@ export class World {
     t.mark = Math.max(0, t.mark - dt);
     t.scar = Math.max(0, t.scar - dt);
     t.poison = Math.max(0, t.poison - dt);
+    const lit = t.buff > 0;
     t.buff = Math.max(0, t.buff - dt);
+    const I = t.blade.ignite;
+    if (I && !this.result && t.spin > 1) {
+      // SOUL IGNITION: spin is burned while it lasts and handed back, with what was taken, when it ends.
+      if (t.buff > 0) { const pay = Math.min(t.spin - 1, t.spin * I.pay * dt); t.spin -= pay; t.store = Math.min(t.blade.store.max, t.store + pay); }
+      else if (lit) this.release(t);
+    }
+    if (t.doom > 0) {
+      t.doom -= dt;
+      const D = opp.blade.doom;
+      if (D && !this.result && !t.out && t.egg <= 0 && spinRatio(t) < D.line + D.per * opp.perm) {
+        // PURGATORY: wherever it is, a marked top that drops below the line is finished.
+        t.doom = 0;
+        if (opp.perm < D.max) opp.perm++;
+        this.emit('strike', { top: t, src: opp, skill: SKILLS.purgatory, x: t.x, z: t.z, dmg: 0, big: true });
+        this.slay(t, opp);
+      }
+    }
     t.haste = Math.max(0, t.haste - dt);
     t.charm = Math.max(0, t.charm - dt);
     t.pin = Math.max(0, t.pin - dt);
@@ -1184,6 +1269,7 @@ export class World {
       // Held too long, or no longer able to throw: the wind-up is wasted.
       if (t.hold.t >= S.wind.max || this.result || t.spin <= 0 || t.out || t.air || t.egg > 0 || t.up > 0) {
         t.cd[t.hold.key] = S.cd * t.blade.cdMul;
+        if (S.ult) t.ult = Math.min(t.ult, 50);
         t.hold = null;
         this.emit('say', { top: t, text: 'CANCEL', tone: 'dim' });
       }
@@ -1291,6 +1377,8 @@ export class World {
       if (S.empower) t.empower = S.empower;
       this.emit('blinkEnd', { top: t });
       // Arriving with a cut; nails already in the target are torn out for more.
+      // A warp arrives standing still; it is not a charge.
+      if (S.still) t.vx = t.vz = 0;
       if (S.dmg && S.aoe && this.burst(t, S, t.x, t.z, S.aoe, { dmg: S.dmg + (S.perTag || 0) * opp.tag }) && S.perTag) opp.tag = opp.tagT = 0;
       if (S.bolt) this.bolts(t, SKILLS[S.bolt], S.n || 1);
     }
@@ -1306,6 +1394,7 @@ export class World {
       t.tumble = Math.max(t.tumble, 0.3);
       const hit = this.hurt(t, (S.dmg * (1 + (S.massMul || 0) * (t.mass - 1)) * by.blade.atk) / t.blade.def, by, S.id);
       if (S.id === 'fling') { if (this.own(by, 'glue').some((q) => Math.hypot(q.x - x, q.z - z) < q.r)) this.snare(t, S.snare); } else if (S.stun) this.stun(t, S.stun);
+      if (S.slow) this.slowBy(t, S.slow, S.slowPct);
       by.stats.skillHits++;
       this.emit('blast', { top: by, skill: S, x, z, r: S.aoe || 2.2, hit, target: t });
       return;
@@ -1340,6 +1429,7 @@ export class World {
     const S = t.charge.skill;
     if (S.id === 'nova') { this.novaBlast(t, opp); return; }
     if (S.kind === 'shot') { const { dx, dz } = t.charge; t.charge = null; this.fire(t, S, dx, dz); return; }
+    if (S.kind === 'cone') { const { dx, dz } = t.charge; t.charge = null; this.coneHit(t, S, dx, dz); return; }
     if (S.kind === 'beam') {
       // Everything along the line is hit at once.
       const { dx, dz } = t.charge;
@@ -1625,24 +1715,13 @@ export class World {
           if (live && d < z.r * 0.3 + opp.radius) { this.endZone(z); break; }
           if (z.t > 0.5 && targetable(t) && Math.hypot(t.x - z.x, t.z - z.z) < 0.9 + t.radius) this.blowKeg(z);
           break;
-        case 'purgatory': {
-          if (z.t >= z.T || this.result) { this.endZone(z); break; }
-          // A nailed top that has dropped below the line is dragged in and finished.
-          if (live && opp.tag > 0 && opp.egg <= 0 && spinRatio(opp) < S.line + S.per * t.perm && d < z.r * 2.2) {
-            this.endZone(z);
-            this.emit('strike', { top: opp, src: t, skill: S, x: opp.x, z: opp.z, dmg: 0, big: true });
-            this.slay(opp, t);
-            break;
-          }
-          // Picking it back up raises the line for the rest of the match.
-          if (z.t > 0.6 && targetable(t) && Math.hypot(t.x - z.x, t.z - z.z) < 1.5) {
-            if (t.perm < S.permMax) { t.perm++; this.emit('say', { top: t, text: 'LINE +' + Math.round(S.per * 100) + '%', tone: 'gold' }); }
-            this.endZone(z);
-          }
-          break;
-        }
         case 'feather':
           if (z.t >= z.T || this.result) z.dead = true;
+          break;
+        case 'hshock':
+          if (z.t < z.T) break;
+          z.dead = true;
+          if (!this.result) this.lineHit(t, S, z.x, z.z, z.dx, z.dz);
           break;
         case 'undertowz': {
           if (z.t < z.T) break;
@@ -1704,7 +1783,7 @@ export class World {
         this.slay(opp, t);
         return;
       }
-      this.burst(t, S, z.x, z.z, z.r);
+      if (this.burst(t, S, z.x, z.z, z.r) && S.doom) opp.doom = S.doom;
       return;
     }
     if (z.t >= z.T || this.result) {
@@ -1734,7 +1813,9 @@ export class World {
       if (S.block && (opp.dash || opp.blink)) {
         opp.dash = opp.blink = null;
         const dmg = this.hurt(opp, (S.dmg * t.blade.atk) / opp.blade.def, t, S.id);
-        this.knock(opp, (opp.x - z.x) / (d || 1), (opp.z - z.z) / (d || 1), 8, S.stun, 1);
+        this.lift(opp, S.blockUp);
+        opp.ground = Math.max(opp.ground, S.groundT);
+        this.slowBy(opp, S.groundT, S.slowPct);
         this.emit('strike', { top: opp, src: t, skill: S, x: opp.x, z: opp.z, dmg });
       }
     }
@@ -1845,13 +1926,18 @@ export class World {
       if (D.liftUp) { this.lift(v, D.liftUp); s.shield = D.shield; s.shieldT = D.hold; }
       // Carried along the line of the charge, toward whatever wall is there.
       if (D.carry && !fixed(v)) { const k = Math.hypot(v.vx, v.vz); v.vx = h.dx * k; v.vz = h.dz * k; v.pin = D.carry; v.launch = Math.max(v.launch, 1); }
-    } else if (a.empower > 0 !== b.empower > 0 && (a.empower > 0 ? a : b).blade.emp) {
-      const s = a.empower > 0 ? a : b, v = this.other(s), E = s.blade.emp;
+    } else if (a.empower > 0 !== b.empower > 0 && ((a.empower > 0 ? a : b).empS || (a.empower > 0 ? a : b).blade.emp)) {
+      const s = a.empower > 0 ? a : b, v = this.other(s), E = s.empS || s.blade.emp;
       kind = 'empower'; power += 10;
       thrown(s, v, E.kb, 0.45);
-      s.empower = 0; s.stats.skillHits++;
+      // Some skills empower more than one hit.
+      if (s.empN > 1) s.empN--; else { s.empower = 0; s.empN = 0; }
+      s.stats.skillHits++;
       bonus(s, v, E.bonus, 1);
       this.affect(s, v, E, 0, 0, false);
+      if (E.hitHeal) this.mend(s, E.hitHeal * s.spinMax);
+      // Landing it opens the follow-up on the same key.
+      if (E.re) { const k = this.keyOf(s, E.id); if (k) s.re[k] = E.window; }
     } else {
       special = false;
     }
@@ -1881,6 +1967,10 @@ export class World {
     a.stats.clashes++; b.stats.clashes++;
     dmgA = this.hurt(a, dmgA, b, kind);
     dmgB = this.hurt(b, dmgB, a, kind);
+    for (const [s, v] of [[a, b], [b, a]]) {
+      const N = s.blade.nailPop;
+      if (N && v.tag > 0 && !this.result) { const d2 = this.hurt(v, (N[v.tag - 1] * s.blade.atk) / v.blade.def, s, 'nails'); v.tag = v.tagT = 0; this.emit('strike', { top: v, src: s, skill: SKILLS.nails, x: v.x, z: v.z, dmg: d2 }); }
+    }
     // A mark that a body hit sets off as well as a skill.
     for (const [s, v] of [[a, b], [b, a]]) {
       if (v.mark > 0 && s.blade.markOnClash) { v.mark = 0; const d2 = this.hurt(v, (SKILLS.sigil.pop * s.blade.atk) / v.blade.def, s, 'sigil'); this.emit('strike', { top: v, src: s, skill: SKILLS.sigil, x: v.x, z: v.z, dmg: d2 }); }
@@ -1980,7 +2070,9 @@ export class World {
     if (S.chain) this.pull(v, o, S.pull, S.pullDist);
     // TIMEWINDER stops where it hits and hangs there as a slowing field.
     if (S.crawl && !p.back && !p.crawl) { p.crawl = true; p.speed = S.crawl; p.left = S.crawl * S.linger; }
+    o.x2 = !!p.x2;
     this.affect(o, v, S, p.dx, p.dz);
+    o.x2 = false;
     if (S.id === 'galeq') { o.stack = Math.min(S.stacks, o.stack + 1); o.stackT = S.keep; }
     if (S.id === 'flourish' && scarred) this.stun(v, S.root);
     if (S.tie) {

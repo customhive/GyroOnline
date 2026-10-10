@@ -944,7 +944,11 @@ export class View {
     }
     for (const t of w.tops) {
       const v = this.tops[t.side], c = this.colorOf(t), gy = groundY(t.x, t.z);
-      if (t.charge && (t.charge.skill.kind === 'beam' || t.charge.skill.kind === 'shot')) {
+      if (t.charge && t.charge.skill.kind === 'cone') {
+        const S = t.charge.skill, ch = t.charge, col = this.dangerOf(t), a = Math.atan2(ch.dz, ch.dx);
+        G.sector(t.x, t.z, ch.dx, ch.dz, S.range, S.half, col, 0.12, 0.85);
+        G.ring(t.x, t.z, 0, S.range * Math.min(1, ch.t / ch.T), col, 0.25, 0.09, a - S.half, a + S.half);
+      } else if (t.charge && (t.charge.skill.kind === 'beam' || t.charge.skill.kind === 'shot')) {
         // The lane a beam is about to fill.
         const S = t.charge.skill, ch = t.charge, k = Math.min(1, ch.t / ch.T), col = this.dangerOf(t);
         const len = Math.min(S.range, toWall(t.x, t.z, ch.dx, ch.dz));
@@ -1009,6 +1013,8 @@ export class View {
         G.ring(foe.x, foe.z, 2.0, 2.2, BLOOD, 0.9, 0.1, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * k);
       }
       if (foe.mark > 0) G.ring(foe.x, foe.z, 1.6, 1.85, c, 0.6 + 0.3 * Math.sin(this.time * 12));
+      // Marked for execution: the ring drains with the time left.
+      if (foe.doom > 0) { G.ring(foe.x, foe.z, 2.0, 2.2, BLOOD, 0.9, 0.1, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * (foe.doom / 5)); G.ring(foe.x, foe.z, 0, 0.3, BLOOD, 0.9, 0.12); }
       for (let i = 0; i < foe.tag; i++) { const a = -Math.PI / 2 + (i - (foe.tag - 1) / 2) * 0.42; G.ring(foe.x + Math.cos(a) * 2.1, foe.z + Math.sin(a) * 2.1, 0, 0.2, 0xffffff, 0.95, 0.12); }
       if (foe.bleed > 0) for (let i = 0; i < foe.bleed; i++) { const a = -Math.PI / 2 + (i - (foe.bleed - 1) / 2) * 0.42; G.ring(foe.x + Math.cos(a) * 2.1, foe.z + Math.sin(a) * 2.1, 0, 0.2, BLOOD, 0.95, 0.12); }
       // Where a return trip would end.
@@ -1118,6 +1124,7 @@ export class View {
       return true;
     }
     if (z.kind === 'undertowz') { G.ring(z.x, z.z, 0.9, 1.05, c, 0.7); G.ring(z.x, z.z, 0, 0.9 * k, c, 0.25); if (dt > 0 && Math.random() < 0.5) speck(c, 2, -2); return true; }
+    if (z.kind === 'hshock') { G.lane(z.x, z.z, z.dx, z.dz, S.range + 1.2, S.radius, col, 0.1 + 0.08 * Math.sin(this.time * 20), 0.85); G.rect(z.x, z.z, z.dx, z.dz, (S.range + 1.2) * k, S.radius, col, 0.25); return true; }
     if (z.kind === 'feather') { G.ring(z.x, z.z, 0, 0.3, c, 0.95 * fade, 0.12); G.ring(z.x, z.z, 0.5, 0.6, c, 0.45 * fade); return true; }
     if (z.kind === 'keg') { G.ring(z.x, z.z, S.aoe - 0.06, S.aoe, col, mine ? 0.35 : 0.2); G.ring(z.x, z.z, 1.3, 1.45, col, 0.7); return true; }
     if (z.kind === 'purgatory') {

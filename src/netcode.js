@@ -8,7 +8,7 @@
 import { SKILLS, KEYS } from './config.js';
 import { initZone } from './sim.js';
 
-export const PROTOCOL = 9;
+export const PROTOCOL = 10;
 export const PKT_SNAPSHOT = 1, PKT_PING = 2, PKT_PONG = 3;
 
 const SKILL_IDS = Object.keys(SKILLS);
@@ -45,11 +45,11 @@ class Reader {
 function writeTop(w, t) {
   w.i16(t.x * POS); w.i16(t.z * POS); w.i16(t.vx * VEL); w.i16(t.vz * VEL);
   w.u16(t.spin * 50); w.u8(t.ult >= 100 ? ULT_FULL : Math.min(ULT_FULL - 1, Math.floor(t.ult * 2.5)));
-  w.u8(t.tumble * 100); w.u8(t.launch * 100); w.u8(t.guard * 100); w.u8(t.slow * 50); w.u8(t.hitCd * 1000); w.u8(t.empower * 50);
+  w.u8(t.tumble * 100); w.u8(t.launch * 80); w.u8(t.guard * 100); w.u8(t.slow * 50); w.u8(t.hitCd * 1000); w.u8(t.empower * 50);
   w.f32(t.phase);
   for (const k of KEYS) w.u16(t.cd[k] * 1000);
   w.u16(t.projN); w.u16(t.zoneN);
-  w.u8(t.frost * 50); w.u8(t.up * 100); w.u8(t.ground * 100); w.u8(t.mark * 50); w.u8(t.scar * 80); w.u8(t.poison * 100);
+  w.u8(t.frost * 50); w.u8(Math.ceil(t.doom * 40)); w.u8(t.markK); w.u8(t.empN); w.u8(t.empS ? skillNo(t.empS) + 1 : 0); w.u8(t.up * 100); w.u8(t.ground * 100); w.u8(t.mark * 50); w.u8(t.scar * 80); w.u8(t.poison * 100);
   w.u8(t.bleed | (t.last << 4)); w.u8(t.bleedT * 25); w.u8(t.shield); w.u8(t.shieldT * 50); w.u8(t.buff * 20);
   w.u8(t.stack); w.u8(t.stackT * 20); w.u8(t.dmark * 60); w.u16(t.dacc * 50); w.u8(t.egg * 60); w.u8(t.eggHp);
   for (const k of KEYS) w.u8(Math.ceil(t.re[k] * 20)); // rounded up: an open window must not arrive closed
@@ -86,11 +86,14 @@ function readTop(r, t) {
   t.spin = r.u16() / 50;
   const ult = r.u8();
   t.ult = ult === ULT_FULL ? 100 : ult / 2.5;
-  t.tumble = r.u8() / 100; t.launch = r.u8() / 100; t.guard = r.u8() / 100; t.slow = r.u8() / 50; t.hitCd = r.u8() / 1000; t.empower = r.u8() / 50;
+  t.tumble = r.u8() / 100; t.launch = r.u8() / 80; t.guard = r.u8() / 100; t.slow = r.u8() / 50; t.hitCd = r.u8() / 1000; t.empower = r.u8() / 50;
   t.phase = r.f32();
   for (const k of KEYS) t.cd[k] = r.u16() / 1000;
   t.projN = r.u16(); t.zoneN = r.u16();
-  t.frost = r.u8() / 50; t.up = r.u8() / 100; t.ground = r.u8() / 100; t.mark = r.u8() / 50; t.scar = r.u8() / 80; t.poison = r.u8() / 100;
+  t.frost = r.u8() / 50; t.doom = r.u8() / 40; t.markK = r.u8(); t.empN = r.u8();
+  const es = r.u8();
+  t.empS = es ? skillAt(es - 1) : null;
+  t.up = r.u8() / 100; t.ground = r.u8() / 100; t.mark = r.u8() / 50; t.scar = r.u8() / 80; t.poison = r.u8() / 100;
   const bl = r.u8();
   t.bleed = bl & 15; t.last = bl >> 4;
   t.bleedT = r.u8() / 25; t.shield = r.u8(); t.shieldT = r.u8() / 50; t.buff = r.u8() / 20;

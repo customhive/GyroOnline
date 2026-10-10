@@ -367,7 +367,7 @@ export class UI {
       f.fill.style.transform = `scaleX(${r})`;
       f.ghost.style.transform = `scaleX(${f.ghostV})`;
       // Grey spin: lost, but not gone. It sits just past the end of the bar.
-      const grey = t.blade.grey ? Math.min(1 - r, t.store / t.spinMax) : 0;
+      const grey = t.blade.grey || t.blade.ignite ? Math.min(1 - r, t.store / t.spinMax) : 0;
       f.grey.style.width = grey * 100 + '%';
       f.grey.style[this.slot(t) === 0 ? 'left' : 'right'] = r * 100 + '%';
       f.num.textContent = Math.ceil(Math.max(0, t.spin) * 3.6) + ' rpm';
@@ -438,7 +438,7 @@ export class UI {
     if (S.casts) return me.re[key] > 0 ? String(S.casts - me.stack) : '';
     if (S.re) return me.re[key] > 0 ? '↩' : '';
     if (S.permHit) return me.perm ? String(me.perm) : '';
-    if (S.id === 'purgatory') return Math.round((S.line + S.per * me.perm) * 100) + '%';
+    if (S.id === 'purgatory') return ((me.blade.doom.line + me.blade.doom.per * me.perm) * 100).toFixed(1) + '%';
     if (S.storeShield || S.storeHit || (me.blade.grey && key === 'W')) return me.store >= 1 ? String(Math.round(me.store)) : '';
     if (S.perTag) return foe.tag ? '釘' + foe.tag : '';
     if (S.id === 'bladecaller') { const n = world.own(me, 'feather').length; return n ? String(n) : ''; }

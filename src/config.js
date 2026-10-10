@@ -131,10 +131,10 @@ export const BLADES = {
     id: 'hammer', kit: { Q: 'hshock', W: 'steadfast', E: 'hcharge', R: 'verdict' },
     name: 'アイアン・ハンマー', en: 'IRON HAMMER', type: 'DEFENSE', typeJa: 'ディフェンス',
     color: 0x5f8cff, css: '#5f8cff', teeth: 6,
-    atk: 1.16, def: 1.2, mass: 1.3, speed: 12.5, decay: 5.8, spinMax: 1000, cdMul: 1.0, guardMul: 1.0,
+    atk: 1.02, def: 1.15, mass: 1.3, speed: 12.5, decay: 5.9, spinMax: 1000, cdMul: 1.0, guardMul: 1.0,
     bars: { atk: 3, def: 5, sta: 3, spd: 2 },
     pin: { dmg: 40, stun: 1.2 },
-    desc: '相手を壁まで運んでスタンさせ、突進してくる相手は陣で止める。必殺技は場外まで吹き飛ばす一撃。',
+    desc: '相手を壁へ押し込んでスタンさせ、突進してくる相手は陣で止める。溜めた必殺技は相手をほぼ場外まで吹き飛ばす。',
   },
   fox: {
     id: 'fox', kit: { Q: 'orb', W: 'foxfire', E: 'charm', R: 'rush' },
@@ -195,10 +195,10 @@ export const BLADES = {
     id: 'boss', kit: { Q: 'knuckle', W: 'haymaker', E: 'facebreaker', R: 'showstopper' },
     name: 'ブロウラー・キング', en: 'BRAWLER KING', type: 'DEFENSE', typeJa: 'ディフェンス',
     color: 0xf0a060, css: '#f0a060', teeth: 4,
-    atk: 1.0, def: 1.1, mass: 1.3, speed: 13, decay: 5.8, spinMax: 1000, cdMul: 1.0, guardMul: 1.0,
+    atk: 0.88, def: 1.0, mass: 1.3, speed: 13, decay: 6.0, spinMax: 1000, cdMul: 1.0, guardMul: 1.0,
     bars: { atk: 4, def: 4, sta: 3, spd: 2 },
-    store: { taken: 0.45, dealt: 0, max: 140, fade: 6 },
-    desc: '受けたダメージを「気合」として溜め、拳とバリアにして返す。必殺技は相手を掴んで叩きつける。',
+    store: { taken: 1, dealt: 0, max: 110, fade: 10 },
+    desc: '受けたダメージを「闘魂」として溜め、拳とバリアにして返す。必殺技は相手を掴んで叩きつける。',
   },
   pirate: {
     id: 'pirate', kit: { Q: 'parrrley', W: 'orange', E: 'keg', R: 'barrage' },
@@ -214,7 +214,11 @@ export const BLADES = {
     color: 0xb8b0a8, css: '#b8b0a8', teeth: 3,
     atk: 1.2, def: 0.94, mass: 0.95, speed: 15.5, decay: 6.9, spinMax: 1000, cdMul: 1.0, guardMul: 1.0,
     bars: { atk: 5, def: 2, sta: 2, spd: 5 },
-    desc: '釘を刺して鈍らせ、弱った相手を封印具で処刑する。封印具を拾うたび、処刑ラインが試合中ずっと上がる。',
+    nailPop: [20, 45, 80],
+    doom: { line: 0.12, per: 0.005, max: 12 },
+    ignite: { pay: 0.02, bonus: 30 },
+    store: { taken: 1, dealt: 0, max: 120, fade: 0, whileBuff: true },
+    desc: '釘を刺して鈍らせ、弱った相手を封印具で処刑する。',
   },
   prism: {
     id: 'prism', kit: { Q: 'binding', W: 'barrier', E: 'singularity', R: 'finalspark' },
@@ -279,10 +283,11 @@ export const BLADES = {
     id: 'glaive', kit: { Q: 'darkglaive', W: 'dreaded', E: 'aureate', R: 'grim' },
     name: 'アンサンダード・グレイヴ', en: 'UNSUNDERED GLAIVE', type: 'DEFENSE', typeJa: 'ディフェンス',
     color: 0xe8b84a, css: '#e8b84a', teeth: 4,
-    atk: 0.95, def: 1.05, mass: 1.2, speed: 13.5, decay: 5.8, spinMax: 1000, cdMul: 1.0, guardMul: 1.0,
+    atk: 0.76, def: 0.9, mass: 1.2, speed: 13.5, decay: 7.4, spinMax: 1000, cdMul: 1.0, guardMul: 1.0,
     bars: { atk: 4, def: 4, sta: 4, spd: 2 },
-    ramp: { per: 0.01, max: 10 },
-    desc: 'スキルを当てるたびに与えるダメージが1%ずつ上がっていく（ラウンド中、最大10回）。長期戦ほど強い。',
+    ramp: { per: 0.008, max: 12, expire: 5 },
+    egg: { dur: 3, hp: 150, back: 0.5, needStack: 12 },
+    desc: '攻撃を当て続けるほど強くなる（5秒当てないと消える）。12回ぶん溜まった状態なら、回転が尽きても一度だけ復活する。',
   },
   lunar: {
     id: 'lunar', kit: { Q: 'calibrum', W: 'infernum', E: 'gravitum', R: 'vigil' },
@@ -321,9 +326,8 @@ export const BLADES = {
     id: 'arcane', kit: { Q: 'mystic', W: 'flux', E: 'arcshift', R: 'trueshot' },
     name: 'アーケイン・シューター', en: 'ARCANE SHOOTER', type: 'ATTACK', typeJa: 'アタック',
     color: 0x6ae0ff, css: '#6ae0ff', teeth: 4,
-    atk: 1.45, def: 1.08, mass: 0.92, speed: 15, decay: 6.0, spinMax: 1000, cdMul: 1.0, guardMul: 1.0,
+    atk: 1.58, def: 1.1, mass: 0.92, speed: 15, decay: 5.9, spinMax: 1000, cdMul: 1.0, guardMul: 1.0,
     bars: { atk: 5, def: 1, sta: 2, spd: 4 },
-    markOnClash: true,
     desc: 'Qを当てるほど他のスキルが早く戻ってくる。当て続けることが強さになる射撃型。',
   },
 };
@@ -564,7 +568,7 @@ export const SKILLS = {
   mimic: {
     name: '再演', en: 'MIMIC', aim: 'self', cd: 2, ult: true,
     dur: 2.8,
-    desc: '【必殺技】直前に使ったスキルを、威力を40%上げてもう一度使う。跳躍を再演した場合は、それ専用の鏡像へ戻れる。',
+    desc: '【必殺技】直前に使ったスキルを、威力を40%上げてもう一度使う。印の弾を再演すると、その印は2倍の威力で炸裂する。跳躍を再演した場合は、それ専用の鏡像へ戻れる。',
   },
   // ---- GUILLOTINE LORD: bleed them, then end it ------------------------------------
   decimate: {
@@ -656,24 +660,32 @@ export const SKILLS = {
   },
   // ---- IRON HAMMER: walls are weapons ----------------------------------------
   hshock: {
-    name: 'ハンマーショック', en: 'HAMMER SHOCK', aim: 'ground', kind: 'blast', icon: 'blast', cd: 6,
-    tele: 0.2, range: 5.5, aoe: 2.6, delay: 0.3, twice: 0.9, dmg: 40, slow: 1,
-    desc: '床を叩いてスロウにし、同じ場所が少し遅れてもう一度爆発する。',
+    name: 'ハンマーショック', en: 'HAMMER SHOCK', aim: 'line', icon: 'beam', cd: 4, ai: 'cone',
+    tele: 0.2, range: 4.3, radius: 1.3, half: 0.3, dmg: 34, slow: 1, slowPct: 0.32, delay: 1,
+    desc: '目の前の地面を一直線に叩いてスロウにする。1秒後、同じ場所がもう一度爆発する。',
   },
   steadfast: {
-    name: '不動の陣', en: 'STEADFAST PRESENCE', aim: 'self', kind: 'field', icon: 'shield', cd: 12,
-    follow: true, block: true, dur: 2.5, aoe: 4, dmg: 22, stun: 0.5, haste: 2.5,
-    desc: '2.5秒間、自分の周りに陣を張って加速する。陣の中で突進・瞬間移動した相手を止めて弾き返す。',
+    name: 'ステッドファスト', en: 'STEADFAST PRESENCE', aim: 'self', kind: 'field', icon: 'shield', cd: 12,
+    follow: true, block: true, dur: 2, aoe: 4, dmg: 24, blockUp: 0.3, groundT: 2, slowPct: 0.25, haste: 2,
+    desc: '2秒間加速し、自分の周りに陣を張る。陣に突進・瞬間移動で触れた相手を打ち上げ、2秒間スロウにして突進を封じる。',
   },
   hcharge: {
-    name: 'ヒロイックチャージ', en: 'HEROIC CHARGE', aim: 'dash', kind: 'dash', icon: 'dash', cd: 9,
-    tele: 0.4, dist: 7, minDist: 3, speed: 34, dmg: 30, kb: 14, carry: 0.9,
-    desc: '突進して相手を進行方向へ運ぶ。そのまま壁に叩きつけるとスタンと追加ダメージ。',
+    name: 'ヒロイックチャージ', en: 'HEROIC CHARGE', aim: 'dash', kind: 'dash', icon: 'dash', cd: 10,
+    tele: 0.4, dist: 4.75, minDist: 3, speed: 34, dmg: 30, kb: 14, carry: 0.9,
+    desc: '突進して相手を進行方向へ押し出す。そのまま壁に叩きつけるとスタンと追加ダメージ。',
   },
   verdict: {
-    name: '裁きの一撃', en: "KEEPER'S VERDICT", aim: 'line', kind: 'beam', icon: 'beam', cd: 2, ult: true,
-    tele: 0.2, charge: 0.7, root: true, armor: 0.5, range: 14, radius: 1.6, dmg: 115, kb: 24, launch: 2,
-    desc: '【必殺技】力を溜めて一直線の衝撃波を放ち、当たった相手を場外まで吹き飛ばす。',
+    name: '守護者の鉄鎚', en: "KEEPER'S VERDICT", aim: 'line', icon: 'beam', cd: 2, ult: true, ai: 'shot',
+    tele: 0.2, wind: { min: 0.5, full: 1, max: 4 }, tap: 'verdicttap', near: 4, range: 9.5, speed: 40, radius: 1.6,
+    desc: '【必殺技】長押しで溜める（溜め中は少し遅くなり、4秒で不発）。すぐ離すと目の前を打ち上げる。溜めるほど遠くまで届く衝撃波になり、当たった相手をほぼ場外まで吹き飛ばす。',
+  },
+  verdicttap: {
+    name: '守護者の鉄鎚', en: "KEEPER'S VERDICT", aim: 'cone', hidden: true,
+    range: 5, half: 0.6, dmg: 80, up: 0.6,
+  },
+  verdictwave: {
+    name: '守護者の鉄鎚', en: "KEEPER'S VERDICT", aim: 'line', hidden: true,
+    range: 9.5, speed: 40, radius: 1.6, dmg: 90, kb: 40, tumble: 0.9, launch: 3,
   },
   // ---- NINE TAIL CHARM: out, back, and three more times ----------------------
   orb: {
@@ -830,24 +842,24 @@ export const SKILLS = {
   cripplekick: { name: '縛脚', en: 'CRIPPLE', aim: 'self', kind: 'strike', hidden: true, need: 'range', grab: 6.3, dmg: 0, slow: 4, slowPct: 0.75 },
   // ---- BRAWLER KING: take it, then give it back ------------------------------
   knuckle: {
-    name: '拳闘', en: 'KNUCKLE DOWN', aim: 'self', kind: 'buff', icon: 'buff', cd: 6,
-    empower: 4, bonus: 30, kb: 8, haste: 1.5,
-    desc: '加速し、4秒間、次の体当たりを強化する。',
+    name: 'ナックルダウン', en: 'KNUCKLE DOWN', aim: 'self', kind: 'buff', icon: 'buff', cd: 5,
+    empower: 5, empN: 2, bonus: 20, kb: 7, haste: 1.5,
+    desc: '少しの間加速し、5秒以内の次の2回の体当たりを強化する。',
   },
   haymaker: {
-    name: '剛拳', en: 'HAYMAKER', aim: 'cone', kind: 'cone', icon: 'cone', cd: 10,
-    tele: 0.4, range: 7.5, half: 0.4, dmg: 34, storeHit: 0.6, hold: 2.5,
-    desc: '溜まった気合をすべて拳に乗せて殴り、同じ量のバリアを得る。',
+    name: 'ヘイメイカー', en: 'HAYMAKER', aim: 'cone', kind: 'cone', icon: 'cone', cd: 12,
+    tele: 0.2, charge: 0.75, range: 7.9, half: 0.24, core: 0.4, dmg: 30, storeHit: 1, hold: 3,
+    desc: '受けたダメージは「闘魂」として溜まる。0.75秒溜めて、闘魂をすべて乗せた拳を放ち、同じ量のバリアを得る。扇の中心線で当てると相手の防御を無視する。',
   },
   facebreaker: {
-    name: '顔面クラッシュ', en: 'FACEBREAKER', aim: 'self', kind: 'burst', icon: 'grab', cd: 9,
-    aoe: 4.2, dmg: 26, pullIn: 14, stun: 0.7,
-    desc: '周囲の相手を自分のところへ引き寄せてスタンさせる。',
+    name: 'フェイスブレイカー', en: 'FACEBREAKER', aim: 'self', kind: 'burst', icon: 'grab', cd: 10,
+    aoe: 5.5, dmg: 26, pullIn: 14, slow: 0.5, slowPct: 0.7,
+    desc: '周囲の相手を自分のところへ引き寄せ、短い間70%のスロウにする。',
   },
   showstopper: {
-    name: 'ショーストッパー', en: 'THE SHOW STOPPER', aim: 'ground', kind: 'throw', icon: 'leap', cd: 2, ult: true,
-    need: 'range', grab: 3.8, range: 8, aoe: 3.6, air: 0.7, height: 5, dmg: 100, massMul: 0.6, stun: 0.5,
-    desc: '【必殺技】密着した相手を掴み、指定地点へ叩きつける。重い相手ほどダメージが大きい。',
+    name: 'ショーストッパー', en: 'THE SHOW STOPPER', aim: 'self', kind: 'throw', icon: 'leap', cd: 2, ult: true,
+    need: 'range', grab: 5.25, carry: 4, air: 0.7, height: 5, aoe: 3.6, dmg: 100, massMul: 0.6, slow: 1, slowPct: 0.99,
+    desc: '【必殺技】密着した相手を掴み、そのまま向こう側へ運んで叩きつける。重い相手ほどダメージが大きい。叩きつけられた相手は1秒間ほとんど動けない。',
   },
   // ---- POWDER CAPTAIN: kegs first, then the match ----------------------------
   parrrley: {
@@ -872,24 +884,29 @@ export const SKILLS = {
   },
   // ---- ASHEN EXORCIST: nail them down, then seal them away -------------------
   nails: {
-    name: '儀式の釘', en: 'RITUAL NAILS', aim: 'line', kind: 'shot', icon: 'shot', cd: 6,
-    tele: 0.3, re: 'nails', casts: 3, window: 2.5, range: 12, speed: 38, radius: 0.7, dmg: 24, nail: 0.25,
-    desc: '釘を投げる。続けて3本まで投げられ、刺さった本数だけ相手のスロウが強くなる。',
+    name: 'リチュアル・ネイル', en: 'RITUAL NAILS', aim: 'line', kind: 'shot', icon: 'shot', cd: 6, re: 'nails',
+    tele: 0.3, casts: 3, window: 4, refundUnused: 0.2, range: 7.9, speed: 38, radius: 0.7, dmg: 24, pierce: true, nail: true,
+    desc: '貫通する釘を投げ、刺さった相手をスロウにする（2本以上で60%・2秒）。4秒以内なら3本まで投げられ、投げなかった分はクールダウンが戻る。刺さった釘は体当たりかEで引き抜いて追加ダメージ。',
   },
   ignition: {
-    name: '魂の点火', en: 'SOUL IGNITION', aim: 'self', kind: 'buff', icon: 'buff', cd: 11,
-    cost: 40, haste: 4, shield: 70, hold: 4,
-    desc: '回転を少し燃やして4秒間加速し、バリアを得る。',
+    name: 'ソウル・イグニッション', en: 'SOUL IGNITION', aim: 'self', kind: 'buff', icon: 'buff', cd: 14, re: 'soulrelease',
+    dur: 6, haste: 3, window: 6,
+    desc: '6秒間、魂を燃やして加速する。その間は回転を少しずつ失うが、失った分と受けたダメージはゲージに灰色で残り、終わるか、もう一度押すと取り戻せる。',
   },
   pursuit: {
-    name: '灰の追跡', en: 'ASHEN PURSUIT', aim: 'blink', kind: 'blink', icon: 'blink', cd: 8,
-    range: 6, speed: 40, aoe: 3, dmg: 34, perTag: 24,
-    desc: '瞬間移動して周囲を斬る。相手に刺さった釘を引き抜き、1本ごとに追加ダメージ。',
+    name: '灰塵の追撃', en: 'ASHEN PURSUIT', aim: 'blink', kind: 'blink', icon: 'blink', cd: 10, re: 'pursuit2',
+    range: 4.25, speed: 40, still: true, aoe: 3, dmg: 30, perTag: 24, window: 4,
+    desc: 'ワープして周囲を斬る。4秒以内にもう一度押すと、近くの相手へ飛びかかって殴る。刺さった釘を引き抜いて追加ダメージ。',
   },
   purgatory: {
-    name: '煉獄', en: 'PURGATORY', aim: 'ground', icon: 'cross', cd: 2, ult: true,
-    ai: 'ground', range: 9, aoe: 3.5, dur: 4, dmg: 95, slow: 1.5, line: 0.1, per: 0.02, permMax: 4,
-    desc: '【必殺技】封印具を蹴り込み、範囲内の相手に釘を3本刺す。4秒の間に釘の刺さった相手の回転が処刑ライン（10%）を切ると即KO。封印具を自分で拾うとラインが2%上がる（試合中ずっと、最大18%）。',
+    name: '煉獄', en: 'PURGATORY', aim: 'ground', kind: 'blast', icon: 'cross', cd: 2, ult: true,
+    tele: 0.1, range: 10, aoe: 3.5, delay: 0.75, dmg: 95, slow: 2, slowPct: 0.99, doom: 5,
+    desc: '【必殺技】封印具を投げ込む。範囲内の相手はほとんど動けなくなり、5秒間の印が付く。印の付いた相手は、どこにいても回転が処刑ライン（12%）を切った瞬間に即KO。処刑するたびにラインが0.5%上がり、次のラウンドにも持ち越す。',
+  },
+  soulrelease: { name: '魂の解放', en: 'RELEASE', aim: 'self', hidden: true },
+  pursuit2: {
+    name: '灰塵の追撃', en: 'ASHEN PURSUIT', aim: 'self', kind: 'strike', hidden: true,
+    need: 'range', grab: 5.25, tp: true, dmg: 40, perTag: 24,
   },
   // ---- PRISM RADIANCE: bind, then burn a line across the arena ---------------
   binding: {
@@ -1057,24 +1074,28 @@ export const SKILLS = {
   },
   // ---- UNSUNDERED GLAIVE: stronger with every hit ----------------------------
   darkglaive: {
-    name: 'ダーキングレイヴ', en: 'THE DARKIN GLAIVE', aim: 'self', kind: 'buff', icon: 'buff', cd: 6,
-    empower: 4, bonus: 30, kb: 7, up: 0.4, healMax: 0.025,
-    desc: '回転を少し回復し、4秒間、次の体当たりを強化する。当てると打ち上げる。',
+    name: 'ダーキングレイヴ', en: 'THE DARKIN GLAIVE', aim: 'self', kind: 'buff', icon: 'buff', cd: 6, re: 'glaiveup',
+    empower: 5, bonus: 30, kb: 6, hitHeal: 0.09, window: 4,
+    desc: '5秒間、次の体当たりが二連撃になり、当てると回転を回復する。当てたあと4秒以内にもう一度押すと、次の体当たりが相手を打ち上げる。',
   },
   dreaded: {
-    name: '戦慄の帰還', en: 'DREADED RETURN', aim: 'line', kind: 'shot', icon: 'hook', cd: 8,
-    tele: 0.4, range: 9, speed: 34, radius: 0.9, dmg: 34, chain: true, pull: 16, slow: 0.8,
-    desc: '槍で突き、当たった相手を引き寄せる。',
+    name: '戦慄の再臨', en: 'DREADED RETURN', aim: 'line', kind: 'shot', icon: 'hook', cd: 12,
+    tele: 0.1, charge: 0.5, root: true, range: 6.7, speed: 44, radius: 0.9, dmg: 36, chain: true, pull: 16, stun: 0.15,
+    desc: '0.5秒構えて薙刀を突き出す。当たった相手を一瞬止め、手元へ引き寄せる。',
   },
   aureate: {
-    name: '黄金の突進', en: 'AUREATE RUSH', aim: 'dash', kind: 'dash', icon: 'dash', cd: 8,
-    dist: 5.5, minDist: 3, speed: 34, aoe: 4.2, inner: 2, land: 38, weak: 20,
-    desc: '突進した先で周囲を薙ぐ。外周で当てたほうがダメージが大きい。',
+    name: '絢爛たる進撃', en: 'AUREATE RUSH', aim: 'dash', kind: 'dash', icon: 'dash', cd: 8,
+    dist: 3.5, minDist: 3.5, speed: 34, aoe: 4.2, inner: 2.9, land: 42, weak: 28,
+    desc: '跳んだ先で周囲を薙ぐ。斬撃の外縁で当てるとダメージが50%増える。',
   },
   grim: {
-    name: '冷酷な救済', en: 'GRIM DELIVERANCE', aim: 'leap', kind: 'leap', icon: 'leap', cd: 2, ult: true,
-    range: 8, air: 0.8, height: 6, aoe: 4, dmg: 115, kb: 10, healHit: 0.2,
-    desc: '【必殺技】跳び上がって突き下ろす。与えたダメージの20%ぶん回転が回復する。',
+    name: '無慈悲なる裁き', en: 'GRIM DELIVERANCE', aim: 'leap', kind: 'leap', icon: 'leap', cd: 2, ult: true,
+    range: 6, air: 0.8, height: 6, aoe: 4, dmg: 115, kb: 10, healHit: 0.33,
+    desc: '【必殺技】跳び上がって突き下ろす。与えたダメージの33%ぶん回転が回復する。',
+  },
+  glaiveup: {
+    name: 'ダーキングレイヴ', en: 'THE DARKIN GLAIVE', aim: 'self', kind: 'buff', hidden: true,
+    empower: 5, bonus: 30, kb: 5, up: 0.45,
   },
   // ---- LUNAR ARSENAL: a gun for every range ----------------------------------
   calibrum: {
@@ -1168,13 +1189,13 @@ export const SKILLS = {
   },
   flux: {
     name: 'エッセンスフラックス', en: 'ESSENCE FLUX', aim: 'line', kind: 'shot', icon: 'orb', cd: 8,
-    tele: 0.4, range: 9.7, speed: 36, radius: 0.9, dmg: 18, mark: 4,
-    desc: '印を付ける弾。印は次にスキルか体当たりが当たると炸裂する。',
+    tele: 0.4, range: 9.7, speed: 36, radius: 0.9, dmg: 26, mark: 4,
+    desc: '印を付ける弾。印は次にスキルが当たると炸裂する。',
   },
   arcshift: {
     name: 'アーケインシフト', en: 'ARCANE SHIFT', aim: 'blink', kind: 'blink', icon: 'blink', cd: 14,
-    range: 4.75, speed: 40, bolt: 'arcbolt', n: 1,
-    desc: '瞬間移動し、移動先から相手を自動で狙う弾を撃つ。',
+    range: 4.75, speed: 40, still: true, bolt: 'arcbolt', n: 1,
+    desc: '瞬間移動する（相手もすり抜ける）。移動先でぴたりと止まり、相手を自動で狙う弾を撃つ。',
   },
   arcbolt: {
     name: '魔弾', en: 'ARCANE BOLT', aim: 'line', hidden: true,

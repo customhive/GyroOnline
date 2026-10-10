@@ -267,8 +267,14 @@ console.log('ARCANE SHOOTER (Ezreal)');
   ({ w, me, foe, run, saw } = setup('arcane', 6));
   w.cast(me, 'W', foe.x, foe.z); run(0.3);
   check(foe.mark > 3, 'W: marks the target for 4 seconds');
-  const f0 = foe.spin; me.x = foe.x; me.z = foe.z + 2.4; me.vz = -6; for (let i = 0; i < 20; i++) w.step(DT);
-  check(foe.mark === 0 && f0 - foe.spin > 30, 'W: a body hit sets the mark off');
+  me.x = foe.x; me.z = foe.z + 2.4; me.vz = -6; for (let i = 0; i < 20; i++) w.step(DT);
+  check(foe.mark > 0, 'W: a body hit does not set the mark off');
+  me.x = 0; me.z = 3; foe.x = 0; foe.z = -3; foe.vx = foe.vz = me.vx = me.vz = 0; me.tumble = 0; me.cd.Q = 0;
+  const f0 = foe.spin; w.cast(me, 'Q', foe.x, foe.z); for (let i = 0; i < 30; i++) w.step(DT);
+  check(foe.mark === 0 && f0 - foe.spin > 70, 'W: a skill does');
+  ({ w, me, foe, run, saw } = setup('arcane', 3));
+  w.cast(me, 'E', foe.x, foe.z - 3); for (let i = 0; i < 60 && (me.blink || i < 2); i++) w.step(DT);
+  check(me.z < foe.z && Math.hypot(me.vx, me.vz) < 2, 'E: passes through the target and arrives standing still');
   ({ w, me, foe, run, saw } = setup('arcane', 10));
   w.cast(me, 'R', foe.x, foe.z); run(0.9);
   check(!!me.charge && w.projectiles.length === 0, 'R: a full second of lining up first');
@@ -414,6 +420,134 @@ console.log('DRAGON STRIKER (Lee Sin)');
   me.x = 2.6; me.z = foe.z; foe.x = 0;
   w.cast(me, 'R', 99, 99);
   check(foe.vx < -8 && Math.abs(foe.vz) < 1, 'R: kicks straight away from Lee, whatever the cursor says');
+}
+
+console.log('MIRAGE TRICK: mimicked sigil');
+{
+  const pop = (viaR) => { const s = setup('mirage', 5); if (viaR) { s.me.last = 0; s.w.cast(s.me, 'R', s.foe.x, s.foe.z); s.me.buff = 0; } else s.w.cast(s.me, 'Q', s.foe.x, s.foe.z); s.run(0.3); const f = s.foe.spin; s.w.affect(s.me, s.foe, {}, 0, 0); return f - s.foe.spin; };
+  const one = pop(false), two = pop(true);
+  check(Math.abs(two - one * 2) < 2, `R on Q: the mark goes off twice as hard (${one.toFixed(0)} -> ${two.toFixed(0)})`);
+}
+
+console.log('IRON HAMMER (Poppy)');
+{
+  let { w, me, foe, run, saw } = setup('hammer', 5);
+  w.cast(me, 'Q', foe.x, foe.z);
+  const f0 = foe.spin; run(0.05);
+  check(foe.slowK === 0.32, 'Q: the first blow lands at once and slows 32%');
+  const f1 = foe.spin; run(0.9); const quiet = f1 - foe.spin; run(0.15);
+  check(quiet < 12 && f1 - foe.spin > 30, 'Q: the same ground bursts again a second later');
+  ({ w, me, foe, run, saw } = setup('hammer', 6));
+  w.cast(me, 'W', me.x, me.z);
+  foe.dash = { dx: 0, dz: 1, speed: 30, t: 0.5, skill: SKILLS.blitz, hit: false, len: 9 };
+  for (let i = 0; i < 20; i++) w.step(DT);
+  check(!foe.dash && foe.ground > 1.5 && foe.slowK === 0.25, 'W: a dash into the ward is stopped, grounded for 2 seconds and slowed 25%');
+  ({ w, me, foe, run, saw } = setup('hammer', 4));
+  foe.x = 0; foe.z = -10.3; me.x = 0; me.z = -6.5;
+  w.cast(me, 'E', foe.x, foe.z); for (let i = 0; i < 60; i++) w.step(DT);
+  check(foe.stun > 0, 'E: driven into the wall, the target is stunned');
+  ({ w, me, foe, run, saw } = setup('hammer', 6));
+  w.hold(me, 'R'); run(0.2); w.cast(me, 'R', foe.x, foe.z);
+  check(!w.projectiles.length && me.ult === 0, 'R tapped: no wave, and the charge is spent');
+  ({ w, me, foe, run, saw } = setup('hammer', 4.4));
+  w.hold(me, 'R'); run(0.2); w.cast(me, 'R', foe.x, foe.z);
+  check(foe.up > 0.5, 'R tapped: knocks up what is right in front');
+  ({ w, me, foe, run, saw } = setup('hammer', 10));
+  w.hold(me, 'R'); run(1.1); w.cast(me, 'R', foe.x, foe.z);
+  check(w.projectiles.length === 1 && Math.abs(w.projectiles[0].left - 9.5) < 0.01, 'R held: a wave with the reach wound up');
+  for (let i = 0; i < 200 && !w.result; i++) w.step(DT);
+  check(w.result && w.result.kind === 'over' && w.result.winner === me, 'R held: the target is thrown out of the ring');
+  ({ w, me, foe, run, saw } = setup('hammer', 20));
+  w.hold(me, 'R'); run(4.1);
+  check(!me.hold && me.ult >= 50 && me.ult < 51, 'R held 4 seconds: wasted, at the cost of half the charge');
+}
+
+console.log('BRAWLER KING (Sett)');
+{
+  let { w, me, foe, run, saw } = setup('boss', 2.6);
+  w.cast(me, 'Q', me.x, me.z);
+  check(me.empN === 2 && me.haste > 0, 'Q: two empowered hits, and haste');
+  me.vz = -8; for (let i = 0; i < 30; i++) w.step(DT);
+  check(me.empN === 1 && me.empower > 0, 'Q: the first hit leaves one more');
+  ({ w, me, foe, run, saw } = setup('boss', 6));
+  w.hurt(me, 80, foe, 'x');
+  check(Math.abs(me.store - 80) < 1, 'W: all damage taken is banked as grit');
+  w.cast(me, 'W', foe.x, foe.z); run(0.7);
+  check(!!me.charge, 'W: 0.75 seconds of wind-up');
+  const f0 = foe.spin; run(0.1);
+  const centre = f0 - foe.spin;
+  check(centre > 85 && me.shield > 70 && me.store === 0, 'W: the grit goes out with the punch and comes back as a shield');
+  ({ w, me, foe, run, saw } = setup('boss', 6));
+  w.hurt(me, 80, foe, 'x'); w.cast(me, 'W', foe.x + 1.2, foe.z); const f1 = foe.spin; run(0.8);
+  check(f1 - foe.spin > 20 && f1 - foe.spin < centre * 0.9, `W: off the centre line the target's defence still counts (${centre.toFixed(0)} vs ${(f1 - foe.spin).toFixed(0)})`);
+  ({ w, me, foe, run, saw } = setup('boss', 5));
+  w.cast(me, 'E', me.x, me.z);
+  check(foe.slowK === 0.7 && foe.stun === 0 && foe.vz > 3, 'E: pulled in and slowed 70%, but not stunned one on one');
+  ({ w, me, foe, run, saw } = setup('boss', 3));
+  w.cast(me, 'R', 99, 99);
+  check(foe.air && foe.air.tz < foe.z - 3, 'R: the target is carried on past where it stood');
+  for (let i = 0; i < 100; i++) w.step(DT);
+  check(foe.slowK === 0.99 || foe.spin < foe.spinMax - 80, 'R: slammed down, hurt and barely able to move');
+}
+
+console.log('ASHEN EXORCIST (Locke)');
+{
+  let { w, me, foe, run, saw } = setup('ash', 6);
+  w.cast(me, 'Q', foe.x, foe.z); run(0.25);
+  check(foe.tag === 1 && foe.slowK === 0.25 && me.re.Q > 3, 'Q: one nail, a light slow, and two more to throw');
+  w.cast(me, 'Q', foe.x, foe.z); run(0.25);
+  check(foe.tag === 2 && foe.slowK === 0.6, 'Q: with two nails in, the slow is 60%');
+  ({ w, me, foe, run, saw } = setup('ash', 20));
+  w.cast(me, 'Q', foe.x, foe.z); const cd0 = me.cd.Q; run(4.1);
+  check(Math.abs(me.cd.Q - (cd0 - 4.1) * 0.6) < 0.2, 'Q: two nails left unthrown give back 40% of the cooldown');
+  ({ w, me, foe, run, saw } = setup('ash', 2.6));
+  foe.tag = 3; foe.tagT = 4; const f0 = foe.spin; me.vz = -8; for (let i = 0; i < 30; i++) w.step(DT);
+  check(foe.tag === 0 && f0 - foe.spin > 70, 'Q: a body hit tears the nails out for extra damage');
+  ({ w, me, foe, run, saw } = setup('ash', 20));
+  me.spin = 800; w.cast(me, 'W', me.x, me.z); run(1);
+  const paid = me.store; w.hurt(me, 50, foe, 'x');
+  check(paid > 10 && me.haste > 0 && Math.abs(me.store - paid - 50) < 1, 'W: spin is burned and banked, and so is damage taken');
+  const s0 = me.spin; w.cast(me, 'W', me.x, me.z);
+  check(me.buff === 0 && me.store === 0 && me.spin > s0 + paid + 50, 'W again: it ends and everything banked comes back, and more');
+  ({ w, me, foe, run, saw } = setup('ash', 10));
+  w.cast(me, 'E', foe.x, foe.z); for (let i = 0; i < 60 && (me.blink || i < 2); i++) w.step(DT);
+  check(me.re.E > 3 && Math.hypot(me.vx, me.vz) < 2, 'E: a warp that arrives standing still, with a follow-up for 4 seconds');
+  ({ w, me, foe, run, saw } = setup('ash', 6));
+  w.cast(me, 'R', foe.x, foe.z); run(0.7);
+  check(foe.doom === 0, 'R: nothing for the first three quarters of a second');
+  run(0.1);
+  check(foe.doom > 4.5 && foe.slowK === 0.99, 'R: then damage, a near-total slow and a 5-second mark');
+  foe.x = 9; foe.z = 6; foe.spin = foe.spinMax * 0.11; run(0.05);
+  check(w.result && w.result.winner === me && me.perm === 1, 'R: marked and under 12%, it is executed wherever it is, and the line rises');
+  w.resetRound();
+  check(me.perm === 1, 'R: the raised line carries into the next round');
+}
+
+console.log('UNSUNDERED GLAIVE (Zaahen)');
+{
+  let { w, me, foe, run, saw } = setup('glaive', 2.6);
+  me.spin = 500; w.cast(me, 'Q', me.x, me.z); me.vz = -8; for (let i = 0; i < 30; i++) w.step(DT);
+  check(me.spin > 550 && me.re.Q > 3 && foe.up === 0, 'Q: the hit heals 9% and opens the follow-up');
+  me.x = 0; me.z = 1.3; foe.x = 0; foe.z = -1.3; me.vx = me.vz = foe.vx = foe.vz = 0; me.tumble = 0; me.hitCd = foe.hitCd = 0;
+  w.cast(me, 'Q', me.x, me.z); me.vz = -8; for (let i = 0; i < 30; i++) w.step(DT);
+  check(foe.up > 0 || saw('say', (e) => e.text === 'KNOCK UP'), 'Q again: the next hit knocks up');
+  ({ w, me, foe, run, saw } = setup('glaive', 6));
+  w.cast(me, 'W', foe.x, foe.z); run(0.45);
+  check(!!me.charge && !w.projectiles.length, 'W: half a second of wind-up');
+  run(0.3);
+  check(foe.vz > 3 || saw('projHit'), 'W: then the thrust, which drags the target in');
+  ({ w, me, foe, run, saw } = setup('glaive', 3));
+  for (let i = 0; i < 12; i++) w.hurt(foe, 10, me, 'x');
+  check(me.stack === 12, 'growth: twelve hits is the peak');
+  const a = w.hurt(foe, 100, me, 'y');
+  check(a > 100 * 1.15, `growth: at the peak the bonus is doubled (${a.toFixed(0)} for 100)`);
+  me.spin = 5; w.hurt(me, 50, foe, 'x'); w.step(DT);
+  check(me.egg > 0 && !w.result, 'at the peak, running out of spin is not the end');
+  for (let i = 0; i < 380; i++) { w.step(DT); foe.x = 0; foe.z = -10; }
+  check(me.egg === 0 && me.spin > 400 && !w.result, 'it comes back with half its spin');
+  ({ w, me, foe, run, saw } = setup('glaive', 3));
+  me.spin = 5; w.hurt(me, 50, foe, 'x'); w.step(DT);
+  check(w.result && w.result.winner === foe, 'without the stacks there is no second life');
 }
 
 console.log(bad ? `\n${bad} of ${n} checks failed` : `\nall ${n} checks passed`);

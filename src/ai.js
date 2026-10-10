@@ -335,6 +335,9 @@ export class CpuBrain {
         case 'foxfire':
           if (d < S.seek + 2 && want()) return go();
           break;
+        case 'soulrelease':
+          if ((me.store > 70 || spinRatio(me) < 0.3) && want()) return go();
+          break;
         case 'strike': case 'realm':
           if (want(0.3)) return go();
           break;
