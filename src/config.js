@@ -1420,9 +1420,9 @@ export const SKILLS = {
     empower: 5, bonus: 20, missing: 70, hitHeal: 0.05, kb: 4,
   },
   chillingscream: {
-    name: '呪福の叫び', en: 'CHILLING SCREAM', aim: 'cone', kind: 'cone', icon: 'cone', cd: 16,
-    tele: 0.1, charge: 1, early: true, armor: 0.65, chargeHeal: 0.11, near: 3, range: 5.2, half: 0.6, dmg: 60, slow: 0.5, slowPct: 0.8, kb: 13, tumble: 0.6, pinT: 1,
-    desc: '最大1秒息を吸う（その間は受けるダメージが35%減り、回復する）。もう一度押すか1秒経つと叫び、80%のスロウ。吸い切っていれば吹き飛ばし、壁に当たった相手はスタンして追加ダメージ。使うと狂乱が止まる。',
+    name: '呪福の叫び', en: 'CHILLING SCREAM', aim: 'line', kind: 'beam', icon: 'cone', cd: 16,
+    tele: 0.1, wind: { min: 0.15, full: 1, max: 1, auto: true }, armor: 0.65, chargeHeal: 0.11, near: 3, range: 5.2, radius: 2.2, dmg: 60, slow: 0.5, slowPct: 0.8, kb: 13, tumble: 0.6, pinT: 1,
+    desc: 'キーを押している間、最大1秒息を吸う（その間は受けるダメージが35%減り、回復する）。離すか1秒経つと、目の前の幅広い範囲へ叫び、80%のスロウ。長く吸うほど遠くまで届く。吸い切っていれば吹き飛ばし、壁に当たった相手はスタンして追加ダメージ。使うと狂乱が止まる。',
   },
   certaindeath: {
     name: '迫りくる死', en: 'CERTAIN DEATH', aim: 'line', icon: 'star', cd: 2, ult: true, ai: 'shot',

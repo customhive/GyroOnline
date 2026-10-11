@@ -42,6 +42,7 @@ const game = {
   dragPt: null,        // the first point of a skill aimed with two
   rapidKey: null,      // a held-to-fire key; it keeps firing while other skills are aimed and cast
   cursor: { sx: innerWidth / 2, sy: innerHeight / 2, x: 0, z: 0 },
+  holding: false,      // the key being aimed is winding its skill up
   aimT: 0,             // guest: time until the host is next told where a wound-up skill points
   mouseDown: false, moveRepeat: 0,
   ultWasReady: false,
@@ -736,6 +737,9 @@ function doHold(key) {
 // The guest tells the host a few times a second, not every frame.
 function aimHeld(rdt) {
   const me = player();
+  // A wind-up that ended by itself (it went off when full, or was knocked out
+  // of the hands) leaves nothing to let go of.
+  if (!me.hold && game.holding) { game.holding = false; game.aimKey = null; }
   if (!me.hold || game.spectate) { game.aimT = 0; return; }
   refreshCursor();
   game.world.aimHold(me, game.cursor.x, game.cursor.z);
@@ -831,7 +835,7 @@ window.addEventListener('keydown', (e) => {
   refreshCursor();
   game.dragPt = S.drag ? { x: game.cursor.x, z: game.cursor.z } : null;
   // Some skills wind up for as long as the key stays down.
-  if (S.wind) doHold(k);
+  game.holding = !!S.wind && doHold(k);
 });
 window.addEventListener('keyup', (e) => {
   const k = e.key.toUpperCase();

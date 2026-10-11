@@ -1358,14 +1358,22 @@ console.log('CRIMSON HUNGER (Briar)');
   for (let i = 0; i < Math.round(1.2 / DT); i++) { w.step(DT); foe.x = 0; foe.z = -6; foe.vx = foe.vz = 0; }
   check(Math.hypot(me.x - foe.x, me.z - foe.z) < 4, 'W: and runs at whoever is nearest by itself');
   check(w.aimSkill(me, 'W').id === 'snackattack' && w.cast(me, 'W', me.x, me.z) && me.empower > 0, 'W again: the next bite is a heavier one');
-  w.cast(me, 'E', foe.x, foe.z);
-  check(!!me.charge, 'E: drawing breath');
+  w.hold(me, 'E');
+  check(!!me.hold && !me.charge, 'E: drawing breath for as long as the key is held');
+  const d0 = w.hurt(me, 100, foe, 'x');
+  check(Math.abs(d0 - 65) < 0.5, 'E: 35% less damage meanwhile');
   for (let i = 0; i < Math.round(1.1 / DT); i++) w.step(DT);
-  check(me.buff === 0, 'E: the scream ends the frenzy');
-  const scream = (hold) => { const s2 = setup('hunger', 4); s2.me.spin = 600; s2.w.cast(s2.me, 'E', s2.foe.x, s2.foe.z); const sp = s2.me.spin; s2.run(hold); const healed = s2.me.spin - sp; if (hold < 1) s2.w.cast(s2.me, 'E', s2.foe.x, s2.foe.z); s2.run(0.15, false); return { ...s2, healed }; };
+  check(me.buff === 0 && !me.hold && me.cd.E > 10, 'E: a full breath goes off by itself, and the scream ends the frenzy');
+  const scream = (hold) => { const s2 = setup('hunger', 4); s2.me.spin = 600; s2.w.hold(s2.me, 'E'); s2.w.aimHold(s2.me, s2.foe.x, s2.foe.z); const sp = s2.me.spin; s2.run(hold); const healed = s2.me.spin - sp; if (hold < 1) s2.w.cast(s2.me, 'E', s2.foe.x, s2.foe.z); s2.run(0.15, false); return { ...s2, healed }; };
   const quick = scream(0.3), full = scream(1.0);
   check(quick.foe.stats.taken > 0 && full.foe.stats.taken > quick.foe.stats.taken * 2 && full.healed > quick.healed * 2, 'E: let go early it is weaker; the longer the breath, the more it mends and the harder it hits');
   check(Math.hypot(full.foe.vx, full.foe.vz) > 5 && Math.hypot(quick.foe.vx, quick.foe.vz) < 3 && full.foe.slowK === 0.8, 'E: only a full breath throws its target back; either way an 80% slow');
+  {
+    // A wide strip straight ahead, not a fan: as wide at the feet as at the far end.
+    const at = (x, z, hold) => { const s2 = setup('hunger', 4); s2.foe.x = s2.me.x + x; s2.foe.z = s2.me.z - z; s2.w.hold(s2.me, 'E'); s2.run(hold); s2.w.cast(s2.me, 'E', s2.me.x, s2.me.z - 9); s2.w.step(DT); return s2.foe.stats.taken > 0; };
+    check(at(2.6, 1.5, 0.99) && at(2.6, 4.5, 0.99) && !at(3.6, 3, 0.99), 'E: a strip 2.2 to either side, the same width near and far');
+    check(!at(0, 5.2, 0.2) && at(0, 5.2, 0.99), 'E: it reaches further the longer the breath');
+  }
   ({ w, me, foe, run, saw } = setup('hunger', 18));
   w.cast(me, 'R', foe.x, foe.z); run(0.5, false);
   check(!!me.air && me.buff > 7, 'R: the stone lands across the arena and it flies to whoever it struck');

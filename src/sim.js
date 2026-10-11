@@ -511,8 +511,6 @@ export class World {
   // wind-up to assume. A real hold is timed by the simulation itself.
   // (bx, bz): a second point, for the few skills aimed with two (where, then which way).
   cast(t, key, ax, az, wound = 0, bx, bz) {
-    // A scream being drawn in is let go early by the same key.
-    if (t.charge && t.charge.skill.early && skillOf(t, key) === t.charge.skill && !this.result) { t.charge.pow = t.charge.t / t.charge.T; t.charge.T = t.charge.t; return true; }
     if (!this.canCast(t, key)) return false;
     const base = skillOf(t, key), S = this.aimSkill(t, key);
     const held = t.hold && t.hold.key === key ? t.hold.t : wound;
@@ -739,6 +737,13 @@ export class World {
         t.cmd = null;
         this.emit('charge', { top: t, T: S.charge, skill: S });
         break;
+      case 'chillingscream': {
+        // Let go early it is only a shout; drawn in full it throws its targets back.
+        const pow = clamp(c.held / S.wind.full, 0, 1), full = pow >= 0.99;
+        this.lineHit(t, { ...S, dmg: S.dmg * (0.1 + 0.9 * pow), kb: full ? S.kb : 0, pinT: full ? S.pinT : 0, range: c.reach }, t.x, t.z, c.dx, c.dz);
+        if (t.buff > 0 && t.blade.buff && t.blade.buff.frenzy) t.buff = 0;
+        break;
+      }
       case 'paddle2': {
         // From where the star rests, toward the point given.
         const q = this.own(t, 'reststar')[0];
@@ -1476,6 +1481,8 @@ export class World {
     // STIRRING LIGHTS: the next few hits carry a little more.
     if (foe && from.lights > 0 && kind !== 'dot' && kind !== 'wall') { dmg += (SKILLS.hlights.bonus * from.blade.atk) / t.blade.def; from.lights--; }
     if (t.charge) dmg *= t.charge.skill.armor ?? 1;
+    // Braced while a breath is being drawn.
+    if (t.hold) dmg *= skillOf(t, t.hold.key).armor ?? 1;
     // Asleep: the first blow lands twice over (up to a limit) and wakes it.
     if (foe && t.sleep > 0 && kind !== 'dot') { dmg += Math.min(dmg, (SKILLS.bubble.wake * from.blade.atk) / t.blade.def); t.sleep = 0; t.stun = 0; }
     const B = t.buff > 0 && t.blade.buff;
@@ -1788,6 +1795,17 @@ export class World {
     if (t.hold) {
       const S = skillOf(t, t.hold.key);
       t.hold.t += dt;
+      // Drawing breath: it mends a little all the while.
+      if (S.chargeHeal && !this.result && t.spin > 0) t.spin = Math.min(t.spinMax, t.spin + S.chargeHeal * t.spinMax * dt);
+      // Some go off by themselves when they are full, the way they were last pointed.
+      if (S.wind.auto && t.hold.t >= S.wind.max && !this.result) {
+        let { dx, dz } = t.hold;
+        if (!dx && !dz) { dx = opp.x - t.x; dz = opp.z - t.z; const d = Math.hypot(dx, dz) || 1; dx /= d; dz /= d; }
+        this.cast(t, t.hold.key, t.x + dx * 6, t.z + dz * 6);
+      }
+    }
+    if (t.hold) {
+      const S = skillOf(t, t.hold.key);
       // Held too long, or no longer able to throw: the wind-up is wasted.
       if (t.hold.t >= S.wind.max || this.result || t.spin <= 0 || t.out || t.air || t.egg > 0 || t.up > 0) {
         t.cd[t.hold.key] = (S.wind.cancelCd ?? S.cd) * t.blade.cdMul;
@@ -2010,11 +2028,9 @@ export class World {
     if (S.tip) { const { dx, dz } = t.charge; t.charge = null; this.swing(t, S, dx, dz); return; }
     if (S.kind === 'shot') { const { dx, dz } = t.charge; t.charge = null; if (S.fan) this.fan(t, S, dx, dz, S.fan); else this.fire(t, S, dx, dz); return; }
     if (S.kind === 'cone') {
-      const { dx, dz } = t.charge, pow = t.charge.pow ?? 1;
+      const { dx, dz } = t.charge;
       t.charge = null;
-      // Let go early it is only a shout; drawn in full it throws its targets back.
-      if (S.early) { const full = pow >= 0.99; this.coneHit(t, { ...S, dmg: S.dmg * (0.1 + 0.9 * pow), kb: full ? S.kb : 0, pinT: full ? S.pinT : 0, range: S.near + (S.range - S.near) * pow }, dx, dz); if (t.buff > 0 && t.blade.buff && t.blade.buff.frenzy) t.buff = 0; }
-      else this.coneHit(t, S, dx, dz);
+      this.coneHit(t, S, dx, dz);
       return;
     }
     if (S.kind === 'beam') {
