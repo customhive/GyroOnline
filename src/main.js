@@ -623,7 +623,7 @@ function netMessage(m, id) {
       if (game.mode !== 'host' || !w || game.state !== 'fight') return;
       const peer = game.peers.find((p) => p.id === id), t = peer && w.tops[peer.side];
       if (!t) return;
-      if (m.k === 'm') w.issueMove(t, num(m.x), num(m.z));
+      if (m.k === 'm') w.issueMove(t, num(m.x), num(m.z), !!m.f);
       else if (m.k === 'a') w.aimHold(t, num(m.x), num(m.z));
       else if (m.k === 'h' && KEYS.includes(m.key)) w.hold(t, m.key);
       else if (m.k === 'c' && KEYS.includes(m.key)) w.cast(t, m.key, num(m.x), num(m.z), 0, m.bx === undefined ? undefined : num(m.bx), m.bz === undefined ? undefined : num(m.bz));
@@ -675,7 +675,7 @@ function reconcile() {
   game.pending = game.pending.filter((p) => { const d = (p.s - ack) & 0xffff; return d !== 0 && d < 0x8000; });
   const me = player();
   for (const p of game.pending) {
-    if (p.k === 'm') w.issueMove(me, p.x, p.z); else if (p.k === 'a') w.aimHold(me, p.x, p.z); else if (p.k === 'h') w.hold(me, p.key); else w.cast(me, p.key, p.x, p.z, 0, p.bx, p.bz);
+    if (p.k === 'm') w.issueMove(me, p.x, p.z, !!p.f); else if (p.k === 'a') w.aimHold(me, p.x, p.z); else if (p.k === 'h') w.hold(me, p.key); else w.cast(me, p.key, p.x, p.z, 0, p.bx, p.bz);
   }
   // The snapshot left the host half a round trip ago and has waited here
   // since it arrived.
@@ -699,7 +699,7 @@ function remoteControlled(world) {
     get(target, prop) {
       if (prop === 'cast') return (top, key, x, z) => doCast(key, x, z);
       if (prop === 'hold') return (top, key) => doHold(key);
-      if (prop === 'issueMove') return (top, x, z) => doMove(x, z);
+      if (prop === 'issueMove') return (top, x, z, fresh) => doMove(x, z, fresh);
       const v = target[prop];
       return typeof v === 'function' ? v.bind(target) : v;
     },
@@ -709,11 +709,12 @@ function remoteControlled(world) {
 // ------------------------------------------------------------------ input --
 // Every order from this player goes through these two. The guest applies it
 // locally at once and also sends it to the host.
-function doMove(x, z) {
+// `fresh`: a new click, as opposed to the repeat of a button held down.
+function doMove(x, z, fresh = false) {
   if (game.spectate) return false;
   const w = game.world, me = player();
-  if (!w.issueMove(me, x, z)) return false;
-  if (game.mode === 'guest') sendInput({ k: 'm', x: me.cmd.x, z: me.cmd.z });
+  if (!w.issueMove(me, x, z, fresh)) return false;
+  if (game.mode === 'guest') sendInput(fresh ? { k: 'm', x: me.cmd.x, z: me.cmd.z, f: 1 } : { k: 'm', x: me.cmd.x, z: me.cmd.z });
   return true;
 }
 
@@ -765,7 +766,7 @@ function orderMove(silent) {
   if (game.state !== 'fight' || game.paused) return;
   refreshCursor();
   const me = player();
-  if (doMove(game.cursor.x, game.cursor.z) && !silent) {
+  if (doMove(game.cursor.x, game.cursor.z, !silent) && !silent) {
     view.marker(me.cmd.x, me.cmd.z);
     audio.move();
   }

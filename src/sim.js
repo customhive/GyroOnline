@@ -102,6 +102,24 @@ export const rooted = (t) => fixed(t) || !!t.chan || t.up > 0;
 // Free movement of one top: bowl pull, self-propulsion, move order or dash.
 // Also used on copies for prediction, so it must not touch anything but `t`.
 export function moveTop(t, dt, opp) {
+  if (t.dash && t.dash.skill.slide) {
+    // Riding the wall: round the rim, not across the floor. Where the wall
+    // stops (a gate), so does the ride.
+    const d = t.dash, lim = ARENA.R - t.radius, a = Math.atan2(t.z, t.x);
+    const s = -Math.sin(a) * d.dx + Math.cos(a) * d.dz >= 0 ? 1 : -1, a2 = a + (s * d.speed * dt) / lim;
+    d.t -= dt;
+    if (d.t <= 0 || rimOpen(Math.cos(a2) * lim, Math.sin(a2) * lim, t.radius * 0.8)) {
+      // It steps off inward, slowly enough not to roll out through a gate.
+      const keep = d.t <= 0 ? t.blade.speed * 0.8 : 0;
+      t.vx = d.dx * keep - Math.cos(a) * 3; t.vz = d.dz * keep - Math.sin(a) * 3;
+      t.dash = null;
+      return;
+    }
+    t.x = Math.cos(a2) * lim; t.z = Math.sin(a2) * lim;
+    d.dx = -Math.sin(a2) * s; d.dz = Math.cos(a2) * s;
+    t.vx = d.dx * d.speed; t.vz = d.dz * d.speed;
+    return;
+  }
   if (t.dash || t.blink) {
     const d = t.dash || t.blink;
     t.vx = d.dx * d.speed; t.vz = d.dz * d.speed;
@@ -390,7 +408,9 @@ export class World {
     }
   }
 
-  issueMove(t, x, z) {
+  // `fresh`: a new click, not the repeat of a held button. Only that steps a top down off the wall.
+  issueMove(t, x, z, fresh = false) {
+    if (fresh && t.dash && t.dash.skill.slide && !this.result) { const a = Math.atan2(t.z, t.x); t.dash = null; t.vx = -Math.cos(a) * 3; t.vz = -Math.sin(a) * 3; }
     if (this.result || t.air || t.out || t.dash || t.blink || rooted(t) || (t.buff > 0 && t.blade.buff && t.blade.buff.frenzy) || (t.charge && t.charge.skill.still) || (t.ret && skillOf(t, 'R').autoRet) || t.stun > 0 || t.snare > 0 || !Number.isFinite(x + z)) return false;
     const lim = ARENA.R - t.radius - 0.2;
     const r = Math.hypot(x, z);
@@ -619,9 +639,23 @@ export class World {
     this.dashDone(t, d);
   }
 
+  // A dash that reaches the wall turns along it and rides the rim.
+  slideOn(t, d, nx, nz) {
+    const S = SKILLS[d.skill.slides], lim = ARENA.R - t.radius, tx = -nz, tz = nx, s = d.dx * tx + d.dz * tz >= 0 ? 1 : -1;
+    t.x = nx * lim; t.z = nz * lim;
+    t.dash = { dx: tx * s, dz: tz * s, speed: S.speed, t: (S.arc * lim) / S.speed, skill: S, hit: false, len: S.arc * lim };
+    t.cmd = null;
+    this.emit('dash', { top: t, dx: t.dash.dx, dz: t.dash.dz, dist: 3 });
+  }
+
   // What a dash does when it stops, however it stopped.
   dashDone(t, d) {
     const S = d.skill;
+    // Ended just short of the wall while heading for it: near enough to catch hold.
+    if (S.slides && !this.result && !t.dash && !t.out && t.stun <= 0 && t.snare <= 0 && t.up <= 0 && t.tumble <= 0) {
+      const r = Math.hypot(t.x, t.z) || 1, nx = t.x / r, nz = t.z / r;
+      if (r > ARENA.R - t.radius - S.grab && d.dx * nx + d.dz * nz > 0.2 && !rimOpen(t.x, t.z, t.radius * 0.8)) { this.slideOn(t, d, nx, nz); return; }
+    }
     // A step, not a charge: it ends standing where it meant to.
     if (S.halt) t.vx = t.vz = 0;
     if (d.bomb) { const L = d.len ?? S.dist; this.lineHit(t, SKILLS.flairbomb, t.x - d.dx * L, t.z - d.dz * L, d.dx, d.dz); }
@@ -2854,6 +2888,8 @@ export class World {
 
   walls(t) {
     if (t.air || t.out) return;
+    // Riding the rim: the ride itself keeps it on the wall.
+    if (t.dash && t.dash.skill.slide) return;
     const c = wallContact(t);
     if (c && c.open) {
       // No wall here. A warp stops at the edge; anything else that crosses it is out.
@@ -2879,6 +2915,7 @@ export class World {
       this.eliminate(t, 'over', this.lastBy(t));
       return;
     }
+    if (t.dash && t.dash.skill.slides && t.launch <= 0) { this.slideOn(t, t.dash, c.nx, c.nz); return; }
     bounce(t, c);
     this.stopDash(t);
     if (t.pin > 0 && c.vn > 3) {

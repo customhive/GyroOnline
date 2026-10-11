@@ -1121,9 +1121,10 @@ export const SKILLS = {
   },
   surge: {
     name: 'スパークサージ', en: 'SPARK SURGE', aim: 'dash', kind: 'dash', icon: 'dash', cd: 18,
-    dist: 3, minDist: 3, speed: 40, through: true, linger: 5,
-    desc: '短く駆け抜ける。そのあと5秒間、Qの弾が相手を貫通し、威力が上がる。',
+    dist: 3, minDist: 3, speed: 40, through: true, linger: 5, slides: 'wallride', grab: 1,
+    desc: '短く駆け抜ける。そのあと5秒間、Qの弾が相手を貫通し、威力が上がる。壁に向かって使うと壁に乗り、縁に沿って最大で半周ほど滑る（滑りながらQを撃てる）。移動のクリックをするか、壁が途切れると降りる。',
   },
+  wallride: { name: 'スパークサージ', en: 'SPARK SURGE', aim: 'dash', hidden: true, slide: true, speed: 24, arc: Math.PI, through: true, fly: true },
   crash: {
     name: 'ライトニングクラッシュ', en: 'LIGHTNING CRASH', aim: 'self', kind: 'burst', icon: 'burst', cd: 2, ult: true,
     aoe: 8.6, dmg: 110, kb: 6, buffHit: 5,

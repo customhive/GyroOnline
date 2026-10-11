@@ -613,6 +613,34 @@ console.log('SPARK SURGE (Zeri)');
   check(me.buff === 5, 'R: a hit starts 5 seconds of overcharge');
   run(3); me.cd.Q = 0; w.cast(me, 'Q', foe.x, foe.z); run(0.2);
   check(me.buff > 4.7, 'R: landing shots keeps it going');
+  {
+    // The wall ride: E into the wall turns along it.
+    const ride = (stage = 0, fromA = 0) => {
+      const w2 = new World([BLADES.spark, BLADES.gaia], { seed: 7, stage });
+      const [m, f] = w2.tops; m.cd.E = m.cd.Q = 0; f.x = 0; f.z = 0; f.vx = f.vz = 0;
+      m.x = Math.cos(fromA) * 10; m.z = Math.sin(fromA) * 10; m.vx = m.vz = 0; m.cmd = null;
+      // Outward and a little round the rim, so the ride goes the way of increasing angle.
+      w2.cast(m, 'E', m.x + Math.cos(fromA + 0.5) * 6, m.z + Math.sin(fromA + 0.5) * 6);
+      const step = (sec) => { for (let k = 0; k < Math.round(sec / DT); k++) { w2.step(DT); f.x = 0; f.z = 0; f.vx = f.vz = 0; } };
+      return { w2, m, f, step };
+    };
+    let r = ride(); r.step(0.3);
+    const a0 = Math.atan2(r.m.z, r.m.x);
+    check(!!r.m.dash && r.m.dash.skill.slide && Math.abs(Math.hypot(r.m.x, r.m.z) - (13 - r.m.radius)) < 0.01, 'E into the wall: it turns along it and rides the rim');
+    r.step(0.5);
+    const a1 = Math.atan2(r.m.z, r.m.x), went = (a1 - a0) * (13 - r.m.radius);
+    check(Math.abs(went - 12) < 0.6 && r.w2.canCast(r.m, 'Q'), `the ride goes at 24 (${went.toFixed(1)} in half a second), and Q can be fired from it`);
+    r.step(1.2);
+    check(!r.m.dash && Math.abs(Math.atan2(r.m.z, r.m.x) - a0) > 2.6, 'it ends by itself about half-way round');
+    r = ride(); r.step(0.3);
+    check(!r.w2.issueMove(r.m, 0, 0) && !!r.m.dash, 'a held move order does not end the ride');
+    check(r.w2.issueMove(r.m, 0, 0, true) && !r.m.dash && !!r.m.cmd, 'a fresh click does: it steps down and goes where it was told');
+    // THREE GATES: a gate is centred on angle 0; ride toward it from just short of it.
+    r = ride(1, -0.9); r.step(1.2);
+    check(!r.m.dash && !r.m.out && !r.m.gone && Math.atan2(r.m.z, r.m.x) < 0, 'where the wall stops at a gate, it steps off before the gap');
+    r = ride(2); r.step(0.3);
+    check(!(r.m.dash && r.m.dash.skill.slide), 'no wall, no ride');
+  }
 }
 
 console.log('STAR FORGER (Aurelion Sol)');
