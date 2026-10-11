@@ -2356,7 +2356,9 @@ export class World {
           break;
         case 'canister':
           if (z.t >= z.T || this.result) { this.endZone(z); break; }
-          if (!t.gone && !t.out && Math.hypot(t.x - z.x, t.z - z.z) < z.r + t.radius) { this.endZone(z); this.mend(t, S.heal * t.spinMax); t.shrugCd = Math.max(0, t.shrugCd - S.cut); }
+          if (!t.gone && !t.out && Math.hypot(t.x - z.x, t.z - z.z) < z.r + t.radius) { this.endZone(z); this.mend(t, S.heal * t.spinMax); t.shrugCd = Math.max(0, t.shrugCd - S.cut); break; }
+          // An enemy that gets to it first simply takes it away: nothing for anyone.
+          if (this.enemies(t).some((o) => targetable(o) && Math.hypot(o.x - z.x, o.z - z.z) < z.r + o.radius)) z.dead = true;
           break;
         case 'shovez':
           // SEISMIC SHOVE: the ground comes up and throws whoever is on it the way it was told.

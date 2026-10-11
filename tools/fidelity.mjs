@@ -1490,6 +1490,13 @@ console.log('MAD DOCTOR (Dr. Mundo)');
   check(me.stun === 0 && me.shrugCd > 14 && w.zones.some((z) => z.kind === 'canister'), 'the first stun is shrugged off, at a price, and a canister drops');
   w.stun(me, 1);
   check(me.stun > 0, 'the next one is not');
+  {
+    const s0 = setup('doctor', 7);
+    s0.w.stun(s0.me, 1);
+    const can = s0.w.zones.find((z) => z.kind === 'canister'), sp = s0.me.spin, cd = s0.me.shrugCd;
+    s0.foe.x = can.x; s0.foe.z = can.z; s0.w.step(DT);
+    check(!s0.w.zones.some((z) => z.kind === 'canister') && s0.me.spin <= sp && Math.abs(s0.me.shrugCd - cd) < 0.1, 'an enemy touching the canister first takes it away: no mending, no sooner shrug');
+  }
   me.stun = 0; me.spin = 500; const c = w.zones.find((z) => z.kind === 'canister'); me.x = c.x; me.z = c.z; w.step(DT);
   check(me.spin > 530 && me.shrugCd === 0, 'picking the canister up mends, and readies the next shrug');
   ({ w, me, foe, run, saw } = setup('doctor', 4));
