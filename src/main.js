@@ -252,7 +252,7 @@ function enterLobby(role) {
   game.mode = role; game.state = 'lobby';
   const lb = game.lobby;
   lb.role = role; lb.status = 'opening'; lb.url = ''; lb.error = '';
-  const blade = BLADES[ui.blade] ? ui.blade : 'azure';
+  const blade = BLADES[ui.blade] || ui.blade === 'random' ? ui.blade : 'azure';
   lb.slots = role === 'host'
     ? [{ kind: 'human', blade, level: 1, ready: false }, { kind: 'open', blade: 'random', level: 1, ready: false }]
     : [{ kind: 'human', blade: 'azure', level: 1, ready: false }, { kind: 'human', blade, level: 1, ready: false }];
@@ -298,7 +298,8 @@ function startOnline() {
   const blades = [lb.slots[0].blade, lb.slots[1].blade];
   // The host may hand its own top to a CPU and watch.
   const cpu0 = lb.slots[0].kind === 'cpu' ? lb.slots[0].level : -1;
-  if (blades[0] === 'random') { const l = Object.keys(BLADES).filter((b) => b !== blades[1]); blades[0] = l[(Math.random() * l.length) | 0]; }
+  // "Random" is settled here, so both sides are told the same blades.
+  for (const i of [0, 1]) if (blades[i] === 'random') { const l = Object.keys(BLADES).filter((b) => b !== blades[1 - i]); blades[i] = l[(Math.random() * l.length) | 0]; }
   game.mode = 'host';
   game.net.send({ t: 'start', blades });
   startOnlineMatch(blades);
@@ -338,7 +339,7 @@ function pickBlade(id) {
   const p = lb.slots[i];
   const own = i === mine && p.kind === 'human' && !p.ready, cpu = host && p.kind === 'cpu';
   if (!own && !cpu) return;
-  if (id === 'random' ? !cpu : !BLADES[id]) return;
+  if (id !== 'random' && !BLADES[id]) return;
   p.blade = id;
   if (own) ui.blade = id;
   lobbyChanged();
@@ -348,7 +349,7 @@ function setSlotKind(i, kind) {
   const lb = game.lobby, p = lb.slots[i];
   if (lb.role !== 'host' || (i === 1 && p.kind === 'human')) return;
   p.kind = kind; p.ready = false;
-  if (kind === 'human') p.blade = BLADES[ui.blade] ? ui.blade : 'azure';
+  if (kind === 'human') p.blade = BLADES[ui.blade] || ui.blade === 'random' ? ui.blade : 'azure';
   else if (kind === 'cpu' && i === 1 && !BLADES[p.blade]) p.blade = 'random';
   lb.slots[0].ready = false;
   lb.edit = kind === 'open' ? 0 : i;
@@ -453,7 +454,7 @@ function netMessage(m) {
     // falls through
     case 'lobby': {
       // A guest reporting itself. It takes the second slot, whatever was there.
-      if (lb.role !== 'host' || !BLADES[m.blade]) return;
+      if (lb.role !== 'host' || !(BLADES[m.blade] || m.blade === 'random')) return;
       const fresh = lb.slots[1].kind !== 'human';
       lb.slots[1] = { kind: 'human', blade: m.blade, level: 1, ready: !!m.ready };
       if (fresh) lb.slots[0].ready = false;

@@ -185,7 +185,7 @@ export class UI {
       c.dataset.id = b.id;
       cards.appendChild(c);
     }
-    const any = el('button', 'blade any', '<div class="b-type">CPU</div><div class="b-en">RANDOM</div><div class="b-name">おまかせ</div>');
+    const any = el('button', 'blade any', '<div class="b-disc"><div class="b-disc-in"></div></div><div class="b-type">？？？</div><div class="b-en">RANDOM</div><div class="b-name">おまかせ</div>');
     any.dataset.id = 'random';
     any.onclick = () => this.h.pick('random');
     cards.prepend(any);
@@ -331,7 +331,7 @@ export class UI {
       card.innerHTML = `<div class="pc-top"><span class="pc-no">${i + 1}P</span><span class="pc-who">${who}${p.kind === 'cpu' ? ' ／ ' + DIFFICULTY[p.level].name : ''}</span><em>${empty ? '' : p.kind === 'cpu' || p.ready ? 'READY' : '準備中'}</em></div>`
         + (empty
           ? `<div class="pc-wait"><div class="pc-plus">＋</div><b>参加待ち</b><span>招待URLを開いた相手がここに入ります。<br>下のボタンでCPUに変えられます。</span></div>`
-          : `<div class="pc-disc"><i></i></div><div class="pc-type">${b ? b.type : 'CPU'}</div><div class="pc-en">${b ? b.en : 'RANDOM'}</div><div class="pc-name">${b ? b.name : 'おまかせ'}</div>`
+          : `<div class="pc-disc"><i></i></div><div class="pc-type">${b ? b.type : '？？？'}</div><div class="pc-en">${b ? b.en : 'RANDOM'}</div><div class="pc-name">${b ? b.name : 'おまかせ'}</div>`
             + (b ? `${this.bars[b.id]}<p class="pc-desc">${b.desc}</p><div class="pc-skills">${skills}</div>` : '<p class="pc-desc">対戦のたびにランダムなブレードが選ばれます。</p>')
             + `<div class="pc-foot">${can ? 'クリックでブレードを変える' : you && p.ready ? '準備完了' : ''}</div>`);
       card.onclick = () => this.h.edit(i);
@@ -384,8 +384,7 @@ export class UI {
       $('#lb-editing').textContent = '　' + (ed.kind === 'cpu' ? `CPU（${lb.edit + 1}P）` : 'あなた');
       document.querySelectorAll('.blade').forEach((c) => {
         c.classList.toggle('on', c.dataset.id === ed.blade);
-        if (c.dataset.id === 'random') c.classList.toggle('hidden', ed.kind !== 'cpu');
-      });
+        });
       this.showBlade(ed.blade);
     }
 
