@@ -65,6 +65,16 @@ function paintGlow(g, stage = STAGES[0]) {
   g.strokeStyle = '#ff5a2a'; g.lineWidth = 0.5; g.setLineDash([0.9, 0.6]);
   for (const [a0, a1] of wallArcs(stage)) { g.beginPath(); g.arc(0, 0, 12.35, -a1, -a0); g.stroke(); }
   g.setLineDash([]);
+  // A gap is a way out: arrows on the floor point through it, between two bright sides.
+  for (const [c, h] of stage.gaps) {
+    g.save();
+    g.rotate(-c);
+    g.strokeStyle = '#ff5a2a'; g.lineWidth = 0.2; g.lineJoin = 'miter';
+    for (const r of [10.9, 12.0, 13.1, 14.2]) { g.beginPath(); g.moveTo(r - 0.5, -1.15); g.lineTo(r, 0); g.lineTo(r - 0.5, 1.15); g.stroke(); }
+    g.strokeStyle = '#ffd0a0'; g.lineWidth = 0.09;
+    for (const a of [-h, h]) { g.beginPath(); g.moveTo(Math.cos(a) * 12.0, Math.sin(a) * 12.0); g.lineTo(Math.cos(a) * 15.1, Math.sin(a) * 15.1); g.stroke(); }
+    g.restore();
+  }
   line(11.95, 0.05, '#ff9a4a');
   g.strokeStyle = '#2c8fe0'; g.lineWidth = 0.05;
   for (let i = 0; i < 12; i++) {
@@ -173,6 +183,7 @@ export function createStage(canvas) {
   // round, in stretches with gaps between them, or not at all.
   const rimProf = [new THREE.Vector2(R, H), new THREE.Vector2(R + 0.02, H + 0.15), new THREE.Vector2(R + 0.3, H + 1.0), new THREE.Vector2(R + 1.25, H + 1.0),
     new THREE.Vector2(R + 1.7, H + 0.35), new THREE.Vector2(R + 2.1, -2.5)];
+  const chuteProf = [new THREE.Vector2(R, H), new THREE.Vector2(R + 1.2, H - 0.25), new THREE.Vector2(R + 2.15, H - 0.9), new THREE.Vector2(R + 2.2, -2.5)];
   const rimMat = new THREE.MeshBasicMaterial({ color: 0x35c8ff });
   const rim2Mat = new THREE.MeshBasicMaterial({ color: 0x2244aa });
   const edgeMat = new THREE.MeshBasicMaterial({ color: 0xff5a2a });
@@ -196,20 +207,23 @@ export function createStage(canvas) {
         walls.add(line);
       }
       if (len < Math.PI * 2 - 0.01) {
-        // Where the wall stops: a glowing post, so a gap reads as a gap.
+        // Where the wall stops it is closed off with a flat end.
         for (const a of [a0, a1]) {
-          const cap = new THREE.Mesh(new THREE.BoxGeometry(1.5, 1.5, 0.16), capMat);
-          cap.position.set(Math.cos(a) * (R + 1.05), H + 0.3, -Math.sin(a) * (R + 1.05));
+          const cap = new THREE.Mesh(new THREE.BoxGeometry(2.0, 1.6, 0.14), capMat);
+          cap.position.set(Math.cos(a) * (R + 1.05), H + 0.25, -Math.sin(a) * (R + 1.05));
           cap.rotation.y = a;
-          const post = new THREE.Mesh(new THREE.CylinderGeometry(0.11, 0.11, 1.5, 10), edgeMat);
-          post.position.set(Math.cos(a) * (R + 0.2), H + 0.6, -Math.sin(a) * (R + 0.2));
-          walls.add(cap, post);
+          walls.add(cap);
         }
       }
     }
+    // Through each gap the floor carries on as a chute that drops away.
+    for (const [c, h] of g.wall ? g.gaps : []) {
+      const chute = new THREE.Mesh(mapUv(new THREE.LatheGeometry(chuteProf, 12, c - h + Math.PI / 2, h * 2)), floorMat);
+      chute.receiveShadow = true;
+      walls.add(chute);
+    }
     // Where there is no wall, the edge itself is lit as a warning.
-    const open = g.wall ? g.gaps.map(([c, h]) => [c - h, c + h]) : [[0, Math.PI * 2]];
-    if (g.wall && !g.gaps.length) open.length = 0;
+    const open = g.wall ? [] : [[0, Math.PI * 2]];
     for (const [a0, a1] of open) {
       const len = a1 - a0;
       const lip = new THREE.Mesh(new THREE.TorusGeometry(R + 0.06, 0.06, 8, Math.max(12, Math.round((160 * len) / (Math.PI * 2))), len), edgeMat);
