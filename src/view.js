@@ -1017,8 +1017,14 @@ export class View {
         // The cone a barrage can turn within, and the beat of its shots.
         const S = t.chan.skill, col = this.dangerOf(t), a = Math.atan2(t.chan.dz, t.chan.dx);
         const beat = clamp(1 - t.cd.R / S.every, 0, 1);
-        G.sector(t.x, t.z, t.chan.dx, t.chan.dz, S.range, S.half, col, 0.07, 0.6);
-        G.ring(t.x, t.z, 0, S.range * beat, col, 0.1, 0.09, a - S.half, a + S.half);
+        if (S.half >= 3) {
+          // It can turn anywhere: just the stance, and the beat of its shots.
+          G.ring(t.x, t.z, 2.2, 2.4, col, 0.8);
+          G.ring(t.x, t.z, 0, 2.2 * beat, col, 0.18);
+        } else {
+          G.sector(t.x, t.z, t.chan.dx, t.chan.dz, S.range, S.half, col, 0.07, 0.6);
+          G.ring(t.x, t.z, 0, S.range * beat, col, 0.1, 0.09, a - S.half, a + S.half);
+        }
       }
       // Marks on the other top.
       if (t.dmark > 0) {

@@ -488,9 +488,9 @@ export const SKILLS = {
     desc: '見えにくい罠を置く。踏まれると35%スロウの領域になり、2秒後に爆発する。2個ぶん溜めておける（14秒で1個ぶん戻る）。',
   },
   curtaincall: {
-    name: '終幕', en: 'CURTAIN CALL', aim: 'cone', cd: 2, ult: true, re: 'curtainfire',
-    range: 26, half: 0.5, shots: 4, first: 0.5, every: 0.7, window: 10,
-    desc: '【必殺技】その場で構え、扇の範囲を決める。そのあとRを押すたびに狙った方向へ超長射程弾を1発（最大4発、10秒以内）。当たると80%のスロウ。相手の回転が減っているほど重く、最後の一発は2倍。',
+    name: '終幕', en: 'CURTAIN CALL', aim: 'self', cd: 2, ult: true, re: 'curtainfire',
+    range: 26, half: Math.PI, shots: 4, first: 0.5, every: 0.7, window: 10,
+    desc: '【必殺技】その場で構える。そのあとRを押すたびに、どの方向へでも狙った向きに超長射程弾を1発（最大4発、10秒以内）。当たると80%のスロウ。相手の回転が減っているほど重く、最後の一発は2倍。',
   },
   curtainfire: { name: '終幕', en: 'CURTAIN CALL', aim: 'line', hidden: true, range: 26, radius: 1.0 },
   curtainshot: {

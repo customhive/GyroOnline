@@ -906,9 +906,9 @@ console.log('CURTAIN CALL (Jhin)');
   let fired = 1; for (let i = 0; i < 3; i++) { run(0.75); if (w.cast(me, 'R', foe.x + 4, foe.z)) fired++; }
   check(fired === 4 && !me.chan && me.re.R === 0, 'R: four shots, and the stance ends');
   ({ w, me, foe, run, saw } = setup('curtain', 12));
-  w.cast(me, 'R', foe.x, foe.z); run(0.6); w.cast(me, 'R', me.x + 9, me.z);
+  w.cast(me, 'R', foe.x, foe.z); run(0.6); w.cast(me, 'R', me.x, me.z + 9);
   const p = w.projectiles[0];
-  check(Math.abs(Math.atan2(p.dx, -p.dz) - 0.5) < 0.02, 'R: aimed outside the fan, the shot goes along its edge');
+  check(p.dz > 0.99, 'R: it can fire in any direction, even straight behind');
   run(9.6);
   check(!me.chan && !w.canCast(me, 'R'), 'R: held 10 seconds at most; unfired shots are lost');
   const dmg = (ratio) => { const s = setup('curtain', 12); s.foe.spin = s.foe.spinMax * ratio; const f = s.foe.spin; s.w.cast(s.me, 'R', s.foe.x, s.foe.z); s.run(0.6); s.w.cast(s.me, 'R', s.foe.x, s.foe.z); s.run(0.5); return f - s.foe.spin; };
