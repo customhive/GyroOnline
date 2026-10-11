@@ -2616,7 +2616,8 @@ export class World {
     this.endZone(z);
     t.haste = Math.max(t.haste, S.blowHaste);
     this.burst(t, S, z.x, z.z, S.aoe);
-    for (const q of this.own(t, 'keg')) if (Math.hypot(q.x - z.x, q.z - z.z) < S.aoe + 2) this.blowKeg(q);
+    // Two kegs whose blasts overlap at all are close enough.
+    for (const q of this.own(t, 'keg')) if (Math.hypot(q.x - z.x, q.z - z.z) < S.aoe * 2) this.blowKeg(q);
   }
 
   collide(a, b) {
