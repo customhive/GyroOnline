@@ -1164,8 +1164,8 @@ export const SKILLS = {
   },
   // ---- WORLD ENDER: three swings and the end of the world --------------------
   darkinblade: {
-    name: 'ダーキンブレード', en: 'THE DARKIN BLADE', aim: 'line', icon: 'blast', cd: 6, re: 'darkinblade', window: 4,
-    desc: '大剣を3回まで続けて振る。1回目は長い直線、2回目は扇、3回目は目の前への叩きつけで、振るたびに25%強くなる。剣先（3回目は中心）で当てるとダメージが75%増え、相手を打ち上げる。振りかぶる間もEで位置をずらせる。',
+    name: 'ダーキンブレード', en: 'THE DARKIN BLADE', aim: 'line', icon: 'blast', cd: 6, tele: 0.3, re: 'darkinblade', window: 4, pause: 1,
+    desc: '大剣を3回まで続けて振る。1回目は長い直線、2回目は扇、3回目は目の前への叩きつけで、振るたびに25%強くなる。剣先（3回目は中心）で当てるとダメージが75%増え、相手を打ち上げる。キーを押している間に狙い、離した瞬間に振る。次の一振りまでは1秒空く。狙っている間にEを押すと、狙いを保ったまま踏み込める。',
   },
   chains: {
     name: '業火の鎖', en: 'INFERNAL CHAINS', aim: 'line', kind: 'shot', icon: 'hook', cd: 12,
@@ -1174,15 +1174,15 @@ export const SKILLS = {
   },
   darkin1: {
     name: 'ダーキンブレード', en: 'THE DARKIN BLADE', aim: 'line', kind: 'beam', hidden: true, ai: 'darkin', window: 4,
-    charge: 0.6, loose: true, still: true, range: 5.6, radius: 1.2, tip: 3.5, dmg: 44, tipMul: 0.75, tipUp: 0.25,
+    charge: 0, loose: true, still: true, range: 5.6, radius: 1.2, tip: 3.5, dmg: 44, tipMul: 0.75, tipUp: 0.25,
   },
   darkin2: {
     name: 'ダーキンブレード', en: 'THE DARKIN BLADE', aim: 'cone', kind: 'cone', hidden: true, ai: 'darkin', window: 4,
-    charge: 0.6, loose: true, still: true, range: 4.6, half: 0.55, tip: 3.0, dmg: 55, tipMul: 0.75, tipUp: 0.25,
+    charge: 0, loose: true, still: true, range: 4.6, half: 0.55, tip: 3.0, dmg: 55, tipMul: 0.75, tipUp: 0.25,
   },
   darkin3: {
     name: 'ダーキンブレード', en: 'THE DARKIN BLADE', aim: 'line', kind: 'slam', hidden: true, ai: 'darkin', window: 4,
-    charge: 0.6, loose: true, still: true, range: 2, radius: 1.2, ahead: 1.8, aoe: 2.3, tip: 1.2, dmg: 66, tipMul: 0.75, tipUp: 0.25,
+    charge: 0, loose: true, still: true, range: 2, radius: 1.2, ahead: 1.8, aoe: 2.3, tip: 1.2, dmg: 66, tipMul: 0.75, tipUp: 0.25,
   },
   chainzone: {
     name: '業火の鎖', en: 'INFERNAL CHAINS', aim: 'ground', kind: 'field', hidden: true,
@@ -1190,8 +1190,8 @@ export const SKILLS = {
   },
   umbral: {
     name: '影の突進', en: 'UMBRAL DASH', aim: 'dash', kind: 'dash', icon: 'dash', cd: 5,
-    dist: 3, minDist: 1.5, speed: 34, halt: true,
-    desc: '短く踏み込む。Qを振りかぶっている間にも使えるので、剣先を合わせたり、相手の技をかわしたりできる。',
+    dist: 4.5, minDist: 1.5, speed: 34, halt: true, snap: true,
+    desc: '踏み込む。Qを狙っている最中に押すと、狙いを保ったままその場で踏み込むので、剣先を合わせたり、相手の技をかわしたりできる。',
   },
   worldender: {
     name: 'ワールドエンダー', en: 'WORLD ENDER', aim: 'self', kind: 'buff', icon: 'star', cd: 2, ult: true,

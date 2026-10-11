@@ -431,7 +431,8 @@ export class World {
   ready(t, key, slack = 0) {
     const S = skillOf(t, key);
     if (t.subj && t.blade.painter) return true;
-    if ((S.re || S.id === 'mimic') && t.re[key] > 0) return true;
+    // Some chains ask for a breath between one use and the next.
+    if ((S.re || S.id === 'mimic') && t.re[key] > 0) return !(S.pause && t.re[key] > S.window - S.pause + slack);
     // A stream that costs the gauge runs on once it has started.
     if (S.stream && S.ult && t.re[key] > 0) return t.cd[key] <= slack;
     return t.cd[key] <= slack && (!S.ult || t.ult >= 100);
@@ -540,7 +541,8 @@ export class World {
     let dx = ax - t.x, dz = az - t.z;
     const d = Math.hypot(dx, dz);
     if (d < 0.01) { dx = 0; dz = t.side === 0 ? -1 : 1; } else { dx /= d; dz /= d; }
-    const wind = re ? 0 : t.windup[key];
+    // (A CPU winds up every swing of a chain that is fired on release, not only the first.)
+    const wind = re && !base.pause ? 0 : t.windup[key];
     const c = { key, skill: S, re, t: wind, T: wind, dx, dz, ax, az, dist: d, held, reach: t.windup[key] > 0 || wound ? S.range : reach };
     if (Number.isFinite(bx + bz)) { c.bx = bx; c.bz = bz; }
     // The next body hit after a skill lands twice.
@@ -731,6 +733,8 @@ export class World {
         t.stack = c.re ? t.stack + 1 : 1;
         t.stackT = S.window + 1;
         if (t.stack < 3) t.re[c.key] = S.window;
+        // Swung the moment it is let go, unless the skill is given a wind-up of its own.
+        if (!S.charge) { this.swing(t, S, c.dx, c.dz); break; }
         t.charge = { t: 0, T: S.charge, skill: S, dx: c.dx, dz: c.dz };
         t.cmd = null;
         this.emit('charge', { top: t, T: S.charge, skill: S });
@@ -2003,31 +2007,7 @@ export class World {
   chargeDone(t, opp) {
     const S = t.charge.skill;
     if (S.id === 'nova') { this.novaBlast(t, opp); return; }
-    if (S.tip) {
-      // THE DARKIN BLADE: a line, then a fan, then a slam; the edge (or the middle of the slam) is the sweet spot.
-      const { dx, dz } = t.charge;
-      t.charge = null;
-      const cx = t.x + dx * (S.ahead || 0), cz = t.z + dz * (S.ahead || 0);
-      let hit = 0, tg = null;
-      for (const opp of this.foes(t)) {
-        const rx = opp.x - t.x, rz = opp.z - t.z, d = Math.hypot(rx, rz), along = rx * dx + rz * dz, side = Math.abs(rz * dx - rx * dz);
-        const m = Math.hypot(opp.x - cx, opp.z - cz);
-        let inside, tip;
-        if (S.kind === 'beam') { inside = along > -1 && along < S.range + opp.radius * 0.6 && side < S.radius + opp.radius * 0.6; tip = along >= S.tip; }
-        else if (S.kind === 'cone') { inside = this.inCone(t, opp, dx, dz, S); tip = d >= S.tip; }
-        else { inside = m < S.aoe + opp.radius * 0.5; tip = m < S.tip; }
-        if (!(targetable(opp) && inside)) continue;
-        const g = opp.guard > 0 ? 0.3 : 1;
-        hit += this.hurt(opp, (S.dmg * (tip ? 1 + S.tipMul : 1) * g * t.blade.atk) / opp.blade.def, t, S.id);
-        if (g === 1 && tip) this.lift(opp, S.tipUp);
-        t.stats.skillHits++;
-        tg = tg || opp;
-      }
-      if (S.kind === 'beam') this.emit('beam', { top: t, skill: S, x: t.x, z: t.z, dx, dz, hit, target: tg });
-      else if (S.kind === 'cone') this.emit('cone', { top: t, skill: S, dx, dz, hit, target: tg });
-      else this.emit('blast', { top: t, skill: S, x: cx, z: cz, r: S.aoe, hit, target: tg });
-      return;
-    }
+    if (S.tip) { const { dx, dz } = t.charge; t.charge = null; this.swing(t, S, dx, dz); return; }
     if (S.kind === 'shot') { const { dx, dz } = t.charge; t.charge = null; if (S.fan) this.fan(t, S, dx, dz, S.fan); else this.fire(t, S, dx, dz); return; }
     if (S.kind === 'cone') {
       const { dx, dz } = t.charge, pow = t.charge.pow ?? 1;
@@ -2071,6 +2051,29 @@ export class World {
     }
     this.emit('blast', { top: t, skill: S, x: t.x, z: t.z, r: S.aoe, hit, target: tg });
     if (heal >= 1) this.emit('heal', { top: t, amount: heal });
+  }
+
+  // THE DARKIN BLADE: a line, then a fan, then a slam; the edge (or the middle of the slam) is the sweet spot.
+  swing(t, S, dx, dz) {
+    const cx = t.x + dx * (S.ahead || 0), cz = t.z + dz * (S.ahead || 0);
+    let hit = 0, tg = null;
+    for (const opp of this.foes(t)) {
+      const rx = opp.x - t.x, rz = opp.z - t.z, d = Math.hypot(rx, rz), along = rx * dx + rz * dz, side = Math.abs(rz * dx - rx * dz);
+      const m = Math.hypot(opp.x - cx, opp.z - cz);
+      let inside, tip;
+      if (S.kind === 'beam') { inside = along > -1 && along < S.range + opp.radius * 0.6 && side < S.radius + opp.radius * 0.6; tip = along >= S.tip; }
+      else if (S.kind === 'cone') { inside = this.inCone(t, opp, dx, dz, S); tip = d >= S.tip; }
+      else { inside = m < S.aoe + opp.radius * 0.5; tip = m < S.tip; }
+      if (!(targetable(opp) && inside)) continue;
+      const g = opp.guard > 0 ? 0.3 : 1;
+      hit += this.hurt(opp, (S.dmg * (tip ? 1 + S.tipMul : 1) * g * t.blade.atk) / opp.blade.def, t, S.id);
+      if (g === 1 && tip) this.lift(opp, S.tipUp);
+      t.stats.skillHits++;
+      tg = tg || opp;
+    }
+    if (S.kind === 'beam') this.emit('beam', { top: t, skill: S, x: t.x, z: t.z, dx, dz, hit, target: tg });
+    else if (S.kind === 'cone') this.emit('cone', { top: t, skill: S, dx, dz, hit, target: tg });
+    else this.emit('blast', { top: t, skill: S, x: cx, z: cz, r: S.aoe, hit, target: tg });
   }
 
   novaBlast(t, opp) {

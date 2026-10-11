@@ -1220,7 +1220,8 @@ export class View {
         G.ring(g.ax, g.az, 1.9, 2.0, col, 0.5);
       } else {
         if (!t.cast || t.cast.key !== g.key) { g.done = true; continue; }
-        if (S.aim === 'cone') {
+        if (S.tip) this.swingGuide(t, S, g.dx, g.dz, col, k);
+        else if (S.aim === 'cone') {
           G.sector(t.x, t.z, g.dx, g.dz, S.range, S.half, col, 0.12, 0.85);
           G.ring(t.x, t.z, 0, S.range * k, col, 0.25, 0.09, Math.atan2(g.dz, g.dx) - S.half, Math.atan2(g.dz, g.dx) + S.half);
         } else if (S.wall && S.aim !== 'line') {
@@ -1240,6 +1241,28 @@ export class View {
     if (this.telegraphs.some((g) => g.done)) this.telegraphs = this.telegraphs.filter((g) => !g.done);
   }
 
+  // THE DARKIN BLADE's three shapes (line, fan, slam just ahead), each with its
+  // sweet spot picked out in white. `k` fills it in as a wind-up runs.
+  swingGuide(t, S, dx, dz, col, k = 0, a = 1) {
+    const G = this.ground, glow = (0.22 + 0.1 * Math.sin(this.time * 18)) * a, ang = Math.atan2(dz, dx);
+    if (S.ahead) {
+      const cx = t.x + dx * S.ahead, cz = t.z + dz * S.ahead;
+      G.ring(cx, cz, 0, S.aoe, col, 0.14 * a);
+      if (k > 0) G.ring(cx, cz, 0, S.aoe * k, col, 0.22);
+      G.ring(cx, cz, S.aoe - 0.14, S.aoe, col, 0.95 * a);
+      G.ring(cx, cz, 0, S.tip, 0xffffff, glow);
+    } else if (S.kind === 'cone') {
+      G.sector(t.x, t.z, dx, dz, S.range, S.half, col, 0.14 * a, 0.85 * a);
+      if (k > 0) G.ring(t.x, t.z, 0, S.range * k, col, 0.25, 0.09, ang - S.half, ang + S.half);
+      G.ring(t.x, t.z, S.tip, S.range, 0xffffff, glow, 0.1, ang - S.half, ang + S.half);
+    } else {
+      const len = Math.min(S.range, toWall(t.x, t.z, dx, dz));
+      G.lane(t.x, t.z, dx, dz, len, S.radius, col, 0.14 * a, 0.85 * a);
+      if (k > 0) G.rect(t.x, t.z, dx, dz, len, S.radius * k, col, 0.28);
+      if (len > S.tip) G.rect(t.x + dx * S.tip, t.z + dz * S.tip, dx, dz, len - S.tip, S.radius, 0xffffff, glow);
+    }
+  }
+
   // The player's aiming indicator. It shows only what the skill will cover:
   // reading where the enemy is headed is left to the player.
   drawAim(aim, me, w) {
@@ -1249,6 +1272,7 @@ export class View {
     if (d < 0.01) { dx = 0; dz = -1; } else { dx /= d; dz /= d; }
     const ok = w.ready(me, key, 0.25);
     const col = ok ? AIM : 0x8088a0;
+    if (S.tip) { this.swingGuide(me, S, dx, dz, col, 0, ok ? 1 : 0.45); return; }
     if (S.aim === 'blink') {
       const len = Math.min(toWall(me.x, me.z, dx, dz) - me.radius, clamp(d, 2, S.range));
       G.lane(me.x + dx * 1.4, me.z + dz * 1.4, dx, dz, Math.max(0, len - 1.4), 0.5, col, 0.1, 0.6);

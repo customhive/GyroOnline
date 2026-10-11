@@ -820,8 +820,12 @@ window.addEventListener('keydown', (e) => {
   // Some need no aiming but still care where the cursor is (which soldier to fly to).
   if (S.aim === 'self' && S.cursor) { refreshCursor(); tryCast(k, game.cursor.x, game.cursor.z); return; }
   if (S.aim === 'self') { tryCast(k, me.x, me.z); return; }
+  // A step that can be taken while another skill is being aimed: it goes at
+  // once, toward the cursor, and the aim that was held stays held.
+  if (S.snap && game.aimKey && game.aimKey !== k) { refreshCursor(); tryCast(k, game.cursor.x, game.cursor.z); return; }
   // Aiming is allowed while briefly unable to act; only a real cooldown refuses.
-  if (!game.world.ready(me, k, 0.25) || me.air || me.out) { audio.denied(); ui.denied(k); return; }
+  // (Between two swings of a chain the next one may be lined up straight away.)
+  if (!(game.world.ready(me, k, 0.25) || (base.pause && me.re[k] > 0)) || me.air || me.out) { audio.denied(); ui.denied(k); return; }
   game.aimKey = k;
   // A skill aimed with two points: where the key went down is the first.
   refreshCursor();

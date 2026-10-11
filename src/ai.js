@@ -359,7 +359,7 @@ export class CpuBrain {
         case 'darkin': {
           // Each swing has its own reach; the last one is right in front.
           const far = S.kind === 'slam' ? S.ahead + S.aoe - 0.6 : S.range - 0.6;
-          if (d < far && want(again ? 0.4 : 0.1)) return at(this.jitter(ahead(S.charge * 0.7), 0.4));
+          if (d < far && want(again ? 0.4 : 0.1)) return at(this.jitter(ahead(S.charge * 0.7 + wind), 0.4));
           break;
         }
         case 'bindeclipse':
