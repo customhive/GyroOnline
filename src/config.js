@@ -617,28 +617,34 @@ export const SKILLS = {
   },
   // ---- TURRET ENGINEER: hold ground with machines ------------------------------------
   turret: {
-    name: '砲台設置', en: 'H-28G TURRET', aim: 'ground', cd: 6, big: true,
-    range: 7, aoe: 1.1, dur: 18, bigDur: 9, max: 3, reach: 10.5, rate: 0.9, dmg: 20, bigDmg: 38,
-    desc: '相手を自動で撃つ砲台を置く（最大3基）。体当たりされると壊れる。',
+    name: '砲台設置', en: 'H-28G TURRET', aim: 'ground', cd: 1, big: true, stock: { max: 3, every: 14 },
+    range: 3.5, aoe: 1.1, dur: 40, bigDur: 8, max: 4, cap: 3, reach: 10.5, rate: 0.9, dmg: 20, bigDmg: 38,
+    leash: 10, idle: 8, laserEvery: 90,
+    desc: '相手を自動で撃つ砲台をすぐそばに置く（最大3基）。3基ぶん溜めておける（14秒で1基ぶん戻る）。Wを当てるとレーザーが溜まり、Eを当てると全基がすぐレーザーを撃つ。離れすぎて8秒経つと止まる。体当たりされると壊れる。',
   },
+  turretlaser: { name: 'レーザー', en: 'LASER', aim: 'line', hidden: true, range: 10, radius: 0.6, dmg: 34 },
+  biglaser: { name: 'レーザー', en: 'LASER', aim: 'line', hidden: true, range: 10, radius: 0.9, dmg: 60 },
+  bigshot: { name: '大型砲台', en: 'APEX TURRET', aim: 'line', hidden: true, range: 11, speed: 28, radius: 0.8, dmg: 13, kb: 1.5, tumble: 0, launch: 0, slow: 1, slowPct: 0.25 },
   turretshot: {
     name: '砲台', en: 'TURRET', aim: 'line', hidden: true,
     range: 11, speed: 28, radius: 0.5, dmg: 13, kb: 1.5, tumble: 0, launch: 0,
   },
   rockets: {
-    name: 'マイクロロケット', en: 'MICRO-ROCKETS', aim: 'cone', cd: 7, tele: 0.35, big: true,
-    range: 12, half: 0.26, speed: 30, radius: 0.55, dmg: 24, kb: 2, tumble: 0, launch: 0, fan: 5, bigFan: 9,
-    desc: '扇状に5発のロケットを撃つ。近いほど多く当たる。',
+    name: 'マイクロロケット', en: 'MICRO-ROCKETS', aim: 'ground', cd: 7, tele: 0.35, big: true,
+    range: 12, near: 3, aoe: 0.8, speed: 30, radius: 0.55, dmg: 44, next: 0.2, charge: 0.2, kb: 2, tumble: 0, launch: 0,
+    fan: 5, spread: 0.9, volleys: 4, lag: 2.2,
+    desc: '5発のロケットを撃つ。狙った地点で1つに集まり、そのまままっすぐ飛び続ける。1発目だけが重く、残りは軽い。',
   },
   grenade: {
-    name: '電磁グレネード', en: 'CH-2 GRENADE', aim: 'ground', cd: 8, tele: 0.15, big: true,
-    range: 10, aoe: 3, bigAoe: 4.3, delay: 0.55, core: 1.4, dmg: 56, bigDmg: 96, stun: 1.4, slow: 1.8, boost: 3,
-    desc: '爆弾を投げる。中心で当てるとスタン、外側はスロウ。巻き込んだ自分の砲台は3秒間連射する。',
+    name: '電磁グレネード', en: 'CH-2 GRENADE', aim: 'ground', cd: 11, tele: 0.15, big: true,
+    range: 8.8, aoe: 3, bigAoe: 4.3, delay: 0.55, core: 1.6, bigCore: 2.8, dmg: 56, bigDmg: 96, stun: 0.9, slow: 2, slowPct: 0.35, bigSlowPct: 0.8,
+    bounces: 3, hop: 3.4,
+    desc: '爆弾を投げる。中心で当てるとスタン、外側は35%のスロウ。当たると自分の砲台がすぐレーザーを撃つ。',
   },
   upgrade: {
     name: 'アップグレード!!!', en: 'UPGRADE!!!', aim: 'self', cd: 2, ult: true,
     dur: 10,
-    desc: '【必殺技】10秒以内の次のQ・W・Eを強化する（大型砲台／9連ロケット／全域スタンの大型グレネード）。',
+    desc: '【必殺技】10秒以内の次のQ・W・Eを強化する（8秒で自壊する大型砲台／4連射20発のロケット／3回跳ねて3回爆発するグレネード）。',
   },
   // ---- SAND EMPEROR: soldiers fight, the emperor shoves ------------------------------
   conquer: {

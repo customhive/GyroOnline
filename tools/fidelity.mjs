@@ -916,5 +916,49 @@ console.log('CURTAIN CALL (Jhin)');
   check(Math.abs(half / full - 2.5) < 0.3, `R: +3% for every 1% of spin the target is missing (${full.toFixed(0)} -> ${half.toFixed(0)} at half)`);
 }
 
+console.log('TURRET ENGINEER (Heimerdinger)');
+{
+  let { w, me, foe, run, saw } = setup('gear', 30);
+  let n = 0; for (let i = 0; i < 4; i++) { if (w.cast(me, 'Q', me.x + i - 1.5, me.z + 2)) n++; run(1.1); }
+  check(n === 3 && me.stk === 0 && w.own(me, 'turret').length === 3, 'Q: three turrets in store, three standing');
+  run(10);
+  check(me.stk === 1, 'Q: one comes back after 14 seconds');
+  me.ult = 100; w.cast(me, 'R', me.x, me.z); w.cast(me, 'Q', me.x, me.z - 2);
+  check(w.own(me, 'turret').length === 4 && w.own(me, 'turret').filter((q) => q.c).length === 1, 'R then Q: the big turret stands on top of the three');
+  run(8.1);
+  check(!w.own(me, 'turret').some((q) => q.c), 'R then Q: and takes itself apart after 8 seconds');
+  ({ w, me, foe, run, saw } = setup('gear', 8));
+  me.z = 9; foe.z = 4; w.cast(me, 'Q', me.x, me.z + 2); run(2.5);
+  const shots = foe.stats.taken;
+  check(shots > 0, 'Q: a turret shoots what comes in reach');
+  me.x = 0; me.z = -9; foe.x = 6; foe.z = 6; run(7.5); const t1 = foe.stats.taken; run(1); const t2 = foe.stats.taken; run(2);
+  check(t1 > shots && foe.stats.taken - t2 < 1, 'Q: left alone for 8 seconds, it shuts down');
+  ({ w, me, foe, run, saw } = setup('gear', 9));
+  w.cast(me, 'W', 0, 0);
+  const ps = w.projectiles.slice();
+  check(ps.length === 5 && Math.abs(ps[0].x - ps[4].x) > 2.5, 'W: five rockets, starting apart');
+  for (let i = 0; i < Math.round(0.117 / DT); i++) w.step(DT);
+  check(Math.abs(ps[0].x - ps[4].x) < 0.6, 'W: they come together at the point aimed at');
+  run(0.5);
+  const one = setup('gear', 9); one.w.cast(one.me, 'W', 0, 0); one.w.projectiles.length = 1; one.w.projectiles[0].dx = 0; one.w.projectiles[0].dz = -1; one.w.projectiles[0].x = 0; one.run(0.6);
+  check(foe.stats.taken > one.foe.stats.taken && foe.stats.taken < one.foe.stats.taken * 1.9, `W: the first hit is the heavy one (${one.foe.stats.taken.toFixed(0)} alone, ${foe.stats.taken.toFixed(0)} for all five)`);
+  ({ w, me, foe, run, saw } = setup('gear', 9));
+  w.cast(me, 'Q', me.x + 2, me.z); const tz = w.own(me, 'turret')[0]; tz.b = 99;
+  w.cast(me, 'W', 0, 0); run(0.6);
+  check(setup.last.seen.filter((e) => e.type === 'beam' && e.skill.id === 'turretlaser').length === 1, 'W: every rocket that lands charges the laser by a fifth; five set it off');
+  setup.last.seen.length = 0; tz.dz = 0; w.cast(me, 'E', foe.x, foe.z); run(0.7);
+  check(saw('beam', (e) => e.skill.id === 'turretlaser' && e.hit > 0), 'E: a hit, and the turret fires its laser at once');
+  check(Math.abs(foe.stun - 0.9) < 0.2 || foe.stun > 0, 'E: the middle stuns');
+  ({ w, me, foe, run, saw } = setup('gear', 9));
+  w.cast(me, 'E', foe.x + 2.4, foe.z); run(0.7);
+  check(foe.stun === 0 && foe.slowK === 0.35, 'E: the outside slows by 35%');
+  ({ w, me, foe, run, saw } = setup('gear', 14));
+  me.ult = 100; w.cast(me, 'R', me.x, me.z); w.cast(me, 'E', me.x, me.z - 4); run(2.2);
+  check(setup.last.seen.filter((e) => e.type === 'blast' && e.skill.id === 'grenade').length === 3, 'R then E: three blasts, hopping forward');
+  ({ w, me, foe, run, saw } = setup('gear', 9));
+  me.ult = 100; w.cast(me, 'R', me.x, me.z); w.cast(me, 'W', 0, 0);
+  check(w.projectiles.length === 20, 'R then W: four volleys, twenty rockets');
+}
+
 console.log(bad ? `\n${bad} of ${n} checks failed` : `\nall ${n} checks passed`);
 process.exit(bad ? 1 : 0);

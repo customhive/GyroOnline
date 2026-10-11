@@ -591,9 +591,21 @@ export class World {
         if (p) this.shatter(p);
         break;
       }
-      case 'rockets':
-        this.fan(t, S, c.dx, c.dz, big ? S.bigFan : S.fan);
+      case 'rockets': {
+        // Five rockets that close in on the point aimed at and fly on through it.
+        // Upgraded, four volleys follow one another.
+        const reach = Math.max(S.near, Math.min(c.dist, S.range)), tx = t.x + c.dx * reach, tz = t.z + c.dz * reach;
+        t.stack = 0;
+        for (let v = 0; v < (big ? S.volleys : 1); v++) {
+          for (let i = 0; i < S.fan; i++) {
+            const off = (i - (S.fan - 1) / 2) * S.spread;
+            const ox = t.x - c.dz * off - c.dx * v * S.lag, oz = t.z + c.dx * off - c.dz * v * S.lag;
+            const dx = tx - ox, dz = tz - oz, n = Math.hypot(dx, dz) || 1;
+            this.fire(t, S, dx / n, dz / n, { x: ox, z: oz, left: S.range + v * S.lag, quiet: i > 0 || v > 0 });
+          }
+        }
         break;
+      }
       case 'windslash':
         this.fan(t, S, c.dx, c.dz, S.fan);
         break;
@@ -650,11 +662,15 @@ export class World {
         this.zone(t, S, c.ax, c.az);
         break;
       case 'grenade':
-        this.zone(t, S, c.ax, c.az, { c: big ? 1 : 0 });
+        this.zone(t, S, c.ax, c.az, { c: big ? 1 : 0, dx: c.dx, dz: c.dz });
         break;
-      case 'turret':
+      case 'turret': {
+        // The upgraded one comes on top of the three; of the ordinary ones the oldest makes room.
+        const plain = this.own(t, 'turret').filter((q) => !q.c);
+        if (!big && plain.length >= S.cap) this.endZone(plain[0]);
         this.zone(t, S, c.ax, c.az, { c: big ? 1 : 0, b: 0.5 });
         break;
+      }
       case 'arise':
         this.zone(t, S, c.ax, c.az, { b: 0.4 });
         break;
@@ -1738,11 +1754,13 @@ export class World {
           if (live && d < z.r + opp.radius * 0.5) {
             const g = opp.guard > 0 ? 0.3 : 1;
             hit = this.hurt(opp, ((z.c ? S.bigDmg : S.dmg) * g * t.blade.atk) / opp.blade.def, t, 'grenade');
-            if (g === 1) { if (z.c || d < S.core) this.stun(opp, S.stun); else opp.slow = Math.max(opp.slow, S.slow); }
+            if (g === 1) { this.slowBy(opp, S.slow, z.c ? S.bigSlowPct : S.slowPct); if (d < (z.c ? S.bigCore : S.core)) this.stun(opp, S.stun); }
             t.stats.skillHits++;
+            // A hit has every turret fire its laser at once.
+            for (const q of this.own(t, 'turret')) q.dz = 1;
           }
-          // Its own turrets caught in the blast overclock.
-          for (const q of this.own(t, 'turret')) if (Math.hypot(q.x - z.x, q.z - z.z) < z.r) q.a = S.boost;
+          // Upgraded, it bounces on twice more.
+          if (z.c && z.b < S.bounces - 1 && !this.result) this.zone(t, S, z.x + z.dx * S.hop, z.z + z.dz * S.hop, { c: 1, b: z.b + 1, dx: z.dx, dz: z.dz });
           this.emit('blast', { top: t, skill: S, x: z.x, z: z.z, r: z.r, hit, target: hit ? opp : null });
           break;
         }
@@ -1796,8 +1814,16 @@ export class World {
             break;
           }
           z.a = Math.max(0, z.a - dt); z.b -= dt;
+          // dx: how long its maker has been far away, dz: laser charge
+          z.dx = Math.hypot(t.x - z.x, t.z - z.z) > S.leash ? z.dx + dt : 0;
+          if (z.dx >= S.idle) break; // left alone too long, it shuts down
+          z.dz = Math.min(1, z.dz + dt / S.laserEvery);
+          if (z.dz >= 1 && live && d < SKILLS.turretlaser.range) {
+            z.dz = 0;
+            this.lineHit(t, z.c ? SKILLS.biglaser : SKILLS.turretlaser, z.x, z.z, (opp.x - z.x) / (d || 1), (opp.z - z.z) / (d || 1));
+          }
           if (z.b <= 0 && live && d < S.reach) {
-            const shot = SKILLS.turretshot, lead = d / shot.speed;
+            const shot = z.c ? SKILLS.bigshot : SKILLS.turretshot, lead = d / shot.speed;
             const ax = opp.x + opp.vx * lead - z.x, az = opp.z + opp.vz * lead - z.z, n = Math.hypot(ax, az) || 1;
             this.fire(t, shot, ax / n, az / n, { x: z.x, z: z.z, dmg: z.c ? S.bigDmg : S.dmg });
             z.b = S.rate * (z.a > 0 ? 0.45 : 1) * (z.c ? 0.7 : 1);
@@ -2221,6 +2247,12 @@ export class World {
     if (p.back && S.backMul) k *= S.backMul;
     if (p.back && S.backTrue) k *= v.blade.def; // the way back ignores defence
     // Caught out: struck by this top's own attacks a moment ago.
+    // MICRO-ROCKETS: only the first of a volley hits in full, and each one charges the turrets' lasers.
+    if (S.id === 'rockets') {
+      if (o.stack > 0) k *= S.next;
+      o.stack++; o.stackT = 1.5;
+      for (const q of this.own(o, 'turret')) q.dz = Math.min(1, q.dz + S.charge);
+    }
     const marked = !!v.lastHit && v.lastHit.by === o.side && this.time - v.lastHit.time < (S.markT || 0);
     // Each quill after the first cuts a little less.
     if (S.id === 'quill') k *= Math.max(0.1, 1 - S.fall * o.stack);
