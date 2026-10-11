@@ -357,6 +357,17 @@ export class CpuBrain {
           if (me.cd[qk] > 0.8 && me.wcd[me.wo] <= 0) return go();
           break;
         }
+        case 'subject':
+          // Not always the first one that is ready, so all three subjects get painted.
+          if (r() < 0.45 && want(-0.2)) return go();
+          break;
+        case 'wash':
+          // Nothing worth painting with this subject: put it down now and then.
+          if (r() < 0.08) return go();
+          break;
+        case 'lights':
+          if (d < 8) return go();
+          break;
         case 'shieldheal':
           // Cashed in only as the shield is about to lapse anyway.
           if (me.shield > 10 && me.shieldT < 0.5) return go();

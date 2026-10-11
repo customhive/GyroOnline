@@ -55,7 +55,7 @@ function writeTop(w, t) {
   w.u8(t.stack); w.u8(t.stackT * 20); w.u8(t.dmark * 60); w.u16(t.dacc * 50); w.u8(t.egg * 60); w.u8(t.eggHp);
   for (const k of KEYS) w.u8(Math.ceil(t.re[k] * 20)); // rounded up: an open window must not arrive closed
   // The arsenal: main and off-hand, the shots left in each, and the weapon that comes next.
-  w.u8(t.wm | (t.wo << 3)); w.u8(t.wa[t.wm] | (t.wa[t.wo] << 4)); w.u8(t.wq[0] ?? 0);
+  w.u8(t.wm | (t.wo << 3)); w.u8(t.wa[t.wm] | (t.wa[t.wo] << 4)); w.u8((t.wq[0] ?? 0) | (t.subj << 4));
   w.u8(Math.ceil(t.stun * 100)); w.u8(Math.ceil(t.snare * 100)); w.u8(t.slowK * 100);
   w.u8(t.haste * 50); w.u8(Math.ceil(t.charm * 100)); w.u8(t.pin * 100); w.u8(t.store); w.u8(t.tag); w.u8(t.tagT * 25); w.u8(t.perm);
   w.u8((t.toggle ? G_TOGGLE : 0) | (t.eggUsed ? G_EGGUSED : 0) | (t.chan ? G_CHAN : 0) | (t.ret ? G_RET : 0) | (t.dash && t.dash.hit ? G_DASHHIT : 0) | (t.charmDir < 0 ? G_FEAR : 0) | (t.hold ? G_HOLD : 0) | (t.ret2 ? G_RET2 : 0));
@@ -103,7 +103,7 @@ function readTop(r, t) {
   t.bleedT = r.u8() / 25; t.shield = r.u8(); t.shieldT = r.u8() / 50; t.buff = r.u8() / 20;
   t.stack = r.u8(); t.stackT = r.u8() / 20; t.dmark = r.u8() / 60; t.dacc = r.u16() / 50; t.egg = r.u8() / 60; t.eggHp = r.u8();
   for (const k of KEYS) t.re[k] = r.u8() / 20;
-  { const a = r.u8(), b = r.u8(); t.wm = a & 7; t.wo = a >> 3; t.wa[t.wm] = b & 15; t.wa[t.wo] = b >> 4; t.wq[0] = r.u8(); }
+  { const a = r.u8(), b = r.u8(); t.wm = a & 7; t.wo = a >> 3; t.wa[t.wm] = b & 15; t.wa[t.wo] = b >> 4; const c = r.u8(); t.wq[0] = c & 15; t.subj = c >> 4; }
   t.stun = r.u8() / 100; t.snare = r.u8() / 100; t.slowK = r.u8() / 100;
   t.haste = r.u8() / 50; t.charm = r.u8() / 100; t.pin = r.u8() / 100; t.store = r.u8(); t.tag = r.u8(); t.tagT = r.u8() / 25; t.perm = r.u8();
   const g = r.u8();

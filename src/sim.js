@@ -60,6 +60,8 @@ export function makeTop(side, blade) {
     perm: 0,               // growth that lasts the whole match, not just the round
     // LUNAR ARSENAL: main and off-hand weapon, the ones waiting, shots left in each, each one's cooldown.
     // Like `perm`, the weapons carry over from round to round.
+    subj: 0,               // VISION PAINTER: the subject chosen (1 Q, 2 W, 3 E), waiting for its spell
+    lights: 0, lightsT: 0, // STIRRING LIGHTS: hits left that carry its bonus, and time left (host only)
     wm: 0, wo: 1, wq: [2, 3, 4], wa: [5, 5, 5, 5, 5], wcd: [0, 0, 0, 0, 0],
     dot: 0, dotT: 0, drop: 0, hist: [], histT: 0, // bookkeeping only; not sent over the network
     cd: { Q: 0, W: 0, E: 0, R: 0 },
@@ -278,7 +280,7 @@ export class World {
       t.markK = 1;
       t.ret2 = t.empS = null;
       t.stack = t.stackT = t.last = t.dmark = t.dacc = t.egg = t.eggHp = t.dot = t.dotT = t.drop = 0;
-      t.sleep = 0; t.styleLast = '';
+      t.sleep = 0; t.styleLast = ''; t.subj = t.lights = t.lightsT = 0;
       t.wcd.fill(0);
       t.haste = t.charm = t.pin = t.store = t.tag = t.tagT = t.histT = t.stun = t.snare = t.slowK = 0;
       t.hist = [];
@@ -308,6 +310,8 @@ export class World {
   // window is open, the tornado once the wind is stacked, the copy for MIMIC.
   aimSkill(t, key) {
     const S = skillOf(t, key);
+    // VISION PAINTER: with a subject chosen, Q/W/E are its three spells and R washes the brush.
+    if (t.subj && t.blade.painter) return key === 'R' ? SKILLS.washbrush : SKILLS[skillOf(t, KEYS[t.subj - 1]).spells[key]];
     // THE DARKIN BLADE is three different swings on one key.
     if (S.id === 'darkinblade') return SKILLS['darkin' + (t.re[key] > 0 ? Math.min(3, t.stack + 1) : 1)];
     if (S.re && t.re[key] > 0) return SKILLS[S.re];
@@ -324,6 +328,7 @@ export class World {
   // Off cooldown (within `slack` seconds) and, for an ultimate, charged.
   ready(t, key, slack = 0) {
     const S = skillOf(t, key);
+    if (t.subj && t.blade.painter) return true;
     if ((S.re || S.id === 'mimic') && t.re[key] > 0) return true;
     return t.cd[key] <= slack && (!S.ult || t.ult >= 100);
   }
@@ -396,7 +401,16 @@ export class World {
     const reach = this.holdRange(t, key);
     t.hold = null;
     const re = !!((base.re || base.id === 'mimic') && t.re[key] > 0);
-    if (re) {
+    if (t.blade.painter && (base.spells || t.subj)) {
+      // Two steps: a subject first (nothing happens yet), then one of its spells.
+      if (!t.subj) { t.subj = KEYS.indexOf(key) + 1; this.emit('subject', { top: t, key }); return true; }
+      const sk = KEYS[t.subj - 1];
+      t.subj = 0;
+      // Washed out: the subject is put down and nothing is spent.
+      if (key === 'R') { this.emit('subject', { top: t, key: null }); return true; }
+      t.cd[sk] = skillOf(t, sk).cd * t.blade.cdMul;
+      t.last = KEYS.indexOf(sk);
+    } else if (re) {
       t.re[key] = 0;
     } else {
       t.cd[key] = base.cd * t.blade.cdMul;
@@ -537,7 +551,9 @@ export class World {
       if (d < r + opp.radius * 0.5) {
         if (d < 0.05) { dx = 1; dz = 0; } else { dx /= d; dz /= d; }
         const g = opp.guard > 0 ? 0.3 : 1;
-        hit = this.hurt(opp, ((o.dmg ?? S.dmg) * g * t.blade.atk) / opp.blade.def, t, S.id);
+        // Some blasts bite harder the less spin the target has left.
+        const ex = S.exec && !o.as ? 1 + S.exec * (1 - spinRatio(opp)) : 1;
+        hit = this.hurt(opp, ((o.dmg ?? S.dmg) * ex * g * t.blade.atk) / opp.blade.def, t, S.id);
         if (g === 1) this.affect(t, opp, o.as || S, dx, dz);
         // Dragged from where it stood toward whoever reached for it.
         if (g === 1 && S.pull && !o.as) this.pull(opp, t, S.pull);
@@ -630,6 +646,20 @@ export class World {
         // An older sentry does not last long once a new one is set.
         for (const q of this.own(t, 'sentry')) if (!q.c) { q.c = 1; q.a = q.t + S.live; }
         this.zone(t, S, c.ax, c.az);
+        break;
+      case 'hlava':
+        // MOLTEN FISSURE: a line of eruptions, one after another, each leaving a pool.
+        for (let i = 0; i < S.n; i++) this.zone(t, SKILLS.lavapool, t.x + c.dx * (S.first + i * S.gap), t.z + c.dz * (S.first + i * S.gap), { a: S.delay + i * S.every }, i > 0);
+        break;
+      case 'hcurrent':
+        for (let i = 0; i < S.n; i++) this.zone(t, SKILLS.currentpool, t.x + c.dx * (S.first + i * S.gap), t.z + c.dz * (S.first + i * S.gap), null, i > 0);
+        break;
+      case 'hgaze':
+        this.zone(t, SKILLS.gazeeye, c.ax, c.az);
+        break;
+      case 'hlights':
+        t.lights = S.hits; t.lightsT = S.dur;
+        this.emit('buff', { top: t, skill: S });
         break;
       case 'tornado':
         t.stack = 0;
@@ -1194,6 +1224,8 @@ export class World {
       }
       if (from.blade.permDmg) dmg *= 1 + from.blade.permDmg * from.perm;
     }
+    // STIRRING LIGHTS: the next few hits carry a little more.
+    if (foe && from.lights > 0 && kind !== 'dot' && kind !== 'wall') { dmg += (SKILLS.hlights.bonus * from.blade.atk) / t.blade.def; from.lights--; }
     if (t.charge) dmg *= t.charge.skill.armor ?? 1;
     // Asleep: the first blow lands twice over (up to a limit) and wakes it.
     if (foe && t.sleep > 0 && kind !== 'dot') { dmg += Math.min(dmg, (SKILLS.bubble.wake * from.blade.atk) / t.blade.def); t.sleep = 0; t.stun = 0; }
@@ -1491,6 +1523,7 @@ export class World {
       if (t.histT <= 0) { t.histT = 0.1; t.hist.push({ x: t.x, z: t.z, spin: t.spin }); if (t.hist.length > t.blade.rewind * 10) t.hist.shift(); }
     }
     if (t.sleep > 0) t.sleep = Math.max(0, t.sleep - dt);
+    if (t.lightsT > 0) { t.lightsT -= dt; if (t.lightsT <= 0) t.lights = t.lightsT = 0; }
     if (t.shieldT > 0) { t.shieldT -= dt; if (t.shieldT <= 0) { t.shieldT = 0; t.shield = 0; } }
     if (t.bleedT > 0) { t.bleedT -= dt; if (t.bleedT <= 0) { t.bleedT = 0; t.bleed = 0; } }
     if (t.stackT > 0) { t.stackT -= dt; if (t.stackT <= 0) { t.stackT = 0; t.stack = 0; } }
@@ -1987,6 +2020,22 @@ export class World {
         case 'feather':
           if (z.t >= z.T || this.result) z.dead = true;
           break;
+        case 'lavapool':
+          // a: when it erupts; after that it is a pool that burns and slows
+          if (z.t >= z.a + S.dur || this.result) { this.endZone(z); break; }
+          if (z.t < z.a) break;
+          if (!z.c) { z.c = 1; this.burst(t, S, z.x, z.z, z.r); }
+          if (live && d < z.r + opp.radius * 0.3) { this.slowBy(opp, 0.3, S.slowPct); this.dot(opp, (S.dps * dt * t.blade.atk) / opp.blade.def, t); }
+          break;
+        case 'gazeeye':
+          // GAZE OF THE ABYSS: it opens, finds whoever is nearest, and fires at them.
+          if (z.t >= z.T || this.result) { this.endZone(z); break; }
+          if (z.t >= S.arm && live && d < z.r + opp.radius * 0.3) {
+            const shot = SKILLS.gazeshot;
+            this.fire(t, shot, (opp.x - z.x) / (d || 1), (opp.z - z.z) / (d || 1), { x: z.x, z: z.z });
+            this.endZone(z);
+          }
+          break;
         case 'sentry':
           // c: woken, a: when it then runs out, b: time to its next shot
           if (z.t >= z.T || (z.c && z.t >= z.a) || this.result) { this.endZone(z); break; }
@@ -2066,6 +2115,8 @@ export class World {
   // that does something to whoever stands in it. Anything else just expires.
   genericZone(z, t, opp, S, live, dt) {
     if (S.follow && !t.out) { z.x = t.x; z.z = t.z; }
+    // SPIRALING DESPAIR stays centred on whoever it struck.
+    if (S.stick && targetable(opp)) { z.x = opp.x; z.z = opp.z; }
     if (S.grow) initZone(z);
     const d = Math.hypot(opp.x - z.x, opp.z - z.z);
     if (S.kind === 'blast') {
@@ -2078,6 +2129,8 @@ export class World {
         return;
       }
       const struck = this.burst(t, S, z.x, z.z, z.r);
+      // CRUSHING MAW drags what it catches to its middle.
+      if (struck && S.pullMid && opp.guard <= 0) this.pull(opp, z, S.pullMid);
       if (struck && S.doom) opp.doom = S.doom;
       if (struck && S.gain) t.perm = Math.min(255, t.perm + S.gain);
       return;
@@ -2114,6 +2167,8 @@ export class World {
       this.hitKegs(t, S, (q) => Math.hypot(q.x - z.x, q.z - z.z) < z.r);
     }
     if (inside) {
+      // Despair deepens: the slow grows with every beat spent inside.
+      if (S.slowGrow) this.slowBy(opp, 0.3, Math.min(S.slowMax, S.slowGrow * Math.floor(z.t / 0.25)));
       if (S.slowIn) this.slowBy(opp, 0.3, S.slowPct);
       if (S.dps) this.dot(opp, (S.dps * dt * t.blade.atk) / opp.blade.def, t);
       // SEVERUM drinks what it cuts.
@@ -2132,6 +2187,8 @@ export class World {
     if (!t.out && !t.air && t.spin > 0 && Math.hypot(t.x - z.x, t.z - z.z) < z.r) {
       if (S.regen) { const h = Math.min(S.regen * dt, t.spinMax - t.spin); t.spin += h; z.a += h; z.b += dt; if (z.b >= 1) { if (z.a >= 1) this.emit('heal', { top: t, amount: z.a }); z.a = 0; z.b = 0; } }
       if (S.hasteIn) t.haste = Math.max(t.haste, 0.3);
+      // POOL OF REFLECTION: a shield that builds while standing in it.
+      if (S.shieldIn) { t.shield = Math.min(S.shieldIn.max, Math.max(t.shield, S.shieldIn.first) + S.shieldIn.per * dt); t.shieldT = 0.5; }
     }
   }
 

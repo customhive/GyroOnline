@@ -1128,5 +1128,58 @@ console.log('LUNAR ARSENAL (Aphelios)');
   check(!w.canCast(me, 'E'), 'E: there is none');
 }
 
+console.log('VISION PAINTER (Hwei)');
+{
+  let { w, me, foe, run, saw } = setup('canvas', 7);
+  const paint = (a, b, x = foe.x, z = foe.z) => { me.cd.Q = me.cd.W = me.cd.E = 0; me.subj = 0; w.cast(me, a, me.x, me.z); return w.cast(me, b, x, z); };
+  check(w.cast(me, 'Q', me.x, me.z) && me.subj === 1 && me.cd.Q === 0 && foe.stats.taken === 0 && !w.projectiles.length, 'Q: a subject is chosen; nothing happens yet');
+  check(['Q', 'W', 'E'].map((k) => w.aimSkill(me, k).id).join() === 'hfire,hbolt,hlava' && w.aimSkill(me, 'R').id === 'washbrush', 'with Disaster chosen the keys are fire, bolt, lava, and R washes the brush');
+  me.ult = 100; w.cast(me, 'R', me.x, me.z);
+  check(me.subj === 0 && me.cd.Q === 0 && me.ult === 100, 'R: washed out; no cooldown, no gauge spent');
+  w.cast(me, 'Q', me.x, me.z); w.cast(me, 'W', foe.x, foe.z);
+  check(me.subj === 0 && me.cd.Q > 5 && me.cd.W === 0 && w.zones.some((z) => z.kind === 'hbolt'), 'Q then W: the bolt, and the cooldown goes on the subject (Q), not on W');
+  check(!w.canCast(me, 'Q') && w.canCast(me, 'W') && w.canCast(me, 'E'), 'the other two subjects are still open');
+  run(0.8); const b0 = foe.stats.taken; run(0.4);
+  check(b0 === 0 && foe.stats.taken > 0, 'QW: lightning after a second');
+  const low = setup('canvas', 7); low.foe.spin = low.foe.spinMax * 0.3; const f0 = low.foe.spin; low.w.cast(low.me, 'Q', 0, 0); low.w.cast(low.me, 'W', low.foe.x, low.foe.z); low.run(1.2);
+  check((f0 - low.foe.spin) / foe.stats.taken > 2.2, 'QW: much heavier on a target with little spin left');
+  ({ w, me, foe, run, saw } = setup('canvas', 7));
+  w.cast(me, 'Q', 0, 0); w.cast(me, 'Q', me.x + 9, me.z); run(0.5);
+  check(saw('blast', (e) => e.skill.id === 'hfire'), 'QQ: the fireball bursts at the end of its range');
+  w.subjReset = 0; me.cd.Q = 0; w.cast(me, 'Q', 0, 0); w.cast(me, 'E', foe.x, foe.z);
+  check(w.own(me, 'lavapool').length === 4, 'QE: four eruptions in a line');
+  run(0.5); const l0 = foe.stats.taken; run(1.2);
+  check(l0 === 0 && foe.stats.taken > 0 && foe.slowK === 0.35, 'QE: they go off one after another and leave pools that slow 35%');
+  ({ w, me, foe, run, saw } = setup('canvas', 7));
+  w.cast(me, 'W', 0, 0); w.cast(me, 'W', me.x, me.z); run(0.1); const s0 = me.shield; run(2);
+  check(s0 >= 45 && me.shield > s0 + 20 && me.shield <= 90 && me.cd.W > 13, 'WW: a shield that builds while standing in the pool');
+  ({ w, me, foe, run, saw } = setup('canvas', 7));
+  w.cast(me, 'W', 0, 0); w.cast(me, 'Q', foe.x, foe.z); run(0.2);
+  check(me.haste > 0 && w.own(me, 'currentpool').length === 4, 'WQ: a current that speeds its maker along');
+  ({ w, me, foe, run, saw } = setup('canvas', 7));
+  const plain = w.hurt(foe, 30, me, 'x'); w.cast(me, 'W', 0, 0); w.cast(me, 'E', me.x, me.z);
+  const h = [1, 2, 3, 4].map(() => w.hurt(foe, 30, me, 'x'));
+  check(h[0] > plain + 10 && h[2] > plain + 10 && Math.abs(h[3] - plain) < 0.01, 'WE: the next three hits carry more, the fourth does not');
+  ({ w, me, foe, run, saw } = setup('canvas', 7));
+  w.cast(me, 'E', 0, 0); w.cast(me, 'Q', foe.x, foe.z); run(0.3);
+  check(foe.charm > 0 && foe.charmDir === -1 && foe.slowK === 0.6, 'EQ: fear, and a 60% slow');
+  ({ w, me, foe, run, saw } = setup('canvas', 7));
+  w.cast(me, 'E', 0, 0); w.cast(me, 'W', foe.x + 2, foe.z); run(0.8);
+  check(w.own(me, 'gazeeye').length === 1 && foe.snare === 0, 'EW: an eye opens near the target');
+  run(0.5);
+  check(foe.snare > 0.8 && foe.stats.taken > 0, 'EW: it finds the target and snares it');
+  ({ w, me, foe, run, saw } = setup('canvas', 7));
+  w.cast(me, 'E', 0, 0); w.cast(me, 'E', foe.x + 1.8, foe.z); run(0.3); const m0 = foe.x; setup.last.seen.length = 0;
+  for (let i = 0; i < 40; i++) w.step(DT);
+  check(foe.stats.taken > 0 && foe.slowK === 0.7 && Math.abs(foe.x - 1.8) < Math.abs(m0 - 1.8), 'EE: the jaws close, drag the target to their middle, and slow it 70%');
+  ({ w, me, foe, run, saw } = setup('canvas', 7));
+  me.subj = 0; w.cast(me, 'R', foe.x, foe.z); run(0.4);
+  const dz = w.own(me, 'despairz')[0];
+  foe.x = 6; foe.z = 6; run(0.1);
+  check(!!dz && Math.hypot(dz.x - 6, dz.z - 6) < 0.5, 'R: despair stays centred on whoever it struck');
+  run(1.5); const sk = foe.slowK; run(1.2);
+  check(sk >= 0.5 && !w.own(me, 'despairz').length && foe.stats.taken > 150, `R: the slow deepens, and it ends in a burst (${sk})`);
+}
+
 console.log(bad ? `\n${bad} of ${n} checks failed` : `\nall ${n} checks passed`);
 process.exit(bad ? 1 : 0);

@@ -229,12 +229,12 @@ export const BLADES = {
     desc: '光で縛り、アリーナを貫く光線で撃ち抜く遠距離型。',
   },
   canvas: {
-    id: 'canvas', kit: { Q: 'fireball', W: 'pool', E: 'grimface', R: 'despair' },
+    id: 'canvas', kit: { Q: 'subjdisaster', W: 'subjserenity', E: 'subjtorment', R: 'despair' }, painter: true,
     name: 'ヴィジョン・ペインター', en: 'VISION PAINTER', type: 'STAMINA', typeJa: 'スタミナ',
     color: 0x7f7bff, css: '#7f7bff', teeth: 5,
-    atk: 1.35, def: 1.06, mass: 0.96, speed: 13.5, decay: 5.4, spinMax: 1000, cdMul: 1.0, guardMul: 1.0,
+    atk: 1.46, def: 1.1, mass: 0.96, speed: 13.5, decay: 5.4, spinMax: 1000, cdMul: 1.0, guardMul: 1.0,
     bars: { atk: 3, def: 2, sta: 5, spd: 3 },
-    desc: '炎で焼き、泉で回復し、恐怖で追い払う。必殺技は当てた場所に広がり続ける絶望を残す。',
+    desc: 'Q・W・Eで題材（厄災・静謐・苦悩）を選び、もう一度Q・W・Eを押して技を出す。3×3で9つの技を使い分ける。Rは題材を選んでいる間は取り消し、選んでいなければ必殺技。',
   },
   star: {
     id: 'star', kit: { Q: 'paddle', W: 'thief', E: 'bubble', R: 'portal' },
@@ -943,29 +943,64 @@ export const SKILLS = {
   },
   lightpop: { name: '起爆', en: 'DETONATE', aim: 'self', hidden: true, pops: 'singularity' },
   // ---- VISION PAINTER: fire, a spring, and dread -----------------------------
-  fireball: {
-    name: '破滅の炎', en: 'DEVASTATING FIRE', aim: 'line', kind: 'shot', icon: 'shot', cd: 3.2,
-    tele: 0.35, range: 12, speed: 32, radius: 0.8, dmg: 34, splash: 2.6, splashDmg: 26,
-    desc: '当たるか射程の端で爆発する火球。',
+  subjdisaster: {
+    name: '題材：厄災', en: 'SUBJECT: DISASTER', aim: 'self', icon: 'shot', cd: 6, ai: 'subject',
+    spells: { Q: 'hfire', W: 'hbolt', E: 'hlava' },
+    desc: '題材を選ぶ（まだ何も起きない）。続けて押すキーで技が決まる。Q＝火球（当たるか端で爆発）／W＝1秒後に落雷（相手の回転が減っているほど重い）／E＝直線に次々噴き上がる溶岩（残ってスロウ35%）。Rで取り消し。',
   },
-  pool: {
-    name: '安息の泉', en: 'FLEETING CURRENT', aim: 'self', kind: 'field', icon: 'heal', cd: 12,
-    aoe: 3.6, dur: 4, regen: 20, hasteIn: true,
-    desc: '足元に泉を作る。中にいる間は回転が回復し、加速する。',
+  subjserenity: {
+    name: '題材：静謐', en: 'SUBJECT: SERENITY', aim: 'self', icon: 'heal', cd: 16, ai: 'subject',
+    spells: { Q: 'hcurrent', W: 'hpool', E: 'hlights' },
+    desc: '題材を選ぶ。Q＝水流（上にいる間加速）／W＝泉（上にいる間バリアが増えていく）／E＝次の3回の攻撃に追加ダメージ。Rで取り消し。',
   },
-  grimface: {
-    name: '戦慄の貌', en: 'GRIM VISAGE', aim: 'line', kind: 'shot', icon: 'heart', cd: 8,
-    tele: 0.4, range: 11, speed: 34, radius: 0.8, dmg: 32, fear: 1.1,
-    desc: '当たった相手は1.1秒間、何もできずに逃げていく。',
+  subjtorment: {
+    name: '題材：苦悩', en: 'SUBJECT: TORMENT', aim: 'self', icon: 'heart', cd: 10, ai: 'subject',
+    spells: { Q: 'hvisage', W: 'hgaze', E: 'hmaw' },
+    desc: '題材を選ぶ。Q＝恐怖の顔（逃げ出させて60%スロウ）／W＝置いた目が近くの相手を狙って縛る／E＝顎で挟んで中央へ引き寄せ、70%スロウ。Rで取り消し。',
+  },
+  washbrush: { name: '洗筆', en: 'WASH BRUSH', aim: 'self', hidden: true, short: '消', ai: 'wash' },
+  hfire: {
+    name: '荒廃の炎', en: 'DEVASTATING FIRE', aim: 'line', kind: 'shot', hidden: true, short: '火',
+    tele: 0.35, range: 9, speed: 32, radius: 0.8, dmg: 26, splash: 2.4, splashDmg: 40,
+  },
+  hbolt: {
+    name: '断ち切る稲妻', en: 'SEVERING BOLT', aim: 'ground', kind: 'blast', hidden: true, short: '雷',
+    tele: 0.1, range: 9, aoe: 2.3, delay: 1, dmg: 44, exec: 2.5,
+  },
+  hlava: {
+    name: '沸き立つ大地', en: 'MOLTEN FISSURE', aim: 'line', hidden: true, short: '溶', ai: 'cone',
+    tele: 0.2, range: 8.4, radius: 1.3, n: 4, first: 1.8, gap: 2.1, delay: 0.6, every: 0.2,
+  },
+  lavapool: { name: '溶岩', en: 'LAVA', aim: 'ground', kind: 'field', hidden: true, aoe: 1.5, dur: 2.5, dmg: 22, dps: 20, slowPct: 0.35 },
+  hcurrent: {
+    name: '流るる蒼', en: 'FLEETING CURRENT', aim: 'line', hidden: true, short: '流', ai: 'none',
+    range: 8, radius: 1.5, n: 4, first: 1, gap: 2.2,
+  },
+  currentpool: { name: '水流', en: 'CURRENT', aim: 'ground', kind: 'field', hidden: true, friendly: true, aoe: 1.6, dur: 4, hasteIn: true },
+  hpool: {
+    name: '内省の泉', en: 'POOL OF REFLECTION', aim: 'ground', kind: 'field', hidden: true, short: '泉', friendly: true,
+    range: 6, aoe: 2.6, dur: 3, shieldIn: { first: 45, per: 16, max: 90 },
+  },
+  hlights: { name: '迸る光彩', en: 'STIRRING LIGHTS', aim: 'self', hidden: true, short: '光', ai: 'lights', hits: 3, dur: 9, bonus: 18 },
+  hvisage: {
+    name: '恐怖の形相', en: 'GRIM VISAGE', aim: 'line', kind: 'shot', hidden: true, short: '恐',
+    tele: 0.4, range: 9, speed: 34, radius: 0.8, dmg: 40, fear: 0.9, slow: 0.9, slowPct: 0.6,
+  },
+  hgaze: { name: '深淵の眼差し', en: 'GAZE OF THE ABYSS', aim: 'ground', hidden: true, short: '眼', ai: 'ground', range: 9, aoe: 4, dur: 3, arm: 0.95 },
+  gazeeye: { name: '深淵の眼', en: 'ABYSSAL EYE', aim: 'ground', kind: 'field', hidden: true, aoe: 4, dur: 3, arm: 0.95 },
+  gazeshot: { name: '深淵の眼差し', en: 'GAZE OF THE ABYSS', aim: 'line', hidden: true, range: 7, speed: 40, radius: 0.8, dmg: 40, snare: 1.2 },
+  hmaw: {
+    name: '粉砕の牙', en: 'CRUSHING MAW', aim: 'ground', kind: 'blast', hidden: true, short: '牙',
+    tele: 0.1, range: 8, aoe: 2.6, delay: 0.4, dmg: 40, pullMid: 14, slow: 1.25, slowPct: 0.7,
   },
   despair: {
     name: '絶望の螺旋', en: 'SPIRALING DESPAIR', aim: 'line', kind: 'shot', icon: 'star', cd: 2, ult: true,
-    tele: 0.4, range: 14, speed: 30, radius: 1.0, dmg: 30, spawn: 'despairz',
-    desc: '【必殺技】当たった場所に3秒間広がり続ける領域を残す。中の相手はスロウになり削られ、最後に炸裂する。',
+    tele: 0.4, range: 12, speed: 30, radius: 1.0, dmg: 20, spawn: 'despairz',
+    desc: '【必殺技】当たった相手を中心に3秒間広がり続ける領域を作る。相手は逃げられず、スロウがどんどん重くなり、最後に炸裂する。題材を選んでいる間は使えない（Rは取り消しになる）。',
   },
   despairz: {
     name: '絶望', en: 'DESPAIR', aim: 'ground', kind: 'field', hidden: true,
-    aoe: 5, r0: 2, grow: 2.4, dur: 3, dps: 50, slowIn: true, endDmg: 90,
+    aoe: 5, r0: 2, grow: 2.4, dur: 3, dps: 22, stick: true, slowGrow: 0.1, slowMax: 0.9, endDmg: 150,
   },
   // ---- TWILIGHT STAR: the further the better ---------------------------------
   paddle: {

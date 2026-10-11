@@ -423,6 +423,8 @@ export class UI {
   // The small counter on a skill button: stacks, shots left, objects out.
   note(world, me, S, key) {
     const foe = world.other(me);
+    // A subject is chosen: each key shows the spell it would paint.
+    if (me.subj && me.blade.painter) return world.aimSkill(me, key).short || '';
     if (S.weapons) return me.re[key] > 0 ? '縛' : S.short[me.wm] + me.wa[me.wm];
     if (S.weapon !== undefined) return kitOf(me.blade).find((q) => q.weapons).short[S.weapon] + me.wa[S.weapon];
     if (S.id === 'bindeclipse') return '縛';
