@@ -76,6 +76,7 @@ export function makeTop(side, blade) {
     gone: null,            // out of this round: how ('over', 'burst', 'spin'), or null while still in it
     team: side,            // tops on the same team do not fight each other
     perm: 0,               // growth that lasts the whole match, not just the round
+    realm: 0,              // shut in a REALM OF DEATH: 1 + the side of whoever made it (0: in the ordinary world)
     // LUNAR ARSENAL: main and off-hand weapon, the ones waiting, shots left in each, each one's cooldown.
     // Like `perm`, the weapons carry over from round to round.
     subj: 0,               // VISION PAINTER: the subject chosen (1 Q, 2 W, 3 E), waiting for its spell
@@ -90,7 +91,12 @@ export function makeTop(side, blade) {
   };
 }
 
-export const targetable = (t) => !t.air && !t.out && !t.blink && !t.gone && !(t.charge && t.charge.skill.veil);
+// Tops shut in a REALM OF DEATH and tops outside it cannot touch one another.
+// While the simulation works on behalf of one top (its own update, its shots,
+// its zones, a skill it casts), SCOPE is the world that top is in and nothing
+// outside it can be targeted. -1: no one in particular is acting (the HUD, a CPU thinking).
+let SCOPE = -1;
+export const targetable = (t) => !t.air && !t.out && !t.blink && !t.gone && !(t.charge && t.charge.skill.veil) && (SCOPE < 0 || t.realm === SCOPE);
 export const spinRatio = (t) => Math.max(0, t.spin / t.spinMax);
 // Tops with little spin left are thrown further.
 export const kbMul = (t) => 1 + 0.85 * (1 - spinRatio(t));
@@ -136,6 +142,7 @@ export function moveTop(t, dt, opp) {
   const B = t.buff > 0 && t.blade.buff;
   const eased = t.slow > 0 ? 1 - (t.slowK || 0.4) : 1;
   const slow = (t.ground > 0 ? Math.min(0.4, eased) : eased) * ((B && B.speed) || 1) * (t.haste > 0 ? 1.3 : 1) * (t.hold ? 0.8 : 1) * (t.blade.style ? 1 + t.blade.style.speed * (t.stack || 0) : 1)
+    * (t.blade.aura && t.stack >= t.blade.aura.hits ? t.blade.aura.speed : 1)
     * (t.blade.surf && t.scar <= 0 && Math.hypot(t.x, t.z) > ARENA.R - 3.4 && !rimOpen(t.x, t.z) ? t.blade.surf : 1);
   // Stunned tops stay put too, except while a hit is still carrying them.
   const held = rooted(t) || ((t.stun > 0 || t.snare > 0) && t.tumble <= 0);
@@ -333,9 +340,9 @@ export class World {
 
   // Everyone still in the round that `t`'s attacks can land on: its enemies,
   // and its own team too when friendly fire is on.
-  foes(t) { return this.tops.filter((o) => o !== t && !o.gone && (this.ff || o.team !== t.team)); }
+  foes(t) { return this.tops.filter((o) => o !== t && !o.gone && o.realm === t.realm && (this.ff || o.team !== t.team)); }
   // Only those it is actually fighting.
-  enemies(t) { return this.tops.filter((o) => o !== t && !o.gone && o.team !== t.team); }
+  enemies(t) { return this.tops.filter((o) => o !== t && !o.gone && o.realm === t.realm && o.team !== t.team); }
   // The one `t` is fighting right now: the nearest enemy still in the round.
   // In a duel that is simply the other top, in or out.
   other(t) { return this.near(t, t.x, t.z); }
@@ -344,7 +351,7 @@ export class World {
     let best = null, bd = Infinity;
     for (const o of this.tops) {
       if (o === t || o.team === t.team) continue;
-      const d = Math.hypot(o.x - x, o.z - z) + (o.gone ? 1e6 : targetable(o) ? 0 : 1e3);
+      const d = Math.hypot(o.x - x, o.z - z) + (o.gone ? 1e6 : o.realm !== t.realm ? 1e5 : targetable(o) ? 0 : 1e3);
       if (d < bd) { bd = d; best = o; }
     }
     return best || this.tops.find((o) => o !== t);
@@ -387,7 +394,7 @@ export class World {
       t.vx = t.blade.speed * 0.75 * Math.cos(ph); t.vz = -t.blade.speed * 0.75 * Math.sin(ph);
       if (Math.abs(t.x) < 1e-9) t.x = 0;
       if (Math.abs(t.vz) < 1e-9) t.vz = 0;
-      t.gone = null; t.prey = t.dmarkTo = -1; t.quills = t.quillT = 0;
+      t.gone = null; t.prey = t.dmarkTo = -1; t.quills = t.quillT = 0; t.realm = 0;
       t.silence = t.dbl = t.odT = t.deN = t.deT = t.ardent = t.shrugCd = t.rockT = 0; t.shredK = 1; t.bleedBy = t.ardentBy = -1; t.spray = null; t.rayA = null; t.once = false;
       t.spin = t.spinMax;
       t.cmd = t.cast = t.dash = t.air = t.out = t.blink = t.charge = t.orbs = t.tether = t.chan = t.ret = t.hold = null;
@@ -531,6 +538,12 @@ export class World {
   // wind-up to assume. A real hold is timed by the simulation itself.
   // (bx, bz): a second point, for the few skills aimed with two (where, then which way).
   cast(t, key, ax, az, wound = 0, bx, bz) {
+    const was = SCOPE;
+    SCOPE = t.realm;
+    try { return this.castNow(t, key, ax, az, wound, bx, bz); } finally { SCOPE = was; }
+  }
+
+  castNow(t, key, ax, az, wound, bx, bz) {
     if (!this.canCast(t, key)) return false;
     const base = skillOf(t, key), S = this.aimSkill(t, key);
     const held = t.hold && t.hold.key === key ? t.hold.t : wound;
@@ -767,6 +780,14 @@ export class World {
         if (t.stack < 3) t.re[c.key] = S.window;
         // Swung the moment it is let go, unless the skill is given a wind-up of its own.
         if (!S.charge) { this.swing(t, S, c.dx, c.dz); break; }
+        t.charge = { t: 0, T: S.charge, skill: S, dx: c.dx, dz: c.dz };
+        t.cmd = null;
+        this.emit('charge', { top: t, T: S.charge, skill: S });
+        break;
+      case 'realm':
+        // Half a second to open it; the one it is opening for can barely move meanwhile.
+        t.prey = opp.side;
+        this.slowBy(opp, S.charge, S.castSlow);
         t.charge = { t: 0, T: S.charge, skill: S, dx: c.dx, dz: c.dz };
         t.cmd = null;
         this.emit('charge', { top: t, T: S.charge, skill: S });
@@ -1506,6 +1527,13 @@ export class World {
   hurt(t, dmg, from, kind) {
     if (this.result || dmg <= 0) return 0;
     const foe = from && from !== t;
+    // Nothing crosses the edge of a realm.
+    if (foe && from.realm !== t.realm) return 0;
+    if (foe && t.realm) {
+      // Inside, its maker fights with a share of the other's strength.
+      const lord = this.tops[t.realm - 1], K = SKILLS.realm.steal;
+      if (from === lord) dmg *= (1 + K) / (1 - K); else if (t === lord) dmg *= (1 - K) / (1 + K);
+    }
     if (foe && t.shred > 0) dmg *= from.blade.dent ? from.blade.dent.shred : t.shredK || 1;
     if (foe && kind !== 'dot' && kind !== 'wall') {
       const B = from.buff > 0 && from.blade.buff;
@@ -1547,6 +1575,9 @@ export class World {
       if (kind !== 'drain') from.ult = Math.min(100, from.ult + dmg * 0.085);
     }
     if (kind === 'dot') return dmg;
+    // DARKNESS RISE: the third blow in a row lights the aura; every one after keeps it lit.
+    const AU = foe && from.blade.aura;
+    if (AU && kind !== 'wall') { from.stack = Math.min(AU.hits, from.stack + 1); from.stackT = from.stack >= AU.hits ? AU.dur : AU.keep; }
     if (foe) {
       t.scar = SCAR;
       if (from.dmark > 0 && kind !== 'deathmark' && (from.dmarkTo < 0 || from.dmarkTo === t.side)) from.dacc += dmg;
@@ -1670,6 +1701,7 @@ export class World {
   // Everything a landed skill does besides its own damage. `shove` is off for
   // body hits, which throw the target themselves.
   affect(s, v, S, dx, dz, shove = true) {
+    if (s.realm !== v.realm) return;
     // A sigil goes off on the next skill that lands.
     if (v.mark > 0) {
       v.mark = 0;
@@ -1732,12 +1764,15 @@ export class World {
   step(dt) {
     this.time += dt;
     const T = this.tops;
-    for (const t of T) this.updateTop(t, dt, this.other(t));
+    for (const t of T) { SCOPE = t.realm; this.updateTop(t, dt, this.other(t)); }
+    SCOPE = -1;
     for (let i = 0; i < T.length; i++) for (let j = i + 1; j < T.length; j++) this.collide(T[i], T[j]);
     for (const t of T) this.barriers(t);
     for (const t of T) this.walls(t);
+    for (const t of T) this.confine(t);
     this.updateProjectiles(dt);
     this.updateZones(dt);
+    SCOPE = -1;
     if (!this.result) {
       for (const t of this.tops) {
         if (t.spin > 0 || t.out || t.gone) continue;
@@ -1880,6 +1915,11 @@ export class World {
     if (t.buff > 0 && t.blade.buff && t.blade.buff.frenzy && !this.result && !t.dash && !t.air && !t.out && t.stun <= 0 && t.snare <= 0 && !rooted(t)) {
       const o = (t.prey >= 0 && this.tops[t.prey] && !this.tops[t.prey].gone && t.blade.buff.hunt && this.tops[t.prey]) || opp;
       if (o && !o.gone) { const lim = ARENA.R - t.radius - 0.2, r = Math.hypot(o.x, o.z), k = r > lim ? lim / r : 1; t.cmd = { x: o.x * k, z: o.z * k, t: 0.5 }; }
+    }
+    // DARKNESS RISE: while it is lit, everything close by burns.
+    const AU = t.blade.aura;
+    if (AU && t.stack >= AU.hits && !this.result && t.spin > 0 && !t.out && !t.air) {
+      for (const o of this.foes(t)) if (targetable(o) && Math.hypot(o.x - t.x, o.z - t.z) < AU.r + o.radius * 0.5) this.dot(o, (AU.dps * dt * t.blade.atk) / o.blade.def, t);
     }
     if (t.quillT > 0) { t.quillT -= dt; if (t.quillT <= 0) t.quills = t.quillT = 0; }
     if (t.lightsT > 0) { t.lightsT -= dt; if (t.lightsT <= 0) t.lights = t.lightsT = 0; }
@@ -2067,6 +2107,7 @@ export class World {
     const S = t.charge.skill;
     if (S.id === 'nova') { this.novaBlast(t, opp); return; }
     if (S.tip) { const { dx, dz } = t.charge; t.charge = null; this.swing(t, S, dx, dz); return; }
+    if (S.id === 'realm') { t.charge = null; this.openRealm(t, this.tops[t.prey]); return; }
     if (S.kind === 'shot') { const { dx, dz } = t.charge; t.charge = null; if (S.fan) this.fan(t, S, dx, dz, S.fan); else this.fire(t, S, dx, dz); return; }
     if (S.kind === 'cone') {
       const { dx, dz } = t.charge;
@@ -2237,7 +2278,9 @@ export class World {
     for (const z of this.zones) {
       if (z.dead) continue;
       z.t += dt;
-      const t = z.owner, opp = this.near(t, z.x, z.z), S = z.skill;
+      const t = z.owner, S = z.skill;
+      SCOPE = t.realm;
+      const opp = this.near(t, z.x, z.z);
       const live = targetable(opp) && !this.result;
       if (z.kind === 'shadow' && z.c & 2) {
         // A shadow thrown out: it flies to its spot and stays there.
@@ -2406,6 +2449,16 @@ export class World {
         case 'feather':
           if (z.t >= z.T || this.result) z.dead = true;
           break;
+        case 'realmz': {
+          // c: the side of the one shut in with its maker. It lasts until its time is up or either of them is gone.
+          const v = this.tops[z.c];
+          if (z.t >= z.T || this.result || !v || v.gone || t.gone || v.out || t.out || t.spin <= 0 || v.spin <= 0) {
+            this.endZone(z);
+            for (const o of this.tops) if (o.realm === t.side + 1) o.realm = 0;
+            this.emit('realmEnd', { top: t, target: v, x: z.x, z: z.z });
+          }
+          break;
+        }
         case 'riftz':
           if (z.t < z.T) break;
           z.dead = true;
@@ -2697,6 +2750,7 @@ export class World {
 
   collide(a, b) {
     if (!targetable(a) || !targetable(b)) return;
+    if (a.realm !== b.realm) return;
     // Team mates roll through each other, unless friendly fire is on.
     if (a.team === b.team && !this.ff) return;
     let nx = b.x - a.x, nz = b.z - a.z;
@@ -2866,7 +2920,7 @@ export class World {
     if (t.air || t.out || t.blink) return;
     for (const z of this.zones) {
       const S = z.skill;
-      if (z.dead || !S.solid || (z.kind === 'divide' && z.owner === t)) continue;
+      if (z.dead || !S.solid || z.owner.realm !== t.realm || (z.kind === 'divide' && z.owner === t)) continue;
       const w = wallOf(z);
       const rx = t.x - w.x, rz = t.z - w.z;
       const u = rx * w.nx + rz * w.nz, v = -rx * w.nz + rz * w.nx;
@@ -2884,6 +2938,44 @@ export class World {
         if (vn < -5) this.emit('bump', { top: t, x: t.x - w.nx * s * t.radius, z: t.z - w.nz * s * t.radius, nx: w.nx * s, nz: w.nz * s, power: -vn });
       }
     }
+  }
+
+  // REALM OF DEATH opens round the two of them, as near the middle between
+  // them as leaves the whole ring inside the arena (so nobody in it can be thrown out).
+  openRealm(t, v) {
+    const S = SKILLS.realm, Z = SKILLS.realmz;
+    if (!v || v.gone || v.out || v.realm || t.realm || this.result) return;
+    let x = (t.x + v.x) / 2, z = (t.z + v.z) / 2;
+    const lim = Math.max(0, ARENA.R - Z.aoe), r = Math.hypot(x, z);
+    if (r > lim) { x *= lim / r; z *= lim / r; }
+    // A link either of them had with someone who is staying behind is cut.
+    for (const o of this.tops) {
+      const th = o.tether, pair = (o === t && th && th.to === v.side) || (o === v && th && th.to === t.side);
+      if (th && !pair && (o === t || o === v || th.to === t.side || th.to === v.side)) { o.tether = null; this.emit('tetherEnd', { top: o, broke: true }); }
+    }
+    t.realm = v.realm = t.side + 1;
+    const q = this.zone(t, Z, x, z, { c: v.side }, true);
+    this.emit('realm', { top: t, target: v, x, z, r: q.r });
+    this.emit('say', { top: v, text: S.en, tone: 'red' });
+  }
+
+  // The ring of a realm holds the two inside it.
+  confine(t) {
+    if (!t.realm || t.out) return;
+    const q = this.zones.find((z) => z.kind === 'realmz' && !z.dead && z.owner.side === t.realm - 1);
+    if (!q) { t.realm = 0; return; }
+    const lim = q.r - t.radius;
+    // A leap that would come down outside lands at the edge instead.
+    if (t.air) { const a = t.air, d = Math.hypot(a.tx - q.x, a.tz - q.z); if (d > lim) { a.tx = q.x + ((a.tx - q.x) / d) * lim; a.tz = q.z + ((a.tz - q.z) / d) * lim; } return; }
+    const dx = t.x - q.x, dz = t.z - q.z, d = Math.hypot(dx, dz);
+    if (d <= lim) return;
+    const nx = dx / d, nz = dz / d, vn = t.vx * nx + t.vz * nz;
+    t.x = q.x + nx * lim; t.z = q.z + nz * lim;
+    if (t.blink) { t.blink.t = 0; return; }
+    if (vn <= 0) return;
+    t.vx -= 1.5 * vn * nx; t.vz -= 1.5 * vn * nz;
+    this.stopDash(t);
+    if (vn > 5) this.emit('bump', { top: t, x: t.x + nx * t.radius, z: t.z + nz * t.radius, nx: -nx, nz: -nz, power: vn });
   }
 
   walls(t) {
@@ -3039,6 +3131,7 @@ export class World {
     for (const p of this.projectiles) {
       if (p.dead) continue;
       const st = p.speed * dt, S = p.skill;
+      SCOPE = p.owner.realm;
       if (p.back) {
         // On its way home: it steers at its owner and is caught on arrival.
         const o = p.owner, hx = o.x - p.x, hz = o.z - p.z, hd = Math.hypot(hx, hz);
@@ -3087,6 +3180,7 @@ export class World {
         }
       }
     }
+    SCOPE = -1;
     if (this.projectiles.some((p) => p.dead)) this.projectiles = this.projectiles.filter((p) => !p.dead);
   }
 }

@@ -760,12 +760,56 @@ console.log('IRON REVENANT (Mordekaiser)');
   check(foe.stats.taken === 0, 'E: nothing for half a second');
   run(0.6);
   check(Math.hypot(me.x - foe.x, me.z - foe.z) < d0 - 1.5, 'E: then whoever stands there is dragged toward the caster');
+  ({ w, me, foe, run, saw } = setup('iron', 8));
+  check(!w.canCast(me, 'R'), 'R: needs someone within 6.5');
   ({ w, me, foe, run, saw } = setup('iron', 6));
   const plain = w.hurt(foe, 50, me, 'x'), took = w.hurt(me, 50, foe, 'x');
-  me.ult = 100; w.cast(me, 'R', me.x, me.z); me.shield = 0;
-  check(me.buff === 5 && !me.tether, 'R: five seconds, and no leash');
+  me.stack = 0; me.ult = 100; w.cast(me, 'R', foe.x, foe.z); me.shield = 0;
+  check(!!me.charge && foe.slowK === 0.75 && me.realm === 0, 'R: half a second to open, the target slowed 75% meanwhile');
+  run(0.55);
+  const ring = w.own(me, 'realmz')[0];
+  check(me.realm === 1 && foe.realm === 1 && !!ring && ring.r === 7 && saw('realm'), 'R: the two are shut in a ring of 7');
   const big = w.hurt(foe, 50, me, 'x'), small = w.hurt(me, 50, foe, 'x');
-  check(Math.abs(big / plain - 2) < 0.01 && Math.abs(small / took - 0.5) < 0.01, 'R: damage dealt doubled, damage taken halved');
+  check(Math.abs(big / plain - 1.5) < 0.01 && Math.abs(small / took - 2 / 3) < 0.01, 'R: a fifth of the other\'s attack and defence: 1.5 times dealt, two thirds taken');
+  foe.x = ring.x + 20; foe.vx = 9; w.step(DT);
+  check(Math.hypot(foe.x - ring.x, foe.z - ring.z) <= 7 - foe.radius + 1e-6 && foe.vx < 0, 'R: neither can leave the ring');
+  run(7);
+  check(me.realm === 0 && foe.realm === 0 && !w.own(me, 'realmz').length && saw('realmEnd'), 'R: seven seconds, and they are back');
+  {
+    // With others in the arena, the two inside and those outside do not exist for one another.
+    const w3 = new World([BLADES.iron, BLADES.gaia, BLADES.azure], { seed: 7 });
+    const [a, b, c] = w3.tops;
+    const park = () => { a.x = 0; a.z = 3; b.x = 0; b.z = -3; c.x = 2.6; c.z = 0; for (const t of w3.tops) { t.vx = t.vz = 0; t.cmd = null; t.tumble = 0; } };
+    park(); a.cd.R = 0; a.ult = 100;
+    check(w3.cast(a, 'R', b.x, b.z), 'R with three in the arena: the one nearest the cursor is taken');
+    for (let i = 0; i < 70; i++) { w3.step(DT); park(); }
+    check(a.realm === 1 && b.realm === 1 && c.realm === 0, 'the third stays outside');
+    const t0 = [a.stats.taken, b.stats.taken, c.stats.taken];
+    for (let i = 0; i < 60; i++) { park(); c.x = 1.2; c.z = 2.4; c.vx = -8; w3.step(DT); }
+    check(a.stats.taken === t0[0] && c.stats.taken === t0[2], 'someone outside rolls straight through the two inside');
+    park(); c.cd.Q = 0;
+    w3.cast(c, 'Q', a.x, a.z); for (let i = 0; i < 40; i++) { w3.step(DT); park(); }
+    check(a.stats.taken === t0[0] && w3.hurt(a, 30, c, 'x') === 0 && w3.hurt(c, 30, a, 'x') === 0, 'shots from outside pass through, and nothing either side does lands on the other');
+    check(!w3.foes(c).length && w3.foes(a).length === 1 && w3.other(a) === b, 'each side only sees its own');
+    b.spin = 1; w3.hurt(b, 50, a, 'x'); w3.step(DT);
+    check(b.gone && a.realm === 0 && !w3.result, 'when the one taken falls, its maker is back with the rest');
+  }
+  {
+    // DARKNESS RISE
+    const s0 = setup('iron', 4);
+    s0.w.hurt(s0.foe, 10, s0.me, 'x'); s0.w.hurt(s0.foe, 10, s0.me, 'x');
+    const before = s0.foe.stats.taken; s0.run(0.5);
+    check(s0.me.stack === 2 && s0.foe.stats.taken === before, 'two blows in a row: nothing yet');
+    s0.w.hurt(s0.foe, 10, s0.me, 'x'); const lit = s0.foe.stats.taken; s0.run(1);
+    const burn = s0.foe.stats.taken - lit;
+    check(s0.me.stack === 3 && Math.abs(burn - (18 * BLADES.iron.atk) / BLADES.gaia.def) < 1.5, `the third lights the aura: about 18 a second to whoever is close (${burn.toFixed(1)})`);
+    s0.run(3.2);
+    check(s0.me.stack === 0, 'four seconds without a blow and it goes out');
+    const s1 = setup('iron', 12);
+    for (let i = 0; i < 3; i++) s1.w.hurt(s1.foe, 10, s1.me, 'x');
+    const far = s1.foe.stats.taken; s1.run(1);
+    check(s1.foe.stats.taken === far, 'out of its reach, the aura does nothing');
+  }
 }
 
 console.log('FEATHER STORM (Xayah)');

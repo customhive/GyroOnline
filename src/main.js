@@ -879,7 +879,15 @@ function healPop(top, amount) {
   if (amount >= 1) popAt(top, '+' + Math.round(amount), 'heal');
 }
 
+// What happens between tops in another world than this player's is neither seen nor heard.
+function elsewhere(e) {
+  if (['finish', 'ko', 'realm', 'realmEnd'].includes(e.type)) return false;
+  const who = e.top || e.a || (e.proj && e.proj.owner) || (e.zone && e.zone.owner) || e.src;
+  return !!who && who.realm !== player().realm;
+}
+
 function onEvent(e) {
+  if (elsewhere(e)) return;
   view.handle(e);
   const mine = (t) => t && t.side === game.side;
   switch (e.type) {
@@ -1027,6 +1035,14 @@ function onEvent(e) {
     case 'ringout':
       audio.ringout();
       break;
+    case 'realm':
+      // Those taken see their world change; the rest only hear it happen.
+      audio.leap();
+      if (mine(e.top) || mine(e.target)) { audio.meteor(); ui.flash(e.top.blade.css, 0.6); }
+      break;
+    case 'realmEnd':
+      if (mine(e.top) || mine(e.target)) { audio.blink(); ui.flash('#fff', 0.35); }
+      break;
     case 'ko':
       // One top is out; the round goes on for the rest.
       ui.toast(`${e.top.blade.name} 脱落（${{ over: 'オーバー', burst: 'バースト', spin: 'スピン', time: '判定' }[e.kind]}）`);
@@ -1133,6 +1149,8 @@ function frame(rdt, draw = true) {
     refreshCursor();
     if (game.aimKey) aim = { key: game.aimKey, x: game.cursor.x, z: game.cursor.z, from: game.dragPt };
   }
+  // Shut in a realm, this player's whole screen is somewhere else.
+  document.body.classList.toggle('realm', !!w && ['fight', 'finish'].includes(game.state) && player().realm > 0);
   view.update(dt, frozen() ? 0 : rdt, aim);
   if (w && ['countdown', 'fight', 'finish'].includes(game.state)) {
     ui.update(w, view, game.timeLeft, game.aimKey || game.rapidKey, rdt);

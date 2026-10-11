@@ -179,8 +179,10 @@ export const BLADES = {
     atk: 1.25, def: 1.25, mass: 1.3, speed: 12.5, decay: 5.4, spinMax: 1000, cdMul: 1.0, guardMul: 1.0,
     bars: { atk: 4, def: 4, sta: 4, spd: 1 },
     store: { taken: 0.15, dealt: 0.45, max: 140, fade: 4 },
-    buff: { atk: 2, armor: 0.5 },
-    desc: '与えたダメージを蓄えてバリアに変える。必殺技の間は受けるダメージが半分、与えるダメージが2倍。',
+    // DARKNESS RISE: three blows in a row (each within `keep` of the last) light an aura for `dur`,
+    // kept alight by every blow after; it burns whatever is within `r` and quickens its owner.
+    aura: { hits: 3, keep: 4, dur: 4, r: 3.4, dps: 18, speed: 1.09 },
+    desc: '攻撃を3回続けて当てると4秒間オーラをまとい、少し速くなって周囲の相手を焼き続ける（当て続けるかぎり消えない）。与えたダメージを蓄えてバリアに変える。必殺技は相手ひとりを冥界に連れ去り、1対1に閉じ込める。',
   },
   dragon: {
     id: 'dragon', kit: { Q: 'sonicwave', W: 'safeguard', E: 'tempest', R: 'dragonrage' },
@@ -894,10 +896,12 @@ export const SKILLS = {
   },
   shieldheal: { name: '吸収', en: 'CONSUME', aim: 'self', hidden: true, heal: 0.45 },
   realm: {
-    name: '死の領域', en: 'REALM OF DEATH', aim: 'self', kind: 'buff', icon: 'star', cd: 2, ult: true,
-    dur: 5,
-    desc: '【必殺技】5秒間、受けるダメージが半分になり、与えるダメージが2倍になる。',
+    name: '死の領域', en: 'REALM OF DEATH', aim: 'self', icon: 'star', cd: 2, ult: true,
+    need: 'range', range: 6.5, charge: 0.5, root: true, castSlow: 0.75, steal: 0.2,
+    desc: '【必殺技】カーソルに一番近い相手を、0.5秒かけて冥界へ連れ去る。7秒間、輪の中に2人だけで閉じ込められ、どちらも外へ出られず、外の誰とも見えず触れ合えない。その間は相手の攻撃と防御を2割ずつ奪う（与えるダメージ1.5倍、受けるダメージ3分の2）。',
   },
+  // The ring of the realm: `aoe` is how wide the two are shut in, `dur` for how long.
+  realmz: { name: '死の領域', en: 'REALM OF DEATH', aim: 'ground', hidden: true, aoe: 7, dur: 7 },
   // ---- DRAGON STRIKER: mark, follow, kick out --------------------------------
   sonicwave: {
     name: '響掌', en: 'SONIC WAVE', aim: 'line', kind: 'shot', icon: 'shot', cd: 6,

@@ -10,7 +10,11 @@
 }
 * { box-sizing: border-box; }
 html, body { margin: 0; height: 100%; overflow: hidden; background: #04060d; color: var(--ink); font-family: var(--font); user-select: none; -webkit-user-select: none; }
-#stage { position: fixed; inset: 0; width: 100%; height: 100%; display: block; cursor: crosshair; }
+#stage { position: fixed; inset: 0; width: 100%; height: 100%; display: block; cursor: crosshair; transition: filter 0.35s; }
+/* Shut in a REALM OF DEATH: the colour drains out of the arena and the dark closes in. */
+body.realm #stage { filter: saturate(0.35) brightness(0.78) contrast(1.2) hue-rotate(-18deg); }
+#realm { position: fixed; inset: 0; pointer-events: none; opacity: 0; transition: opacity 0.35s; background: radial-gradient(ellipse at center, rgba(16, 60, 44, 0) 30%, rgba(8, 40, 28, 0.55) 70%, rgba(2, 12, 8, 0.92) 100%); }
+body.realm #realm { opacity: 1; }
 .hidden { display: none !important; }
 button { font-family: inherit; color: inherit; cursor: pointer; }
 

@@ -133,6 +133,8 @@ export class View {
   }
 
   colorOf(t) { return t.blade.color; }
+  // In another world than this player's (one of them is shut in a REALM OF DEATH): not drawn at all.
+  hidden(t) { const me = this.world && this.world.tops[this.playerSide]; return !!me && t.realm !== me.realm; }
   // What a top is about to do is drawn as a threat unless it is ours, or a team mate's that cannot hurt us.
   dangerOf(t) {
     if (t.side === this.playerSide) return AIM;
@@ -520,6 +522,19 @@ export class View {
         this.punch = 1;
         break;
       }
+      // A realm closing round two tops, and letting them go again.
+      case 'realm': case 'realmEnd': {
+        const y = groundY(e.x, e.z), c = this.colorOf(e.top), open = e.type === 'realm', R = SKILLS.realmz.aoe;
+        if (this.hidden(e.top) && open) break;
+        W.spawn(e.x, y + 0.12, e.z, open ? R * 1.6 : 0.6, open ? R : R * 1.3, 0.55, c, 1);
+        W.spawn(e.x, y + 0.14, e.z, open ? R * 1.2 : 0.4, open ? R * 0.2 : R, 0.45, 0xffffff, 0.8);
+        P.burst(e.x, y + 0.5, e.z, 220, c, open ? 10 : 26, { flat: !open, up: 1, life: 0.9, size: 0.32, gravity: open ? -6 : 4, drag: 2 });
+        F.flash(e.x, y + 1, e.z, R * 3, 0.5, c, 1, 320);
+        this.stage.pulseRim(c, 1);
+        this.addShake(0.6);
+        this.punch = 1;
+        break;
+      }
       case 'ringout': {
         const y = heightAt(ARENA.R) + 0.8;
         const x = e.x + e.nx, z = e.z + e.nz;
@@ -553,6 +568,7 @@ export class View {
   syncProjectiles() {
     const live = new Set();
     for (const p of this.world.projectiles) {
+      if (this.hidden(p.owner)) continue;
       live.add(p.id);
       let v = this.projs.get(p.id);
       if (!v) {
@@ -611,7 +627,7 @@ export class View {
     const live = new Set();
     for (const z of this.world.zones) {
       const kind = OBJECTS[z.kind];
-      if (!kind || z.dead) continue;
+      if (!kind || z.dead || this.hidden(z.owner)) continue;
       live.add(z.id);
       let o = this.objs.get(z.id);
       if (!o) { o = this.makeObject(z, kind); this.objs.set(z.id, o); }
@@ -734,11 +750,11 @@ export class View {
       }
       // Phantoms: zones and shots that are shown as a faint copy of their owner.
       for (const t of w.tops) {
-        const v = this.tops[t.side], spots = [];
-        for (const z of w.zones) if (z.skill.ghost && z.owner === t && !z.dead) spots.push(z);
-        for (const p of w.projectiles) if (p.skill.ghost && p.owner === t) spots.push(p);
+        const v = this.tops[t.side], spots = [], seen = !this.hidden(t);
+        if (seen) for (const z of w.zones) if (z.skill.ghost && z.owner === t && !z.dead) spots.push(z);
+        if (seen) for (const p of w.projectiles) if (p.skill.ghost && p.owner === t) spots.push(p);
         // The place a jump can still be undone to.
-        if (t.blade.ghostRet) { if (t.ret) spots.push(t.ret); if (t.ret2) spots.push(t.ret2); }
+        if (seen && t.blade.ghostRet) { if (t.ret) spots.push(t.ret); if (t.ret2) spots.push(t.ret2); }
         const first = t.blade.rewind ? 1 : 0;
         spots.forEach((s, i) => { const g = this.ghost(v, first + i, t); g.group.visible = true; g.group.position.set(s.x, groundY(s.x, s.z), s.z); g.spin.rotation.y -= 30 * dt; });
         for (let i = first + spots.length; i < v.ghosts.length; i++) if (v.ghosts[i]) v.ghosts[i].group.visible = false;
@@ -819,7 +835,8 @@ export class View {
     const fade = Math.exp(-rdt * 14);
     v.ox *= fade; v.oz *= fade;
     v.group.position.set(t.x + v.ox, y, t.z + v.oz);
-    v.group.visible = !(t.out && t.out.t > 2.2);
+    const hid = this.hidden(t);
+    v.group.visible = !hid && !(t.out && t.out.t > 2.2);
     v.light.position.set(t.x + v.ox, y + 3.2, t.z + v.oz);
     v.light.intensity = v.group.visible ? 2 + 4 * sr + (t.dash || t.air ? 8 : 0) : 0;
 
@@ -831,8 +848,8 @@ export class View {
     v.blurMat.opacity = (0.05 + 0.2 * sr) * (1 - v.fall);
     v.wobble += (2.4 + 7 * (1 - sr)) * dt;
     let amp = egg ? 0 : 0.03 + 0.4 * Math.pow(1 - sr, 2.2) + (t.tumble > 0 || t.up > 0 || t.stun > 0 ? 0.14 : 0);
-    if (t.frost > 0) this.ground.ring(t.x, t.z, 0, 1.5, ICE, 0.22);
-    if (t.snare > 0) this.ground.ring(t.x, t.z, 1.5, 1.75, 0xffffff, 0.5 + 0.3 * Math.sin(this.time * 14));
+    if (t.frost > 0 && !hid) this.ground.ring(t.x, t.z, 0, 1.5, ICE, 0.22);
+    if (t.snare > 0 && !hid) this.ground.ring(t.x, t.z, 1.5, 1.75, 0xffffff, 0.5 + 0.3 * Math.sin(this.time * 14));
     amp = amp * (1 - v.fall) + 0.62 * v.fall;
     if (t.out) {
       v.group.rotation.x += rdt * 7; v.group.rotation.z += rdt * 5;
@@ -863,7 +880,7 @@ export class View {
     if (t.blade.rewind) {
       // The hologram: where this top stood a few seconds ago, and where its ultimate returns to.
       const h = t.hist[0], holo = this.ghost(v, 0, t);
-      holo.group.visible = !!h && !t.out && !t.air && !this.world.result;
+      holo.group.visible = !!h && !t.out && !t.air && !this.world.result && !hid;
       if (h) {
         // Eased, so it glides rather than hopping from sample to sample.
         const g = holo.group.position, k = Math.min(1, rdt * 10);
@@ -872,10 +889,10 @@ export class View {
       }
     }
     v.trail.boost = t.dash || t.blink ? 1 : t.air ? 0.6 : t.empower > 0 ? 0.5 : 0;
-    if (!t.out && v.drop <= 0) v.trail.push(t.x + v.ox, t.z + v.oz, lift);
+    if (hid) v.trail.reset(); else if (!t.out && v.drop <= 0) v.trail.push(t.x + v.ox, t.z + v.oz, lift);
     v.trail.update(rdt);
 
-    if (dt <= 0 || t.out) return;
+    if (dt <= 0 || t.out || hid) return;
     const sp = Math.hypot(t.vx, t.vz);
     const mote = (col, vy, n) => { for (let i = 0; i < n; i++) P.emit(t.x + (Math.random() - 0.5) * 1.8, y + 0.3 + Math.random() * 1.2, t.z + (Math.random() - 0.5) * 1.8, 0, vy, 0, 0.5, 0.2, col, vy < 0 ? 6 : -2, 1); };
     if (t.bleed > 0 && Math.random() < 0.12 * t.bleed) mote(BLOOD, -1, 1);
@@ -931,6 +948,8 @@ export class View {
     const G = this.ground, P = this.particles, w = this.world;
     for (const z of w.zones) {
       const k = Math.min(1, z.t / z.T);
+      // (The ring of a realm is the one thing of it that shows from outside, faintly.)
+      if (z.kind !== 'realmz' && this.hidden(z.owner)) continue;
       if (this.drawZone(z, k, dt)) continue;
       if (z.kind === 'quake' || z.kind === 'grenade' || z.skill.kind === 'blast') {
         const col = this.dangerOf(z.owner), pulse = 0.5 + 0.5 * Math.sin(this.time * 20);
@@ -957,7 +976,23 @@ export class View {
     }
     for (const t of w.tops) {
       const v = this.tops[t.side], c = this.colorOf(t), gy = groundY(t.x, t.z);
-      if (t.charge && t.charge.skill.kind === 'cone') {
+      if (this.hidden(t)) { for (const o of v.orbs) o.visible = false; continue; }
+      // DARKNESS RISE: the blows counted so far, then the aura itself.
+      const AU = t.blade.aura;
+      if (AU && t.stack >= AU.hits && !t.out) {
+        const pulse = 0.5 + 0.5 * Math.sin(this.time * 7);
+        G.ring(t.x, t.z, 0, AU.r, c, 0.1 + 0.06 * pulse);
+        G.ring(t.x, t.z, AU.r - 0.14, AU.r, this.dangerOf(t), 0.75);
+        if (dt > 0) for (let i = 0; i < 3; i++) { const a = Math.random() * 6.283, r = Math.sqrt(Math.random()) * AU.r; P.emit(t.x + Math.cos(a) * r, gy + 0.1, t.z + Math.sin(a) * r, 0, 1.5 + Math.random() * 2, 0, 0.6, 0.2, c, -2, 0.6); }
+      } else if (AU && t.stack > 0 && !t.out) {
+        for (let i = 0; i < t.stack; i++) { const a = -Math.PI / 2 + (i - (t.stack - 1) / 2) * 0.5; G.ring(t.x + Math.cos(a) * 1.9, t.z + Math.sin(a) * 1.9, 0, 0.18, c, 0.95, 0.12); }
+      }
+      if (t.charge && t.charge.skill.id === 'realm') {
+        // Opening a realm: the reach of it, and the one it is opening for.
+        const S = t.charge.skill, k = Math.min(1, t.charge.t / t.charge.T), col = this.dangerOf(t), o = w.tops[t.prey];
+        G.ring(t.x, t.z, S.range - 0.1, S.range, col, 0.5);
+        if (o && !o.gone) { G.ring(o.x, o.z, 1.6, 1.6 + 1.6 * (1 - k), col, 0.9); this.chain(t.x, t.z, o.x, o.z, col, 0.6 + 0.4 * k); }
+      } else if (t.charge && t.charge.skill.kind === 'cone') {
         const S = t.charge.skill, ch = t.charge, col = this.dangerOf(t), a = Math.atan2(ch.dz, ch.dx);
         G.sector(t.x, t.z, ch.dx, ch.dz, S.range, S.half, col, 0.12, 0.85);
         G.ring(t.x, t.z, 0, S.range * Math.min(1, ch.t / ch.T), col, 0.25, 0.09, a - S.half, a + S.half);
@@ -1082,6 +1117,19 @@ export class View {
     const speck = (color, vy, grav) => { const a = Math.random() * 6.283, r = Math.sqrt(Math.random()) * z.r; P.emit(z.x + Math.cos(a) * r, gy + 0.1, z.z + Math.sin(a) * r, 0, vy, 0, 0.8, 0.18, color, grav, 0.5); };
     const timer = () => G.ring(z.x, z.z, z.r - 0.42, z.r - 0.28, 0xffffff, 0.6 * fade, 0.1, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * (1 - k));
     switch (z.kind) {
+      case 'realmz': {
+        // From inside: a dark floor walled by a burning ring, with the time left on it.
+        // From outside: only a faint mark of where the two went.
+        if (this.hidden(z.owner)) { G.ring(z.x, z.z, z.r - 0.1, z.r, c, 0.16 + 0.06 * Math.sin(this.time * 3)); return true; }
+        const flick = 0.75 + 0.25 * Math.sin(this.time * 9);
+        G.ring(z.x, z.z, 0, z.r, 0x020806, 0.42 * fade, 0.05);
+        G.ring(z.x, z.z, z.r - 1.6, z.r, c, 0.14 * fade);
+        G.ring(z.x, z.z, z.r - 0.3, z.r, c, 0.95 * flick);
+        G.ring(z.x, z.z, z.r, z.r + 0.5, 0xffffff, 0.16 * flick);
+        G.ring(z.x, z.z, z.r - 0.75, z.r - 0.55, 0xffffff, 0.7 * fade, 0.1, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * (1 - k));
+        if (dt > 0) for (let i = 0; i < 6; i++) { const a = Math.random() * 6.283; P.emit(z.x + Math.cos(a) * z.r, groundY(z.x + Math.cos(a) * z.r, z.z + Math.sin(a) * z.r) + 0.1, z.z + Math.sin(a) * z.r, 0, 3 + Math.random() * 5, 0, 0.9, 0.3, Math.random() < 0.3 ? 0xffffff : c, -3, 0.4); }
+        return true;
+      }
       case 'lotus':
         if (z.c) {
           // Sprung: a blast is coming.
@@ -1210,6 +1258,7 @@ export class View {
     for (const g of this.telegraphs) {
       g.t += dt;
       const t = g.top, k = Math.min(1, g.t / g.T), col = this.dangerOf(t);
+      if (this.hidden(t)) continue;
       const S = g.skill;
       if (S.aim === 'leap') {
         if (!t.air) { g.done = true; continue; }

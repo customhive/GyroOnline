@@ -544,7 +544,7 @@ export class UI {
       f.ultBox.style.visibility = hasUlt ? '' : 'hidden';
 
       const tag = this.tags[i];
-      const hide = t.out || t.gone || world.result;
+      const hide = t.out || t.gone || world.result || view.hidden(t);
       tag.root.style.opacity = hide ? 0 : 1;
       if (!hide) {
         const v = view.tops[i].group.position;
