@@ -47,7 +47,9 @@ const game = {
   // --- online ---
   net: null,
   // The room. Slot 0 is the host's, slot 1 the other side: a guest, a CPU, or still open.
-  lobby: { role: null, status: 'opening', url: '', error: '', slots: [], edit: 0, stage: 0 },
+  // `me` is this player's own seat. On the host a seat taken by a guest carries that guest's link.
+  lobby: { role: null, status: 'opening', url: '', error: '', slots: [], me: 0, edit: 0, stage: 0 },
+  peers: [],           // host, in a match: the guests playing, as { id, side, ack }
   spectate: false,     // nobody here is playing: both tops are CPUs
   outbox: [],          // host: events waiting to be sent
   snapT: 0, snapSeq: 0, tail: 0,
@@ -62,7 +64,7 @@ const rival = () => game.world.other(player());
 
 const ui = new UI({
   // "again" repeats the same match: against a CPU at once, against a person by readying up in the room.
-  again: () => { audio.ui(); if (online()) backToLobby(true); else if (game.lobby.role === 'host' && game.lobby.slots[1].kind === 'cpu' && !seats().some((p) => p.kind === 'open')) startLocalMatch(); else backToLobby(false); },
+  again: () => { audio.ui(); if (online()) backToLobby(true); else if (game.lobby.role === 'host' && roomIsLocal() && !seats().some((p) => p.kind === 'open')) startLocalMatch(); else backToLobby(false); },
   lobby: () => { audio.ui(); backToLobby(false); },
   back: () => { audio.ui(); if (online() && game.mode === 'guest') { leaveOnline(); toTitle(); } else backToLobby(false); },
   quit: () => { audio.ui(); leaveOnline(); toTitle(); },
@@ -158,6 +160,7 @@ function startLocalMatch() {
   const blades = drawBlades(S.map((p) => p.blade));
   for (const p of lb.slots) p.ready = false;
   game.mode = 'cpu';
+  game.peers = [];
   game.spectate = S[0].kind === 'cpu';
   const w = new World(blades.map((b) => BLADES[b]), { seed: (Date.now() & 0xffffff) + 1, stage: lb.stage });
   let n = 0;
@@ -171,16 +174,15 @@ function startLocalMatch() {
 
 // Host and guest both build the same world: side 0 is the host's top.
 // `kinds` says which tops are CPUs (the host plays those).
-function startOnlineMatch(blades, stage = 0, kinds = []) {
+function startOnlineMatch(blades, stage = 0, kinds = [], mine = 0) {
   game.spectate = false; ui.meLabel = '';
   const w = new World(blades.map((b) => BLADES[b]), { seed: 1, stage });
-  const mine = game.mode === 'host' ? 0 : 1;
   let n = 0;
   const cpus = kinds.filter((k) => k === 'cpu').length;
-  beginMatch(w, mine, blades.map((_, i) => (kinds[i] === 'cpu' ? (cpus > 1 ? 'CPU ' + ++n : 'CPU') : i === mine ? 'YOU' : 'RIVAL')), []);
+  beginMatch(w, mine, blades.map((_, i) => (kinds[i] === 'cpu' ? (cpus > 1 ? 'CPU ' + ++n : 'CPU') : i === mine ? 'YOU' : blades.length > 2 ? 'P' + (i + 1) : 'RIVAL')), []);
   game.brain = null;
   game.outbox.length = 0; game.pending.length = 0;
-  game.inSeq = 0; game.ack = 0; game.snapSeq = 0; game.lastSnap = -1; game.corrections = 0; game.errSum = game.errMax = 0; game.inbox = null;
+  game.inSeq = 0; game.ack = 0; game.snapSeq = 0; for (const p of game.peers) p.ack = 0; game.lastSnap = -1; game.corrections = 0; game.errSum = game.errMax = 0; game.inbox = null;
   for (const p of game.lobby.slots) p.ready = false;
   // Test aid: ?auto lets a bot play this side through the normal input path.
   game.autoBrain = params.has('auto') ? new CpuBrain(game.mode === 'host' ? w : remoteControlled(w), player(), DIFFICULTY[1]) : null;
@@ -270,7 +272,11 @@ function newNet() {
   return game.net;
 }
 
-const mySlot = () => game.lobby.slots[game.lobby.role === 'guest' ? 1 : 0];
+const mySlot = () => game.lobby.slots[game.lobby.me];
+// Seats held by guests (the host's own does not count).
+const guestSeats = () => game.lobby.slots.filter((p) => p.kind === 'human' && p.link !== undefined);
+// Nobody else is in the room: a match is the host and CPUs.
+const roomIsLocal = () => !guestSeats().length;
 
 function enterLobby(role) {
   game.mode = role; game.state = 'lobby';
@@ -281,8 +287,9 @@ function enterLobby(role) {
   const none = () => ({ kind: 'none', blade: 'random', level: 1, ready: false });
   lb.slots = role === 'host'
     ? [{ kind: 'human', blade, level: 1, ready: false }, { kind: 'open', blade: 'random', level: 1, ready: false }, none(), none()]
-    : [{ kind: 'human', blade: 'azure', level: 1, ready: false }, { kind: 'human', blade, level: 1, ready: false }, none(), none()];
-  lb.edit = role === 'host' ? 0 : 1;
+    : [{ kind: 'human', blade: 'azure', level: 1, ready: false }, { kind: 'human', blade, level: 1, ready: false }, none(), none()]; // until the host says which seat is ours
+  lb.me = role === 'host' ? 0 : 1;
+  lb.edit = lb.me;
   lb.picking = false;
   lb.stage = 0;
   view.setMatch(null, 0);
@@ -301,13 +308,21 @@ function joinRoom(code) {
   newNet().join(code);
 }
 
-// Something in the room changed here: tell the other side, then refresh.
+// The room as the guests are told it, and which seat is theirs.
+function sendRoom() {
+  const lb = game.lobby;
+  if (lb.role !== 'host' || !game.net) return;
+  const slots = lb.slots.map((p) => ({ kind: p.kind, blade: p.blade, level: p.level, ready: p.ready }));
+  lb.slots.forEach((p, i) => { if (p.link !== undefined) game.net.send({ t: 'room', slots, stage: lb.stage, you: i }, p.link); });
+}
+
+// Something in the room changed here: tell the others, then refresh.
 // The host owns the room; a guest only reports its own blade and readiness.
 function lobbyChanged() {
   const lb = game.lobby;
   if (game.net && game.net.connected) {
-    if (lb.role === 'host') game.net.send({ t: 'room', slots: lb.slots, stage: lb.stage });
-    else game.net.send({ t: 'lobby', blade: lb.slots[1].blade, ready: lb.slots[1].ready });
+    if (lb.role === 'host') sendRoom();
+    else game.net.send({ t: 'lobby', blade: mySlot().blade, ready: mySlot().ready });
   }
   lobbyRefresh();
 }
@@ -324,12 +339,14 @@ const roomReady = () => { const S = seats(); return S.length >= 2 && S.every((p)
 // seats are played by the host's machine.
 function startOnline() {
   const lb = game.lobby, S = seats();
-  if (lb.role !== 'host' || game.state !== 'lobby' || lb.slots[1].kind !== 'human' || !roomReady() || !(game.net && game.net.connected)) return;
-  // "Random" is settled here, so both sides are told the same blades.
+  if (lb.role !== 'host' || game.state !== 'lobby' || roomIsLocal() || !roomReady() || !(game.net && game.net.connected)) return;
+  // "Random" is settled here, so everyone is told the same blades.
   const blades = drawBlades(S.map((p) => p.blade)), kinds = S.map((p) => p.kind);
   game.mode = 'host';
-  game.net.send({ t: 'start', blades, stage: lb.stage, kinds });
-  startOnlineMatch(blades, lb.stage, kinds);
+  // A top's side is its place among the seats in play.
+  game.peers = S.map((p, side) => (p.link !== undefined ? { id: p.link, side, ack: 0 } : null)).filter(Boolean);
+  for (const p of game.peers) game.net.send({ t: 'start', blades, stage: lb.stage, kinds, you: p.side }, p.id);
+  startOnlineMatch(blades, lb.stage, kinds, 0);
   const w = game.world;
   game.brains = S.map((p, i) => (p.kind === 'cpu' ? cpuFor(w, w.tops[i], DIFFICULTY[p.level]) : null)).filter(Boolean);
   // The host may hand its own top to a CPU and watch.
@@ -352,7 +369,7 @@ function pressStart() {
   lb.picking = false;
   if (lb.role !== 'host' || game.state !== 'lobby' || STAGES[lb.stage].soon) return;
   if (!roomReady()) return;
-  if (lb.slots[1].kind === 'human') startOnline(); else startLocalMatch();
+  if (roomIsLocal()) startLocalMatch(); else startOnline();
 }
 
 // A blade for whichever slot is being edited: your own, or (for the host) a CPU's.
@@ -371,9 +388,10 @@ function pickBlade(id) {
 
 function setSlotKind(i, kind) {
   const lb = game.lobby, p = lb.slots[i];
-  if (lb.role !== 'host' || (i === 1 && p.kind === 'human')) return;
-  // The first two seats are always in play; the others may be left empty or hold a CPU.
-  if (i < 2 ? kind === 'none' : kind !== 'none' && kind !== 'cpu') return;
+  // A seat a guest is sitting in is theirs. The host's own is itself or a CPU;
+  // the others wait for a person, hold a CPU, or are left out.
+  if (lb.role !== 'host' || p.link !== undefined) return;
+  if (i === 0 ? kind !== 'human' && kind !== 'cpu' : !['open', 'cpu', 'none'].includes(kind)) return;
   p.kind = kind; p.ready = false;
   if (kind === 'human') p.blade = BLADES[ui.blade] || ui.blade === 'random' ? ui.blade : 'azure';
   else if (kind === 'cpu' && !BLADES[p.blade]) p.blade = 'random';
@@ -438,30 +456,42 @@ function netStatus(state, detail) {
   if (game.state === 'lobby') ui.showLobby(lb);
 }
 
-function netOpen() {
+function netOpen(id) {
   const lb = game.lobby;
   lb.status = 'connected';
-  game.net.send({ t: 'hello', v: PROTOCOL, build: VERSION, blade: mySlot().blade, ready: mySlot().ready });
+  game.net.send({ t: 'hello', v: PROTOCOL, build: VERSION, blade: mySlot().blade, ready: mySlot().ready }, id);
   if (game.state === 'lobby') ui.showLobby(lb);
 }
 
-function netClosed(reason) {
+function netClosed(reason, id) {
   const lb = game.lobby;
-  ui.setNet('');
   const mid = game.state !== 'lobby' && game.state !== 'title';
   if (lb.role === 'host') {
     // The room stays open so the same or another guest can come in.
-    const was = lb.slots[1].kind === 'human';
-    lb.status = 'waiting';
-    if (was) lb.slots[1] = { kind: 'open', blade: 'random', level: 1, ready: false };
-    game.brains = online() ? [] : game.brains;
-    lb.slots[0].ready = false;
-    if (lb.edit === 1 && was) lb.edit = 0;
-    // A match against a CPU just carries on.
-    if (!online()) { if (was) ui.toast('相手が退出しました'); return; }
-    backToLobby(false);
-    ui.toast(mid ? '相手との接続が切れました' : '相手が退出しました');
+    const i = lb.slots.findIndex((p) => p.link === id);
+    if (i >= 0) lb.slots[i] = { kind: 'open', blade: 'random', level: 1, ready: false };
+    if (!game.net.connected) { lb.status = 'waiting'; ui.setNet(''); }
+    if (lb.edit === i) { lb.edit = 0; lb.picking = false; }
+    const peer = game.peers.find((p) => p.id === id);
+    game.peers = game.peers.filter((p) => p.id !== id);
+    if (i < 0) return;
+    if (online() && mid && peer) {
+      if (game.peers.length && game.world) {
+        // Others are still playing: a CPU takes over the top that was left.
+        const t = game.world.tops[peer.side];
+        if (t && !t.gone) game.brains.push(cpuFor(game.world, t, DIFFICULTY[1]));
+        ui.toast(`${i + 1}P との接続が切れました。CPUが引き継ぎます`);
+        sendRoom();
+        return;
+      }
+      backToLobby(false);
+      ui.toast('相手との接続が切れました');
+      return;
+    }
+    ui.toast(`${i + 1}P が退出しました`);
+    lobbyChanged();
   } else if (lb.role === 'guest') {
+    ui.setNet('');
     ui.toast(reason === 'timeout' ? '接続がタイムアウトしました' : 'ホストとの接続が切れました');
     leaveOnline();
     toTitle();
@@ -470,52 +500,66 @@ function netClosed(reason) {
 
 const num = (v) => (Number.isFinite(v) ? Math.max(-50, Math.min(50, v)) : 0);
 
-function netMessage(m) {
+function netMessage(m, id) {
   const lb = game.lobby, w = game.world;
   switch (m.t) {
     case 'hello':
-      if (m.v !== PROTOCOL) { netStatus('failed', 'version'); game.net.leave(); return; }
+      if (m.v !== PROTOCOL) {
+        // A guest on another version is turned away; the room goes on.
+        if (lb.role === 'host') { game.net.send({ t: 'version' }, id); game.net.drop('version', id); return; }
+        netStatus('failed', 'version'); game.net.leave(); return;
+      }
       // Compatible, but not the same build: worth knowing when something looks off.
       if (typeof m.build === 'string' && m.build !== VERSION) ui.toast(`相手は別の版です（${m.build.slice(0, 40)}）`);
       if (lb.role !== 'host') break; // the host's room follows
     // falls through
     case 'lobby': {
-      // A guest reporting itself. It takes the second slot, whatever was there.
+      // A guest reporting itself. New, it takes a seat that is waiting for a
+      // person, or failing that one that was left out.
       if (lb.role !== 'host' || !(BLADES[m.blade] || m.blade === 'random')) return;
-      const fresh = lb.slots[1].kind !== 'human';
-      lb.slots[1] = { kind: 'human', blade: m.blade, level: 1, ready: !!m.ready };
-      if (fresh) lb.slots[0].ready = false;
-      // Seeing the other side in the room while still on the result screen
-      // means they want a rematch.
-      if (game.state === 'result' && online()) ui.toast(m.ready ? '相手が再戦を待っています' : '相手がルームに戻りました');
-      else if (game.state !== 'lobby' && fresh) ui.toast('招待した相手がルームに入りました');
-      game.net.send({ t: 'room', slots: lb.slots, stage: lb.stage });
+      let i = lb.slots.findIndex((p) => p.link === id);
+      const fresh = i < 0;
+      if (fresh) {
+        i = lb.slots.findIndex((p, k) => k > 0 && p.kind === 'open');
+        if (i < 0) i = lb.slots.findIndex((p, k) => k > 0 && p.kind === 'none');
+        if (i < 0) { game.net.send({ t: 'full' }, id); setTimeout(() => game.net && game.net.drop('full', id), 400); return; }
+      }
+      lb.slots[i] = { kind: 'human', blade: m.blade, level: 1, ready: !!m.ready, link: id };
+      // Seeing someone in the room while still on the result screen means they want a rematch.
+      if (game.state === 'result' && online()) ui.toast(m.ready ? `${i + 1}P が再戦を待っています` : `${i + 1}P がルームに戻りました`);
+      else if (fresh && game.state !== 'lobby') ui.toast('招待した相手がルームに入りました');
+      else if (fresh) ui.toast(`${i + 1}P が入りました`);
+      sendRoom();
       lobbyRefresh();
       break;
     }
     case 'room': {
-      // The host's room as it stands. Our own slot stays ours.
+      // The host's room as it stands, and which seat is ours. What we chose for
+      // our own seat stays ours.
       if (lb.role !== 'guest' || !Array.isArray(m.slots) || m.slots.length !== 4) return;
-      const h = m.slots[0];
-      if (!h || !(BLADES[h.blade] || h.blade === 'random')) return;
-      const seat = (q, kinds) => ({ kind: kinds.includes(q && q.kind) ? q.kind : kinds[0], blade: q && (BLADES[q.blade] || q.blade === 'random') ? q.blade : 'random', level: Math.max(0, Math.min(DIFFICULTY.length - 1, (q && q.level) | 0)), ready: !!(q && q.ready) });
-      lb.slots[0] = seat(h, ['human', 'cpu']);
-      lb.slots[2] = seat(m.slots[2], ['none', 'cpu']);
-      lb.slots[3] = seat(m.slots[3], ['none', 'cpu']);
+      const you = m.you | 0;
+      if (you < 1 || you > 3) return;
+      const mine = lb.slots[lb.me];
+      const seat = (q) => ({ kind: ['human', 'cpu', 'open', 'none'].includes(q && q.kind) ? q.kind : 'none', blade: q && (BLADES[q.blade] || q.blade === 'random') ? q.blade : 'random', level: Math.max(0, Math.min(DIFFICULTY.length - 1, (q && q.level) | 0)), ready: !!(q && q.ready) });
+      lb.slots = m.slots.map(seat);
+      lb.slots[you] = { kind: 'human', blade: mine.blade, level: 1, ready: mine.ready };
+      if (lb.edit === lb.me) lb.edit = you;
+      lb.me = you;
       lb.stage = Math.max(0, Math.min(STAGES.length - 1, m.stage | 0));
-      if (game.state === 'result') ui.toast(h.ready ? '相手が再戦を待っています' : '相手がルームに戻りました');
+      if (game.state === 'result') ui.toast('ホストがルームに戻りました');
       lobbyRefresh();
       break;
     }
+    case 'version': netStatus('failed', 'version'); break;
     case 'full': netStatus('failed', 'full'); break;
-    case 'bye': if (game.net) game.net.drop('bye'); break;
+    case 'bye': if (game.net) game.net.drop('bye', id); break;
 
     // ---- host -> guest ----
     case 'start':
       if (lb.role !== 'guest' || !Array.isArray(m.blades) || m.blades.length < 2 || m.blades.length > 4 || !m.blades.every((b) => BLADES[b])) return;
       game.mode = 'guest';
       lb.stage = Math.max(0, Math.min(STAGES.length - 1, m.stage | 0));
-      startOnlineMatch(m.blades, lb.stage, Array.isArray(m.kinds) ? m.kinds : []);
+      startOnlineMatch(m.blades, lb.stage, Array.isArray(m.kinds) ? m.kinds : [], Math.max(0, Math.min(m.blades.length - 1, m.you | 0)));
       break;
     case 'round':
       if (game.mode !== 'guest' || !w) return;
@@ -539,11 +583,12 @@ function netMessage(m) {
     // ---- guest -> host ----
     case 'in': {
       if (game.mode !== 'host' || !w || game.state !== 'fight') return;
-      const t = w.tops[1];
+      const peer = game.peers.find((p) => p.id === id), t = peer && w.tops[peer.side];
+      if (!t) return;
       if (m.k === 'm') w.issueMove(t, num(m.x), num(m.z));
       else if (m.k === 'h' && KEYS.includes(m.key)) w.hold(t, m.key);
       else if (m.k === 'c' && KEYS.includes(m.key)) w.cast(t, m.key, num(m.x), num(m.z));
-      game.ack = m.s | 0;
+      peer.ack = m.s | 0;
       break;
     }
   }
@@ -935,7 +980,7 @@ function hostSend(rdt) {
   if (game.snapT < 0) game.snapT = 0;
   if (game.state === 'finish') game.tail--;
   game.snapSeq = (game.snapSeq + 1) & 0xffff;
-  net.sendPacket(encodeSnapshot(game.world, { seq: game.snapSeq, ack: game.ack, timeLeft: game.timeLeft }));
+  for (const p of game.peers) net.sendPacket(encodeSnapshot(game.world, { seq: game.snapSeq, ack: p.ack, timeLeft: game.timeLeft }), p.id);
 }
 
 function frame(rdt, draw = true) {

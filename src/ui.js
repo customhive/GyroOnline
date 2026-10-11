@@ -305,20 +305,21 @@ export class UI {
   // lobby: { role, status, url, slots: [{ kind: 'human' | 'cpu' | 'open', blade, level, ready }], edit, picking, stage }
   // Slot 0 is the host's. The host sets everything up; a guest only picks its own blade.
   showLobby(lb) {
-    const host = lb.role === 'host', mine = host ? 0 : 1, me = lb.slots[mine];
+    const host = lb.role === 'host', mine = lb.me, me = lb.slots[mine];
+    const waiting = lb.slots.some((p) => p.kind === 'open'), guests = lb.slots.some((p, i) => p.kind === 'human' && i !== mine);
     const linked = lb.status === 'connected';
     const status = {
       opening: 'ルームを準備しています…',
-      waiting: lb.slots[1].kind === 'cpu' ? 'CPUと対戦できます。招待URLから友だちが入ることもできます' : '招待URLを送って相手を待つか、2Pの枠をCPUにしてください',
+      waiting: waiting ? '招待URLを送って相手を待つか、空いている枠をCPUか「なし」にしてください' : 'CPUと対戦できます。枠を「人間」にすると、招待URLから友だちが入れます',
       connecting: 'ルームに接続しています…',
-      connected: host ? (lb.slots.every((p) => p.kind === 'none' || p.kind === 'cpu' || p.ready) ? '全員の準備ができました。ゲーム開始を押してください' : '相手が参加しました。全員が準備完了を押すと開始できます') : (me.ready ? '準備完了。ホストの開始を待っています' : 'ルームに入りました。ブレードを選んで準備完了を押してください'),
+      connected: host ? (waiting ? '参加を待っている枠があります。CPUか「なし」にすれば今いる人で始められます' : lb.slots.every((p) => p.kind === 'none' || p.kind === 'cpu' || p.ready) ? '全員の準備ができました。ゲーム開始を押してください' : '全員が準備完了を押すと開始できます') : (me.ready ? '準備完了。ホストの開始を待っています' : 'ルームに入りました。ブレードを選んで準備完了を押してください'),
       failed: host ? 'オンラインにつながりません（CPUとの対戦はできます）' : lb.error || '接続できませんでした',
     }[lb.status];
     const s = $('#lb-status');
     // Why the game cannot start yet is said here, not on the button.
     s.textContent = host && STAGES[lb.stage].soon ? 'このステージはまだ準備中です。別のステージを選んでください' : status;
     s.className = 'lb-status ' + lb.status;
-    $('#lb-invite').classList.toggle('hidden', !host || !lb.url || lb.slots[1].kind === 'human');
+    $('#lb-invite').classList.toggle('hidden', !host || !lb.url || !waiting);
     if (lb.url && $('#lb-url').value !== lb.url) $('#lb-url').value = lb.url;
 
     // One tall card for each seat.
@@ -329,7 +330,7 @@ export class UI {
     lb.slots.forEach((p, i) => {
       const b = BLADES[p.blade], you = i === mine, empty = p.kind === 'open', off = p.kind === 'none';
       const can = !empty && !off && (editable(i) || (host && p.kind === 'cpu'));
-      const who = p.kind === 'cpu' ? 'CPU' : empty ? 'OPEN' : off ? '' : (you ? 'YOU' : 'RIVAL') + (i === 0 ? ' ／ HOST' : '');
+      const who = p.kind === 'cpu' ? 'CPU' : empty ? 'OPEN' : off ? '' : (you ? 'YOU' : 'PLAYER') + (i === 0 ? ' ／ HOST' : '');
       const seat = el('div', 'seat');
       const card = el('button', 'pcard' + (empty || off ? ' empty' : '') + (off ? ' off' : '') + (!empty && !off && (p.kind === 'cpu' || p.ready) ? ' ready' : '') + (you ? ' mine' : ''));
       card.style.setProperty('--c', empty || off ? '#3a4566' : b ? b.css : '#8fa0c8');
@@ -353,8 +354,9 @@ export class UI {
 
       // What the host can make of each seat.
       const ctl = el('div', 'lb-ctl');
-      if (host && !(i === 1 && p.kind === 'human')) {
-        const kinds = i === 0 ? [['human', '自分で操作'], ['cpu', 'CPU']] : i === 1 ? [['open', '人間'], ['cpu', 'CPU']] : [['none', 'なし'], ['cpu', 'CPU']];
+      // A seat a guest is sitting in has nothing for the host to set.
+      if (host && !(i !== mine && p.kind === 'human')) {
+        const kinds = i === 0 ? [['human', '自分で操作'], ['cpu', 'CPU']] : [['open', '人間'], ['cpu', 'CPU'], ['none', 'なし']];
         const row = el('div', 'lb-seg');
         for (const [k, label] of kinds) {
           const btn = el('button', p.kind === k ? 'on' : '', label);
@@ -398,7 +400,7 @@ export class UI {
     }
 
     // Every person readies up; the host then starts the game.
-    const r = $('#lb-ready'), go = $('#lb-start'), rival = lb.slots[1];
+    const r = $('#lb-ready'), go = $('#lb-start');
     const human = me.kind === 'human';
     r.classList.toggle('hidden', !human);
     r.disabled = !human || (!host && !linked);
@@ -407,7 +409,7 @@ export class UI {
     go.classList.toggle('hidden', !host);
     if (host) {
       const all = lb.slots.every((p) => p.kind === 'none' || p.kind === 'cpu' || (p.kind === 'human' && p.ready));
-      go.disabled = rival.kind === 'open' || !!g.soon || !all;
+      go.disabled = waiting || !!g.soon || !all || lb.slots.filter((p) => p.kind !== 'none').length < 2;
       go.textContent = 'ゲーム開始';
     }
   }
