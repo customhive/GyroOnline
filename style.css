@@ -339,7 +339,9 @@ kbd { flex: none; width: 28px; height: 28px; display: grid; place-items: center;
 .pcard .b-stats { margin-bottom: 8px; }
 .pc-desc { margin: 0 0 10px; font-size: 11.5px; line-height: 1.5; color: #c9d5f0; }
 .pc-skills { display: grid; gap: 5px; margin-top: auto; }
-.pc-skill { display: grid; grid-template-columns: 22px 22px 1fr; gap: 7px; align-items: center; font-size: 12.5px; }
+.pc-skill { display: grid; grid-template-columns: 22px 22px 1fr; gap: 8px; align-items: center; padding: 5px 8px; font-size: 12.5px; background: rgba(4, 8, 18, 0.72); border: 1px solid color-mix(in srgb, var(--c) 28%, #1a2440); border-left: 2px solid color-mix(in srgb, var(--c) 70%, #1a2440); transition: border-color 0.1s, background 0.1s, box-shadow 0.1s; }
+.pc-skill:hover { border-color: var(--c); background: color-mix(in srgb, var(--c) 20%, #060a14); box-shadow: 0 0 14px color-mix(in srgb, var(--c) 50%, transparent), inset 0 0 12px color-mix(in srgb, var(--c) 18%, transparent); }
+.pc-skill:hover span { color: #fff; }
 .pc-skill kbd { width: 22px; height: 22px; font-size: 12px; }
 .pc-skill .how-icon { width: 22px; height: 22px; }
 .pc-skill span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -393,3 +395,27 @@ kbd { flex: none; width: 28px; height: 28px; display: grid; place-items: center;
   .picker-body { grid-template-columns: 1fr; }
   .pcard { min-height: 0; }
 }
+
+/* ---- the skill tooltip on the room's cards ---- */
+.tip { --c: var(--cyan); position: fixed; z-index: 60; left: 0; top: 0; width: 300px; padding: 0 14px 12px; background: linear-gradient(180deg, color-mix(in srgb, var(--c) 16%, #070b16), #070b16 70px); border: 1px solid color-mix(in srgb, var(--c) 65%, #1a2440); box-shadow: 0 10px 34px rgba(0, 0, 0, 0.6), 0 0 22px color-mix(in srgb, var(--c) 30%, transparent); opacity: 0; transform: translateY(4px); transition: opacity 0.1s, transform 0.1s; pointer-events: none; }
+.tip.on { opacity: 1; transform: none; }
+.tip::before { content: ''; position: absolute; left: -1px; top: -1px; bottom: -1px; width: 3px; background: var(--c); box-shadow: 0 0 10px var(--c); }
+.tip-head { display: grid; grid-template-columns: 26px 30px 1fr; gap: 9px; align-items: center; margin: 0 -14px 9px; padding: 9px 14px 8px; border-bottom: 1px solid color-mix(in srgb, var(--c) 40%, transparent); background: color-mix(in srgb, var(--c) 14%, transparent); }
+.tip-head kbd { width: 26px; height: 26px; font-size: 14px; }
+.tip-head .how-icon { width: 30px; height: 30px; }
+.tip-head b { display: block; font-size: 16px; line-height: 1.2; }
+.tip-head i { display: block; font-style: normal; font-size: 9.5px; letter-spacing: 0.22em; color: var(--c); filter: brightness(1.4); }
+.tip p { margin: 0 0 9px; font-size: 13px; line-height: 1.6; color: #d5def5; }
+.tip span { display: block; padding-top: 7px; border-top: 1px dashed var(--line); font-size: 11px; color: var(--dim); }
+
+/* ---- cut corners keep their outline ---- */
+/* clip-path slices the border off at the two cut corners; these draw the
+   missing diagonal back in, in the same colour as the border. */
+.panel, .pcard { position: relative; --cut: 18px; --edge: var(--line); }
+.pcard { --cut: 14px; --edge: color-mix(in srgb, var(--c) 55%, #1a2440); }
+.pcard:not(:disabled):hover, .pcard.ready { --edge: var(--c); }
+.panel::after, .pcard::after { content: ''; position: absolute; inset: -1px; pointer-events: none;
+  background:
+    linear-gradient(135deg, transparent calc(var(--cut) * 0.7071 - 0.2px), var(--edge) calc(var(--cut) * 0.7071 - 0.2px), var(--edge) calc(var(--cut) * 0.7071 + 1.3px), transparent calc(var(--cut) * 0.7071 + 1.3px)) top left / calc(var(--cut) + 4px) calc(var(--cut) + 4px) no-repeat,
+    linear-gradient(315deg, transparent calc(var(--cut) * 0.7071 - 0.2px), var(--edge) calc(var(--cut) * 0.7071 - 0.2px), var(--edge) calc(var(--cut) * 0.7071 + 1.3px), transparent calc(var(--cut) * 0.7071 + 1.3px)) bottom right / calc(var(--cut) + 4px) calc(var(--cut) + 4px) no-repeat; }
+.pcard.empty::after { opacity: 0.6; }

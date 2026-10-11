@@ -284,42 +284,44 @@ function lobbyChanged() {
   lobbyRefresh();
 }
 
-// Redraws the room and, on the host, starts an online match once both are ready.
+// Redraws the room.
 function lobbyRefresh() {
-  const lb = game.lobby;
-  if (game.state === 'lobby') ui.showLobby(lb);
-  if (lb.role === 'host' && game.state === 'lobby' && lb.slots[1].kind === 'human' && lb.slots[0].ready && lb.slots[1].ready && game.net && game.net.connected) {
-    const blades = [lb.slots[0].blade, lb.slots[1].blade];
-    // The host may hand its own top to a CPU and watch.
-    const cpu0 = lb.slots[0].kind === 'cpu' ? lb.slots[0].level : -1;
-    if (blades[0] === 'random') { const l = Object.keys(BLADES).filter((b) => b !== blades[1]); blades[0] = l[(Math.random() * l.length) | 0]; }
-    game.mode = 'host';
-    game.net.send({ t: 'start', blades });
-    startOnlineMatch(blades);
-    if (cpu0 >= 0) {
-      const w = game.world, t = w.tops[0], level = DIFFICULTY[cpu0];
-      for (const k of KEYS) t.windup[k] = (skillOf(t, k).tele || 0) * level.windup;
-      game.autoBrain = new CpuBrain(w, t, level);
-      game.spectate = true; ui.meLabel = 'CPU';
-      ui.startMatch(w, 0, 'RIVAL', '');
-    }
-    startRound(1);
-  }
+  if (game.state === 'lobby') ui.showLobby(game.lobby);
 }
 
-// The big button: start against a CPU, ready up against a person.
+// The host starts an online match once the guest has readied up.
+function startOnline() {
+  const lb = game.lobby;
+  if (lb.role !== 'host' || game.state !== 'lobby' || lb.slots[1].kind !== 'human' || !lb.slots[1].ready || !(game.net && game.net.connected)) return;
+  const blades = [lb.slots[0].blade, lb.slots[1].blade];
+  // The host may hand its own top to a CPU and watch.
+  const cpu0 = lb.slots[0].kind === 'cpu' ? lb.slots[0].level : -1;
+  if (blades[0] === 'random') { const l = Object.keys(BLADES).filter((b) => b !== blades[1]); blades[0] = l[(Math.random() * l.length) | 0]; }
+  game.mode = 'host';
+  game.net.send({ t: 'start', blades });
+  startOnlineMatch(blades);
+  if (cpu0 >= 0) {
+    const w = game.world, t = w.tops[0], level = DIFFICULTY[cpu0];
+    for (const k of KEYS) t.windup[k] = (skillOf(t, k).tele || 0) * level.windup;
+    game.autoBrain = new CpuBrain(w, t, level);
+    game.spectate = true; ui.meLabel = 'CPU';
+    ui.startMatch(w, 0, 'RIVAL', '');
+  }
+  startRound(1);
+}
+
+// The big button. The host starts the game (everyone else must be ready);
+// a guest says it is ready.
 function pressReady() {
   const lb = game.lobby;
   lb.picking = false;
-  if (lb.role === 'host' && STAGES[lb.stage].soon) return;
   if (lb.role === 'host') {
+    if (STAGES[lb.stage].soon) return;
     if (lb.slots[1].kind === 'cpu') return startLocalMatch();
-    if (lb.slots[1].kind !== 'human') return;
-    lb.slots[0].ready = !lb.slots[0].ready;
-  } else {
-    if (lb.status !== 'connected') return;
-    lb.slots[1].ready = !lb.slots[1].ready;
+    return startOnline();
   }
+  if (lb.status !== 'connected') return;
+  lb.slots[1].ready = !lb.slots[1].ready;
   lobbyChanged();
 }
 
@@ -363,7 +365,8 @@ function backToLobby(ready) {
   ui.setNet('');
   showScreen('lobby');
   for (const p of lb.slots) p.ready = false;
-  if (lb.slots[1].kind === 'human' && lb.slots[0].kind !== 'open') mySlot().ready = !!ready;
+  // A guest asking for a rematch comes back already ready.
+  if (lb.role === 'guest') lb.slots[1].ready = !!ready;
   lobbyChanged();
 }
 

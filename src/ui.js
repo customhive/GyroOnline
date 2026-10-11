@@ -113,6 +113,10 @@ export class UI {
     this.fighters = [this.buildFighter(0), this.buildFighter(1)];
     this.skills = {};
     this.buildTitle();
+    // One floating tooltip for the skills on the room's cards. It lives on the
+    // body so the cards' cut corners cannot clip it.
+    this.tipEl = el('div', 'tip');
+    document.body.appendChild(this.tipEl);
     this.meLabel = '';
     this.tags = [];
     this.lastTime = -1;
@@ -260,6 +264,24 @@ export class UI {
     $('#btn-back').textContent = online ? '退出する' : 'ルームに戻る';
   }
 
+  howTo(S) { return S.passive ? '常時効果' : S.rapid ? '押している間、撃ち続ける' : S.wind ? '長押しで溜める → 離して発動' : S.aim === 'self' ? '押すと即発動' : '長押しで照準 → 離して発動'; }
+
+  // Shows the skill tooltip beside `at` (or hides it, with no skill).
+  tip(at, S, blade, key) {
+    const t = this.tipEl;
+    if (!S) { t.classList.remove('on'); return; }
+    t.style.setProperty('--c', blade.css);
+    t.innerHTML = `<div class="tip-head"><kbd>${key}</kbd><div class="how-icon">${iconOf(S)}</div><div><b>${S.name}</b><i>${S.en}</i></div></div><p>${S.desc}</p><span>${S.ult ? 'ゲージ 100%' : S.passive ? '常時効果' : 'クールダウン ' + +(S.cd * blade.cdMul).toFixed(1) + '秒'}${S.passive ? '' : '　／　' + this.howTo(S)}</span>`;
+    t.classList.add('on');
+    // To the right of the row if there is room, otherwise to the left; kept on screen.
+    const r = at.getBoundingClientRect(), w = t.offsetWidth, h = t.offsetHeight;
+    let x = r.right + 14;
+    if (x + w > innerWidth - 8) x = r.left - w - 14;
+    if (x < 8) x = Math.max(8, Math.min(innerWidth - w - 8, r.left));
+    const y = Math.max(8, Math.min(innerHeight - h - 8, r.top + r.height / 2 - h / 2));
+    t.style.left = x + 'px'; t.style.top = y + 'px';
+  }
+
   // A top-down sketch of a stage: the floor, and whatever wall it has.
   stagePic(g) {
     const R = 78, arc = (a0, a1) => `M ${100 + R * Math.cos(a0)} ${100 - R * Math.sin(a0)} A ${R} ${R} 0 ${a1 - a0 > Math.PI ? 1 : 0} 0 ${100 + R * Math.cos(a1)} ${100 - R * Math.sin(a1)}`;
@@ -280,9 +302,9 @@ export class UI {
     const linked = lb.status === 'connected';
     const status = {
       opening: 'ルームを準備しています…',
-      waiting: lb.slots[1].kind === 'cpu' ? 'CPUと対戦できます。招待URLから友だちが入ることもできます' : '招待URLを送って相手を待つか、相手の枠をCPUにしてください',
+      waiting: lb.slots[1].kind === 'cpu' ? 'CPUと対戦できます。招待URLから友だちが入ることもできます' : '招待URLを送って相手を待つか、2Pの枠をCPUにしてください',
       connecting: 'ルームに接続しています…',
-      connected: host ? '相手が参加しました' : 'ルームに入りました。ブレードを選んで準備OKを押してください',
+      connected: host ? (lb.slots[1].ready ? '全員の準備ができました。ゲーム開始を押してください' : '相手が参加しました。相手の準備完了を待っています') : (me.ready ? '準備完了。ホストの開始を待っています' : 'ルームに入りました。ブレードを選んで準備完了を押してください'),
       failed: host ? 'オンラインにつながりません（CPUとの対戦はできます）' : lb.error || '接続できませんでした',
     }[lb.status];
     const s = $('#lb-status');
@@ -295,28 +317,34 @@ export class UI {
     const editable = (i) => { const p = lb.slots[i]; return i === mine ? p.kind === 'human' && !p.ready : false; };
     const cards = $('#lb-cards');
     cards.innerHTML = '';
+    this.tip(null);
     lb.slots.forEach((p, i) => {
       const b = BLADES[p.blade], you = i === mine, empty = p.kind === 'open';
       const can = !empty && (editable(i) || (host && p.kind === 'cpu'));
-      const who = p.kind === 'cpu' ? 'CPU' : empty ? 'OPEN' : you ? 'YOU' : 'RIVAL';
+      const who = p.kind === 'cpu' ? 'CPU' : empty ? 'OPEN' : (you ? 'YOU' : 'RIVAL') + (i === 0 ? ' ／ HOST' : '');
       const seat = el('div', 'seat');
       const card = el('button', 'pcard' + (empty ? ' empty' : '') + (!empty && (p.kind === 'cpu' || p.ready) ? ' ready' : '') + (you ? ' mine' : ''));
       card.style.setProperty('--c', empty ? '#3a4566' : b ? b.css : '#8fa0c8');
       card.disabled = !can;
-      const skills = b ? kitOf(b).map((S, k) => `<div class="pc-skill" title="${S.desc.replace(/"/g, '&quot;')}"><kbd>${KEYS[k]}</kbd><div class="how-icon">${iconOf(S)}</div><span>${S.name}</span></div>`).join('') : '';
-      card.innerHTML = `<div class="pc-top"><span class="pc-no">${i + 1}P</span><span class="pc-who">${who}${p.kind === 'cpu' ? ' ／ ' + DIFFICULTY[p.level].name : ''}</span><em>${empty ? '' : p.kind === 'cpu' || p.ready ? 'READY' : '選択中'}</em></div>`
+      const skills = b ? kitOf(b).map((S, k) => `<div class="pc-skill" data-k="${k}"><kbd>${KEYS[k]}</kbd><div class="how-icon">${iconOf(S)}</div><span>${S.name}</span></div>`).join('') : '';
+      card.innerHTML = `<div class="pc-top"><span class="pc-no">${i + 1}P</span><span class="pc-who">${who}${p.kind === 'cpu' ? ' ／ ' + DIFFICULTY[p.level].name : ''}</span><em>${empty ? '' : p.kind === 'cpu' || p.ready ? 'READY' : i === 0 ? '' : '準備中'}</em></div>`
         + (empty
-          ? `<div class="pc-wait"><div class="pc-plus">＋</div><b>招待待ち</b><span>招待URLを開いた相手がここに入ります。<br>下のボタンでCPUを入れることもできます。</span></div>`
+          ? `<div class="pc-wait"><div class="pc-plus">＋</div><b>参加待ち</b><span>招待URLを開いた相手がここに入ります。<br>下のボタンでCPUに変えられます。</span></div>`
           : `<div class="pc-disc"><i></i></div><div class="pc-type">${b ? b.type : 'CPU'}</div><div class="pc-en">${b ? b.en : 'RANDOM'}</div><div class="pc-name">${b ? b.name : 'おまかせ'}</div>`
             + (b ? `${this.bars[b.id]}<p class="pc-desc">${b.desc}</p><div class="pc-skills">${skills}</div>` : '<p class="pc-desc">対戦のたびにランダムなブレードが選ばれます。</p>')
-            + `<div class="pc-foot">${can ? 'クリックでブレードを変える' : you && p.ready ? '準備OK' : ''}</div>`);
+            + `<div class="pc-foot">${can ? 'クリックでブレードを変える' : you && p.ready ? '準備完了' : ''}</div>`);
       card.onclick = () => this.h.edit(i);
+      if (b) card.querySelectorAll('.pc-skill').forEach((row) => {
+        const k = Number(row.dataset.k);
+        row.onmouseenter = () => this.tip(row, kitOf(b)[k], b, KEYS[k]);
+        row.onmouseleave = () => this.tip(null);
+      });
       seat.appendChild(card);
 
       // What the host can make of each seat.
       const ctl = el('div', 'lb-ctl');
       if (host && !(i === 1 && p.kind === 'human')) {
-        const kinds = i === 0 ? [['human', '自分で操作'], ['cpu', 'CPU（観戦）']] : [['open', '招待を待つ'], ['cpu', 'CPU']];
+        const kinds = i === 0 ? [['human', '自分で操作'], ['cpu', 'CPU（観戦）']] : [['open', '人間'], ['cpu', 'CPU']];
         const row = el('div', 'lb-seg');
         for (const [k, label] of kinds) {
           const btn = el('button', p.kind === k ? 'on' : '', label);
@@ -365,11 +393,13 @@ export class UI {
       // Against a CPU the button starts the match; against a person both sides ready up.
       const vsHuman = rival.kind === 'human';
       r.disabled = rival.kind === 'open' || !!g.soon;
-      r.textContent = g.soon ? 'このステージは準備中' : rival.kind === 'open' ? '相手がいません' : !vsHuman ? 'ゲーム開始' : me.ready ? '開始を取り消す' : rival.ready ? 'ゲーム開始' : '開始（相手の準備待ち）';
-      r.classList.toggle('armed', vsHuman && me.ready);
+      const wait = vsHuman && !rival.ready;
+      r.disabled = rival.kind === 'open' || !!g.soon || wait;
+      r.textContent = g.soon ? 'このステージは準備中' : rival.kind === 'open' ? '相手がいません' : wait ? '相手の準備待ち' : 'ゲーム開始';
+      r.classList.remove('armed');
     } else {
       r.disabled = !linked;
-      r.textContent = me.ready ? '準備を取り消す' : '準備OK';
+      r.textContent = me.ready ? '準備を取り消す' : '準備完了';
       r.classList.toggle('armed', me.ready);
     }
   }
