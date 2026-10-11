@@ -564,6 +564,13 @@ export class UI {
       s.cd.style.setProperty('--p', charging || again ? 0 : Math.min(1, cd / total));
       s.num.textContent = again ? '' : charging ? Math.floor(me.ult) + '%' : cd > 0 ? (cd < 1 ? cd.toFixed(1) : Math.ceil(cd)) : '';
       s.root.classList.toggle('again', again);
+      // LUNAR ARSENAL: each of the three keys wears the colour of the weapon it stands for
+      // (in hand, in the other hand, next to come).
+      const wi = S.weapons ? me.wm : S.id === 'phase' ? me.wo : S.id === 'nextweapon' ? me.wq[0] : -1;
+      if (wi >= 0) {
+        const tint = '#' + kitOf(me.blade).find((q) => q.weapons).tints[wi].toString(16).padStart(6, '0');
+        if (tint !== s.tint) { s.tint = tint; s.root.style.setProperty('--c', tint); }
+      }
       const note = this.note(world, me, S, k);
       if (note !== s.note) { s.note = note; s.badge.textContent = note; s.badge.classList.toggle('on', note !== ''); }
       if (S.ult) s.ring.style.setProperty('--p', me.ult / 100);

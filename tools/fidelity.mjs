@@ -1246,6 +1246,28 @@ console.log('LUNAR ARSENAL (Aphelios)');
   check(v3.foe.stats.taken > v1.foe.stats.taken + 20, 'R with the flame: more damage');
   check(v4.w.own(v4.me, 'sentry').some((q) => q.c), 'R with the chakram: a sentry, already awake, where it hit');
   check(!w.canCast(me, 'E'), 'E: there is none');
+  {
+    // The weapon in the other hand joins in.
+    const off = SKILLS.arsenal.off, k = BLADES.lunar.atk / BLADES.gaia.def;
+    let s = setup('lunar', 10); s.me.spin = 500;
+    s.w.cast(s.me, 'Q', s.foe.x, s.foe.z); s.run(0.3);
+    check(Math.abs(s.foe.stats.taken - (SKILLS.moonshot.dmg + off.dmg) * k) < 1 && s.foe.mark > 0 && s.me.spin > 500 + off.dmg * k - 2, 'rifle with the scythe in the other hand: a light second blow that heals, and the mark is left for later');
+    s = setup('lunar', 5); s.me.wm = 3; s.me.wo = 2;
+    s.w.cast(s.me, 'Q', s.foe.x, s.foe.z); s.w.step(DT);
+    check(s.foe.slowK === 0.3 && Math.abs(s.foe.stats.taken - (SKILLS.duskwave.dmg + off.dmg) * k) < 1, 'flame with gravity in the other hand: whoever the fan catches is slowed too');
+    s = setup('lunar', 5); s.me.wm = 3; s.me.wo = 0;
+    s.w.cast(s.me, 'Q', s.foe.x, s.foe.z); s.w.step(DT);
+    check(s.foe.mark > 0, 'flame with the rifle in the other hand: marked');
+    s = setup('lunar', 14); s.me.wm = 4; s.me.wo = 2;
+    s.w.cast(s.me, 'Q', s.me.x, s.me.z - 3); s.run(0.2);
+    const sn2 = s.w.own(s.me, 'sentry')[0];
+    s.foe.x = sn2.x + 3; s.foe.z = sn2.z; s.run(1.2);
+    check(sn2.dx === 3 && s.foe.slowK === 0.3, 'a sentry carries the weapon that was in the other hand: its shots slow');
+    s = setup('lunar', 3.2); s.me.wm = 1; s.me.wo = 4;
+    s.w.cast(s.me, 'Q', s.me.x, s.me.z); s.run(1.7);
+    const n = s.seen.filter((e) => e.type === 'strike' && e.light).length;
+    check(n === 3, `scythe: the other hand gets a blow in every half second (${n})`);
+  }
 }
 
 console.log('VISION PAINTER (Hwei)');

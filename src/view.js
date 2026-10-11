@@ -133,6 +133,8 @@ export class View {
   }
 
   colorOf(t) { return t.blade.color; }
+  // The colour of something a skill made: the skill's own if it has one (a weapon's), else its owner's.
+  tintOf(t, S) { return (S && S.tint) || t.blade.color; }
   // In another world than this player's (one of them is shut in a REALM OF DEATH): not drawn at all.
   hidden(t) { const me = this.world && this.world.tops[this.playerSide]; return !!me && t.realm !== me.realm; }
   // What a top is about to do is drawn as a threat unless it is ours, or a team mate's that cannot hurt us.
@@ -262,7 +264,7 @@ export class View {
       }
       // A burst around a point: most area skills end in one of these.
       case 'blast': {
-        const y = groundY(e.x, e.z), c = this.colorOf(e.top), big = !!e.skill.ult, r = e.r;
+        const y = groundY(e.x, e.z), c = this.tintOf(e.top, e.skill), big = !!e.skill.ult, r = e.r;
         W.spawn(e.x, y + 0.12, e.z, 0.4, r * 1.2, 0.45, 0xffffff, 0.9);
         W.spawn(e.x, y + 0.14, e.z, 0.3, r, 0.4, c, 1);
         P.burst(e.x, y + 0.4, e.z, big ? 220 : 70 + r * 14, c, 10 + r * 3, { up: 0.7, life: 0.6, size: 0.28, gravity: 12 });
@@ -277,7 +279,9 @@ export class View {
       }
       // A single hit on a top that no projectile delivered.
       case 'strike': {
-        const y = groundY(e.x, e.z) + 0.9, c = this.colorOf(e.src);
+        const y = groundY(e.x, e.z) + 0.9, c = this.tintOf(e.src, e.skill);
+        // A light blow (a second weapon joining in): a flick of its colour, no more.
+        if (e.light) { P.burst(e.x, y, e.z, 26, c, 12, { up: 0.8, life: 0.4, size: 0.24, gravity: 8 }); W.spawn(e.x, y - 0.8, e.z, 0.3, 2.2, 0.25, c, 0.9); break; }
         P.burst(e.x, y, e.z, e.big ? 200 : 70, c, e.big ? 28 : 16, { up: 0.8, life: 0.5, size: 0.28, gravity: 8 });
         P.burst(e.x, y, e.z, 24, 0xffffff, 10, { up: 1, life: 0.35 });
         W.spawn(e.x, y - 0.8, e.z, 0.3, e.big ? 7 : 3.2, 0.35, c, 1);
@@ -307,7 +311,7 @@ export class View {
         break;
       }
       case 'cone': {
-        const t = e.top, c = this.colorOf(t);
+        const t = e.top, c = this.tintOf(t, e.skill);
         if (e.skill.rapid) {
           // A continuous breath: a roaring stream, with a white-hot core and a lit floor under it.
           const a0 = Math.atan2(e.dz, e.dx), y = groundY(t.x, t.z) + 0.8, R = e.skill.range;
@@ -340,7 +344,7 @@ export class View {
       }
       // A line that hits everything on it at once.
       case 'beam': {
-        const S = e.skill, c = this.colorOf(e.top), big = !!S.ult;
+        const S = e.skill, c = this.tintOf(e.top, S), big = !!S.ult;
         const len = Math.min(S.range, toWall(e.x, e.z, e.dx, e.dz));
         this.beams.push({ x: e.x, z: e.z, dx: e.dx, dz: e.dz, len, hw: S.radius, color: c, t: 0, T: big ? 0.55 : 0.35 });
         for (let i = 0; i < (big ? 160 : 60); i++) { const k = Math.random() * len; P.emit(e.x + e.dx * k + (Math.random() - 0.5) * S.radius * 2, groundY(e.x + e.dx * k, e.z + e.dz * k) + 0.4 + Math.random(), e.z + e.dz * k + (Math.random() - 0.5) * S.radius * 2, e.dx * 6, 2 + Math.random() * 5, e.dz * 6, 0.5, 0.3, Math.random() < 0.4 ? 0xffffff : c, 4, 1); }
@@ -447,7 +451,7 @@ export class View {
         break;
       }
       case 'shoot': {
-        const p = e.proj, c = this.colorOf(e.top);
+        const p = e.proj, c = this.tintOf(e.top, p.skill);
         const y = groundY(p.x, p.z) + 0.8;
         // A stream of small shots would drown the screen in muzzle flashes.
         if (p.skill.rapid) { P.burst(p.x, y, p.z, 5, c, 10, { dx: p.dx, dz: p.dz, bias: 0.8, up: 0.3, life: 0.2, gravity: 0 }); break; }
@@ -466,7 +470,7 @@ export class View {
         break;
       }
       case 'projHit': {
-        const y = groundY(e.x, e.z) + 0.8, c = this.colorOf(e.proj.owner);
+        const y = groundY(e.x, e.z) + 0.8, c = this.tintOf(e.proj.owner, e.proj.skill);
         if (e.proj.skill.rapid) { P.burst(e.x, y, e.z, 10, c, 12, { up: 0.7, life: 0.3, gravity: 8 }); this.addShake(0.04); break; }
         P.burst(e.x, y, e.z, 90, c, 22, { dx: e.dx, dz: e.dz, bias: 0.55, up: 0.6, life: 0.55, size: 0.28, gravity: 8 });
         P.burst(e.x, y, e.z, 30, 0xffffff, 12, { up: 1, life: 0.4 });
@@ -477,7 +481,7 @@ export class View {
         break;
       }
       case 'projEnd': {
-        P.burst(e.x, groundY(e.x, e.z) + 0.8, e.z, 18, this.colorOf(e.proj.owner), 6, { life: 0.35, gravity: 3 });
+        P.burst(e.x, groundY(e.x, e.z) + 0.8, e.z, 18, this.tintOf(e.proj.owner, e.proj.skill), 6, { life: 0.35, gravity: 3 });
         break;
       }
       case 'guard': {
@@ -585,9 +589,9 @@ export class View {
         this.projs.set(p.id, v);
       }
       v.proj = p;
-      if (v.side !== p.owner.side) {
-        v.side = p.owner.side;
-        const c = this.colorOf(p.owner);
+      if (v.side !== p.owner.side || v.skill !== p.skill) {
+        v.side = p.owner.side; v.skill = p.skill;
+        const c = this.tintOf(p.owner, p.skill);
         v.mat.color.set(c).multiplyScalar(1.5); v.sprite.material.color.set(c);
       }
       v.group.rotation.y = Math.atan2(-p.dz, p.dx);
@@ -631,7 +635,7 @@ export class View {
       live.add(z.id);
       let o = this.objs.get(z.id);
       if (!o) { o = this.makeObject(z, kind); this.objs.set(z.id, o); }
-      const w = wallOf(z), y = groundY(w.x, w.z), c = this.colorOf(z.owner);
+      const w = wallOf(z), y = groundY(w.x, w.z), c = this.tintOf(z.owner, z.skill);
       // Flickers as it is about to go.
       const left = z.T - z.t, show = left > 0.8 || Math.sin(this.time * 34) > -0.3;
       o.group.visible = show;
@@ -745,7 +749,7 @@ export class View {
         v.group.children[0].visible = v.group.children[1].visible = !p.skill.ghost;
         if (dt > 0) for (let i = 0; i < 3; i++) {
           P.emit(p.x - p.dx * Math.random() * 1.2 + (Math.random() - 0.5) * 0.9, y + (Math.random() - 0.5) * 0.8, p.z - p.dz * Math.random() * 1.2 + (Math.random() - 0.5) * 0.9,
-            -p.dx * 4, Math.random() * 2, -p.dz * 4, 0.3, 0.3, this.colorOf(p.owner), 0, 1);
+            -p.dx * 4, Math.random() * 2, -p.dz * 4, 0.3, 0.3, this.tintOf(p.owner, p.skill), 0, 1);
         }
       }
       // Phantoms: zones and shots that are shown as a faint copy of their owner.
@@ -961,7 +965,7 @@ export class View {
           P.emit(z.x + Math.cos(a) * r, groundY(z.x, z.z) + 0.1, z.z + Math.sin(a) * r, 0, 2 + Math.random() * 3, 0, 0.3, 0.16, 0xd8c8a0, 10, 1);
         }
       } else {
-        const c = this.colorOf(z.owner), fade = Math.min(1, (z.T - z.t) / 0.5, z.t / 0.2);
+        const c = this.tintOf(z.owner, z.skill), fade = Math.min(1, (z.T - z.t) / 0.5, z.t / 0.2);
         const breath = 0.5 + 0.5 * Math.sin(this.time * 3);
         G.ring(z.x, z.z, 0, z.r, c, (0.1 + 0.05 * breath) * fade);
         G.ring(z.x, z.z, 0, z.r * 0.55, HEAL, 0.07 * fade);
@@ -986,6 +990,13 @@ export class View {
         if (dt > 0) for (let i = 0; i < 3; i++) { const a = Math.random() * 6.283, r = Math.sqrt(Math.random()) * AU.r; P.emit(t.x + Math.cos(a) * r, gy + 0.1, t.z + Math.sin(a) * r, 0, 1.5 + Math.random() * 2, 0, 0.6, 0.2, c, -2, 0.6); }
       } else if (AU && t.stack > 0 && !t.out) {
         for (let i = 0; i < t.stack; i++) { const a = -Math.PI / 2 + (i - (t.stack - 1) / 2) * 0.5; G.ring(t.x + Math.cos(a) * 1.9, t.z + Math.sin(a) * 1.9, 0, 0.18, c, 0.95, 0.12); }
+      }
+      // LUNAR ARSENAL: the weapon in hand as a band round the top, the other one as a spot beside it.
+      const AR = t.blade.id === 'lunar' && !t.out && !t.air ? SKILLS.arsenal : null;
+      if (AR) {
+        G.ring(t.x, t.z, 1.72, 1.92, AR.tints[t.wm], 0.9);
+        G.ring(t.x + 1.5, t.z + 1.5, 0, 0.3, AR.tints[t.wo], 0.95, 0.12);
+        G.ring(t.x + 1.5, t.z + 1.5, 0.3, 0.38, 0x000000, 0.6, 0.12);
       }
       if (t.charge && t.charge.skill.id === 'realm') {
         // Opening a realm: the reach of it, and the one it is opening for.
@@ -1112,7 +1123,7 @@ export class View {
   // kinds drawn by the caller.
   drawZone(z, k, dt) {
     const G = this.ground, P = this.particles, S = z.skill;
-    const c = this.colorOf(z.owner), col = this.dangerOf(z.owner), mine = z.owner.side === this.playerSide;
+    const c = this.tintOf(z.owner, z.skill), col = this.dangerOf(z.owner), mine = z.owner.side === this.playerSide;
     const fade = Math.min(1, (z.T - z.t) / 0.5, z.t / 0.2), gy = groundY(z.x, z.z);
     const speck = (color, vy, grav) => { const a = Math.random() * 6.283, r = Math.sqrt(Math.random()) * z.r; P.emit(z.x + Math.cos(a) * r, gy + 0.1, z.z + Math.sin(a) * r, 0, vy, 0, 0.8, 0.18, color, grav, 0.5); };
     const timer = () => G.ring(z.x, z.z, z.r - 0.42, z.r - 0.28, 0xffffff, 0.6 * fade, 0.1, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * (1 - k));

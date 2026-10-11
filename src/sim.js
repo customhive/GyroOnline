@@ -845,7 +845,8 @@ export class World {
       case 'sentry':
         // An older sentry does not last long once a new one is set.
         for (const q of this.own(t, 'sentry')) if (!q.c) { q.c = 1; q.a = q.t + S.live; }
-        this.zone(t, S, c.ax, c.az);
+        // dx: 1 + the weapon mounted on it, the one that was in the other hand.
+        this.zone(t, S, c.ax, c.az, { dx: t.wo + 1 });
         break;
       case 'hlava':
         // MOLTEN FISSURE: a line of eruptions, one after another, each leaving a pool.
@@ -1502,6 +1503,7 @@ export class World {
       const core = S.core && Math.acos(clamp((ox * dx + oz * dz) / od, -1, 1)) < S.half * S.core;
       hit += this.hurt(opp, ((S.dmg * t.blade.atk + extra) * g) / (core ? 1 : opp.blade.def), t, S.id);
       if (g === 1) { if (S.pull) this.pull(opp, t, S.pull); this.affect(t, opp, S, dx, dz); }
+      if (S.offhand) this.offhand(t, opp);
       // A breath held on one target flares up every so many ticks.
       if (S.tick) {
         t.stack++; t.stackT = 0.4;
@@ -2524,7 +2526,8 @@ export class World {
           if (z.b <= 0 && live && d < S.reach + 2) {
             const shot = SKILLS.sentryshot, lead = d / shot.speed;
             const ax = opp.x + opp.vx * lead - z.x, az = opp.z + opp.vz * lead - z.z, n = Math.hypot(ax, az) || 1;
-            this.fire(t, shot, ax / n, az / n, { x: z.x, z: z.z });
+            const p = this.fire(t, shot, ax / n, az / n, { x: z.x, z: z.z });
+            if (z.dx >= 1) p.off = Math.round(z.dx) - 1;
             z.b = S.rate;
           }
           break;
@@ -2648,11 +2651,15 @@ export class World {
       this.emit('blast', { top: t, skill: S, x: z.x, z: z.z, r: z.r, hit, target: hit ? opp : null });
       this.hitKegs(t, S, (q) => Math.hypot(q.x - z.x, q.z - z.z) < z.r);
     }
+    // ONSLAUGHT: between the scythe's cuts, the other hand gets a blow in too.
+    const beat = !!S.offEvery && (z.b += dt) >= S.offEvery;
+    if (beat) z.b = 0;
     // What a field does to those inside it, it does to every enemy inside.
     for (const o of this.foes(t)) {
       if (o === opp ? !inside : !(live && targetable(o) && Math.hypot(o.x - z.x, o.z - z.z) < z.r + o.radius * 0.3)) continue;
       const d = Math.hypot(o.x - z.x, o.z - z.z);
       this.fieldOn(z, t, o, S, d, dt);
+      if (beat) this.offhand(t, o);
     }
     if (!t.out && !t.air && t.spin > 0 && Math.hypot(t.x - z.x, t.z - z.z) < z.r) {
       if (S.regen) { const h = Math.min(S.regen * dt, t.spinMax - t.spin); t.spin += h; z.a += h; z.b += dt; if (z.b >= 1) { if (z.a >= 1) this.emit('heal', { top: t, amount: z.a }); z.a = 0; z.b = 0; } }
@@ -2680,6 +2687,21 @@ export class World {
       this.slowBy(opp, S.groundT, S.slowPct);
       this.emit('strike', { top: opp, src: t, skill: S, x: opp.x, z: opp.z, dmg });
     }
+  }
+
+  // LUNAR ARSENAL: the weapon in the other hand (or `wi`, the one mounted on a
+  // sentry) lands a light blow of its own on a target the main one has reached.
+  // It leaves a sniper's mark where it is: that is for the next skill to set off.
+  offhand(o, v, wi = o.wo) {
+    const A = SKILLS.arsenal, F = A.off.fx[wi];
+    if (this.result || !F || !targetable(v) || v.guard > 0) return;
+    const dmg = this.hurt(v, (A.off.dmg * (F.mul || 1) * o.blade.atk) / v.blade.def, o, 'offhand');
+    if (F.mark && v.mark <= 0) { v.mark = F.mark; v.markK = 1; }
+    if (F.slow) this.slowBy(v, F.slow, F.slowPct);
+    if (F.leech) this.mend(o, dmg * F.leech);
+    // The flamethrower's blow washes over whoever else stands close behind.
+    if (F.splash) for (const q of this.foes(o)) if (q !== v && targetable(q) && Math.hypot(q.x - v.x, q.z - v.z) < F.splash + q.radius * 0.5) this.hurt(q, (A.off.dmg * o.blade.atk) / q.blade.def, o, 'offhand');
+    this.emit('strike', { top: v, src: o, skill: SKILLS[A.weapons[wi]], x: v.x, z: v.z, dmg, light: true });
   }
 
   // PLASMA FISSION parting: two bolts at right angles to the way it was going.
@@ -3079,6 +3101,9 @@ export class World {
     o.x2 = !!p.x2;
     this.affect(o, v, S, p.dx, p.dz);
     o.x2 = false;
+    // LUNAR ARSENAL: the other hand follows up, or the weapon mounted on a sentry does.
+    if (S.offhand) this.offhand(o, v);
+    if (p.off !== undefined) this.offhand(o, v, p.off);
     // Dragged in last, so a stun on the same hit does not stop the drag.
     if (S.chain) this.pull(v, o, S.pull, S.pullDist);
     if (S.id === 'galeq') { o.stack = Math.min(S.stacks, o.stack + 1); o.stackT = S.keep; }

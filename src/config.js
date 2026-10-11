@@ -1256,7 +1256,11 @@ export const SKILLS = {
   arsenal: {
     name: '武器のスキル', en: 'WEAPON SKILL', aim: 'line', icon: 'beam', cd: 4, re: 'bindeclipse',
     weapons: ['moonshot', 'onslaught', 'gravshot', 'duskwave', 'sentry'], ammo: 5, short: ['狙', '鎌', '重', '炎', '輪'],
-    desc: 'いま主に持っている武器の技を出す。武器は5発撃つと次の武器に入れ替わる。狙撃銃＝長射程弾と印／鎌＝1.75秒加速しながら近くの相手を斬り続けて回復／重力砲＝スロウ弾、スロウ中にもう一度押すとどこにいても縛る／火炎＝扇状の炎／円月輪＝近づいた相手を撃つ見張りを置く。',
+    // Each weapon has a colour of its own, on its key and on everything it fires.
+    tints: [0x4fe08a, 0xff4a5a, 0xb46bff, 0x4aa8ff, 0xf2f6ff],
+    // What the weapon in the other hand adds when it joins in: a light blow, and something of its own.
+    off: { dmg: 14, fx: [{ mark: 4.5 }, { leech: 1 }, { slow: 2.5, slowPct: 0.3 }, { mul: 1.5, splash: 2.4 }, { mul: 2 }] },
+    desc: 'いま主に持っている武器の技を出す。武器は5発撃つと次の武器に入れ替わる。狙撃銃＝長射程弾と印／鎌＝1.75秒加速しながら近くの相手を斬り続けて回復／重力砲＝スロウ弾、スロウ中にもう一度押すとどこにいても縛る／火炎＝扇状の炎／円月輪＝近づいた相手を撃つ見張りを置く。武器にはそれぞれ色があり（狙撃銃＝緑、鎌＝赤、重力砲＝紫、火炎＝青、円月輪＝白）、キーと弾の色でわかる。狙撃銃の弾・火炎・鎌の斬撃が当たった相手には、副の武器も軽く追撃する（狙撃銃＝印、鎌＝回復、重力砲＝スロウ、火炎・円月輪＝追加ダメージ）。見張りには、置いたときの副の武器が載る。',
   },
   phase: {
     name: 'フェーズ', en: 'PHASE', aim: 'self', icon: 'buff', cd: 0.8, ai: 'phase',
@@ -1267,27 +1271,27 @@ export const SKILLS = {
     desc: '【常時効果】弾を撃ち切った武器の代わりに、次に手元へ来る武器。武器はラウンドをまたいで持ち越す。',
   },
   moonshot: {
-    name: 'ムーンショット', en: 'CALIBRUM', aim: 'line', kind: 'shot', hidden: true, weapon: 0, cd: 4,
-    tele: 0.45, range: 13.5, speed: 52, radius: 0.7, dmg: 46, mark: 4.5,
+    name: 'ムーンショット', en: 'CALIBRUM', aim: 'line', kind: 'shot', hidden: true, weapon: 0, cd: 4, tint: 0x4fe08a,
+    tele: 0.45, range: 13.5, speed: 52, radius: 0.7, dmg: 46, mark: 4.5, offhand: true,
   },
   onslaught: {
-    name: 'オンスロート', en: 'SEVERUM', aim: 'self', kind: 'field', hidden: true, weapon: 1, cd: 4,
-    follow: true, dur: 1.75, aoe: 4.6, dps: 44, leechIn: 0.35, haste: 1.75,
+    name: 'オンスロート', en: 'SEVERUM', aim: 'self', kind: 'field', hidden: true, weapon: 1, cd: 4, tint: 0xff4a5a,
+    follow: true, dur: 1.75, aoe: 4.6, dps: 44, leechIn: 0.35, haste: 1.75, offEvery: 0.5,
   },
   gravshot: {
-    name: '重力弾', en: 'GRAVITUM', aim: 'line', kind: 'shot', hidden: true, weapon: 2, cd: 5,
+    name: '重力弾', en: 'GRAVITUM', aim: 'line', kind: 'shot', hidden: true, weapon: 2, cd: 5, tint: 0xb46bff,
     tele: 0.4, range: 10, speed: 34, radius: 0.8, dmg: 30, slow: 2.5, slowPct: 0.3, eclipse: 2.5,
   },
-  bindeclipse: { name: '束縛のエクリプス', en: 'BINDING ECLIPSE', aim: 'self', hidden: true, ai: 'bindeclipse', dmg: 40, snareT: 1, bigSnare: 1.35 },
+  bindeclipse: { name: '束縛のエクリプス', en: 'BINDING ECLIPSE', aim: 'self', hidden: true, tint: 0xb46bff, ai: 'bindeclipse', dmg: 40, snareT: 1, bigSnare: 1.35 },
   duskwave: {
-    name: 'ダスクウェーブ', en: 'INFERNUM', aim: 'cone', kind: 'cone', hidden: true, weapon: 3, cd: 2.5,
-    tele: 0.3, range: 5.6, half: 0.5, dmg: 42, kb: 3,
+    name: 'ダスクウェーブ', en: 'INFERNUM', aim: 'cone', kind: 'cone', hidden: true, weapon: 3, cd: 2.5, tint: 0x4aa8ff,
+    tele: 0.3, range: 5.6, half: 0.5, dmg: 42, kb: 3, offhand: true,
   },
   sentry: {
-    name: 'セントリー', en: 'CRESCENDUM', aim: 'ground', hidden: true, weapon: 4, cd: 3, ai: 'ground',
+    name: 'セントリー', en: 'CRESCENDUM', aim: 'ground', hidden: true, weapon: 4, cd: 3, ai: 'ground', tint: 0xf2f6ff,
     range: 4, aoe: 1.1, dur: 20, live: 4, reach: 5, wake: 0.35, rate: 0.8, max: 3,
   },
-  sentryshot: { name: '見張り', en: 'SENTRY', aim: 'line', hidden: true, range: 9, speed: 32, radius: 0.55, dmg: 20, kb: 1.5, tumble: 0, launch: 0 },
+  sentryshot: { name: '見張り', en: 'SENTRY', aim: 'line', hidden: true, tint: 0xf2f6ff, range: 9, speed: 32, radius: 0.55, dmg: 20, kb: 1.5, tumble: 0, launch: 0 },
   vigil: {
     name: '月光の番人', en: 'MOONLIGHT VIGIL', aim: 'line', kind: 'shot', icon: 'star', cd: 2, ult: true,
     tele: 0.4, range: 12, speed: 24, radius: 1.4, dmg: 70, splash: 4, splashDmg: 70,
