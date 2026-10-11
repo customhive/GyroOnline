@@ -1061,6 +1061,28 @@ console.log('ARENA');
   check(ARENA.R === 13 && std.size === 0, 'the next match in the standard arena is 13 again');
 }
 
+console.log('FLASH');
+{
+  let { w, me, foe } = setup('azure', 12);
+  const z0 = me.z;
+  check(w.flash(me, me.x, me.z - 9) && Math.abs(z0 - me.z - 4) < 1e-9 && me.flash === 0, 'toward a far point: 4 that way, and it is spent');
+  check(!w.flash(me, 0, 0), 'once a round');
+  w.resetRound();
+  check(me.flash === 1, 'it is back the next round');
+  ({ w, me, foe } = setup('azure', 12));
+  check(w.flash(me, me.x + 1.5, me.z + 1) && Math.abs(me.x - 1.5) < 1e-9, 'to a near point: exactly there');
+  ({ w, me, foe } = setup('azure', 12));
+  me.x = 0; me.z = 10; w.flash(me, 0, 20);
+  check(Math.hypot(me.x, me.z) <= 13 - me.radius, 'never past the wall');
+  for (const [what, hold] of [['stunned', (t) => w.stun(t, 1)], ['rooted', (t) => w.snare(t, 1)], ['in the air', (t) => w.lift(t, 1)]]) {
+    ({ w, me, foe } = setup('azure', 12)); hold(me);
+    check(!w.flash(me, 0, 0) && me.flash === 1, `not while ${what} (and it is not spent)`);
+  }
+  ({ w, me, foe } = setup('hunger', 9));
+  w.hold(me, 'E'); w.flash(me, me.x, me.z - 4);
+  check(!!me.hold && me.flash === 0, 'while drawing breath for a skill: the step is taken and the breath is kept');
+}
+
 console.log('HOLDS');
 {
   const { w, me, foe } = setup('prism', 7);

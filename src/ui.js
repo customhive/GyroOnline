@@ -1,5 +1,5 @@
 // DOM heads-up display, menus and floating combat text.
-import { BLADES, DIFFICULTY, STAGES, ARENA_SIZES, ROUNDS_TO_WIN, KEYS, skillOf, kitOf } from './config.js';
+import { BLADES, DIFFICULTY, STAGES, ARENA_SIZES, ROUNDS_TO_WIN, KEYS, FLASH, skillOf, kitOf } from './config.js';
 
 const $ = (s, r = document) => r.querySelector(s);
 const el = (tag, cls, html) => { const e = document.createElement(tag); if (cls) e.className = cls; if (html != null) e.innerHTML = html; return e; };
@@ -172,6 +172,12 @@ export class UI {
       bar.appendChild(b);
       this.skills[k] = { root: b, cd: $('.s-cd', b), num: $('.s-num', b), ring: $('.s-ring', b), badge: $('.s-badge', b), ready: true, note: '' };
     }
+    // FLASH sits beside the four, the same for every blade: lit until it has been used this round.
+    const f = el('div', 'skill flash');
+    f.innerHTML = `<div class="s-icon">${GLYPHS.blink}</div><div class="s-key">${FLASH.key}</div>
+      <div class="s-tip"><b>フラッシュ</b><i>FLASH</i><p>カーソルの位置へ瞬間移動する（遠ければ、その方向へ${FLASH.range}だけ）。1ラウンドに1回だけ使える。スタン・束縛・打ち上げなどで動けない間は使えない。スキルを狙っている最中や溜めている最中にも使える。</p><span>1ラウンドに1回　／　押すと即発動</span></div>`;
+    bar.appendChild(f);
+    this.skills[FLASH.key] = { root: f };
   }
 
   buildTitle() {
@@ -564,6 +570,7 @@ export class UI {
       }
     });
     const me = world.tops[this.side];
+    this.skills[FLASH.key].root.classList.toggle('wait', !(me.flash > 0));
     for (const k of KEYS) {
       const S = skillOf(me, k);
       const s = this.skills[k], cd = me.cd[k], total = S.cd * me.blade.cdMul;

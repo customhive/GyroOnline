@@ -6,7 +6,7 @@
 // its own top answers input at once, then corrects itself from each snapshot
 // (rewind to the host's state, re-apply inputs the host has not seen yet,
 // simulate forward by the measured delay).
-import { BLADES, DIFFICULTY, STAGES, ARENA_SIZES, ROUND_TIME, ROUNDS_TO_WIN, KEYS, setArenaSize, skillOf } from './config.js';
+import { BLADES, DIFFICULTY, STAGES, ARENA_SIZES, ROUND_TIME, ROUNDS_TO_WIN, KEYS, FLASH, setArenaSize, skillOf } from './config.js';
 import { World, spinRatio } from './sim.js';
 import { CpuBrain } from './ai.js';
 import { View } from './view.js';
@@ -632,6 +632,7 @@ function netMessage(m, id) {
       if (!t) return;
       if (m.k === 'm') w.issueMove(t, num(m.x), num(m.z), !!m.f);
       else if (m.k === 'a') w.aimHold(t, num(m.x), num(m.z));
+      else if (m.k === 'f') w.flash(t, num(m.x), num(m.z));
       else if (m.k === 'h' && KEYS.includes(m.key)) w.hold(t, m.key);
       else if (m.k === 'c' && KEYS.includes(m.key)) w.cast(t, m.key, num(m.x), num(m.z), 0, m.bx === undefined ? undefined : num(m.bx), m.bz === undefined ? undefined : num(m.bz));
       peer.ack = m.s | 0;
@@ -682,7 +683,7 @@ function reconcile() {
   game.pending = game.pending.filter((p) => { const d = (p.s - ack) & 0xffff; return d !== 0 && d < 0x8000; });
   const me = player();
   for (const p of game.pending) {
-    if (p.k === 'm') w.issueMove(me, p.x, p.z, !!p.f); else if (p.k === 'a') w.aimHold(me, p.x, p.z); else if (p.k === 'h') w.hold(me, p.key); else w.cast(me, p.key, p.x, p.z, 0, p.bx, p.bz);
+    if (p.k === 'm') w.issueMove(me, p.x, p.z, !!p.f); else if (p.k === 'a') w.aimHold(me, p.x, p.z); else if (p.k === 'f') w.flash(me, p.x, p.z); else if (p.k === 'h') w.hold(me, p.key); else w.cast(me, p.key, p.x, p.z, 0, p.bx, p.bz);
   }
   // The snapshot left the host half a round trip ago and has waited here
   // since it arrived.
@@ -706,6 +707,7 @@ function remoteControlled(world) {
     get(target, prop) {
       if (prop === 'cast') return (top, key, x, z) => doCast(key, x, z);
       if (prop === 'hold') return (top, key) => doHold(key);
+      if (prop === 'flash') return (top, x, z) => doFlash(x, z);
       if (prop === 'issueMove') return (top, x, z, fresh) => doMove(x, z, fresh);
       const v = target[prop];
       return typeof v === 'function' ? v.bind(target) : v;
@@ -731,6 +733,15 @@ function doCast(key, x, z, bx, bz) {
   const w = game.world;
   if (!w.cast(player(), key, x, z, 0, bx, bz)) return false;
   if (game.mode === 'guest') { w.events.length = 0; sendInput(bx === undefined ? { k: 'c', key, x, z } : { k: 'c', key, x, z, bx: Math.round(bx * 100) / 100, bz: Math.round(bz * 100) / 100 }); }
+  return true;
+}
+
+// FLASH: straight to the cursor (or as far toward it as it reaches), once a round.
+function doFlash(x, z) {
+  if (game.spectate) return false;
+  const w = game.world;
+  if (!w.flash(player(), x, z)) return false;
+  if (game.mode === 'guest') { w.events.length = 0; sendInput({ k: 'f', x, z }); }
   return true;
 }
 
@@ -766,7 +777,7 @@ function sendInput(p) {
 
 function refreshCursor() {
   const p = view.pick(game.cursor.sx, game.cursor.sy);
-  if (p) { game.cursor.x = p.x; game.cursor.z = p.z; }
+  if (p && Number.isFinite(p.x + p.z)) { game.cursor.x = p.x; game.cursor.z = p.z; }
 }
 
 function orderMove(silent) {
@@ -821,6 +832,12 @@ window.addEventListener('keydown', (e) => {
   if (k === 'ESCAPE') { if (game.aimKey) { if (!(game.world && player().hold)) game.aimKey = null; } else togglePause(); return; }
   if (k === 'P') return togglePause();
   if (k === 'M') { audio.unlock(); audio.setMuted(!audio.muted); ui.setMuted(audio.muted); return; }
+  if (game.state === 'fight' && !game.paused && !game.spectate && k === FLASH.key) {
+    audio.unlock();
+    refreshCursor();
+    if (doFlash(game.cursor.x, game.cursor.z)) ui.castFx(k); else { audio.denied(); ui.denied(k); }
+    return;
+  }
   if (game.state !== 'fight' || game.paused || game.spectate || !KEYS.includes(k)) return;
   audio.unlock();
   // What the key does can change mid-fight (a second stage, a copied skill).
@@ -952,6 +969,7 @@ function onEvent(e) {
       break;
     case 'dot': dmgPop(e.top, e.dmg); break;
     case 'warp': audio.blink(); break;
+    case 'flash': audio.blink(); popAt(e.top, 'FLASH', 'word gold'); break;
     case 'buff':
       if (e.off) audio.move(); else audio.guard();
       if (e.skill.ult && mine(e.top)) popAt(e.top, 'POWER UP', 'word gold');

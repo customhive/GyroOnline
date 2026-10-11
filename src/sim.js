@@ -1,6 +1,6 @@
 // Battle simulation. No rendering in here: the world steps the two tops and
 // pushes events that the renderer, audio and HUD react to.
-import { STAGES, ARENA, ARENA_SIZES, SKILLS, KEYS, BLEED, CC, setArenaSize, skillOf } from './config.js';
+import { STAGES, ARENA, ARENA_SIZES, SKILLS, KEYS, BLEED, CC, FLASH, setArenaSize, skillOf } from './config.js';
 
 export function mulberry32(a) {
   return function () {
@@ -78,6 +78,7 @@ export function makeTop(side, blade) {
     team: side,            // tops on the same team do not fight each other
     perm: 0,               // growth that lasts the whole match, not just the round
     realm: 0,              // shut in a REALM OF DEATH: 1 + the side of whoever made it (0: in the ordinary world)
+    flash: 1,              // FLASH: uses left this round
     // LUNAR ARSENAL: main and off-hand weapon, the ones waiting, shots left in each, each one's cooldown.
     // Like `perm`, the weapons carry over from round to round.
     subj: 0,               // VISION PAINTER: the subject chosen (1 Q, 2 W, 3 E), waiting for its spell
@@ -400,7 +401,7 @@ export class World {
       t.vx = t.blade.speed * 0.75 * Math.cos(ph); t.vz = -t.blade.speed * 0.75 * Math.sin(ph);
       if (Math.abs(t.x) < 1e-9) t.x = 0;
       if (Math.abs(t.vz) < 1e-9) t.vz = 0;
-      t.gone = null; t.prey = t.dmarkTo = -1; t.quills = t.quillT = 0; t.realm = 0;
+      t.gone = null; t.prey = t.dmarkTo = -1; t.quills = t.quillT = 0; t.realm = 0; t.flash = 1;
       t.silence = t.dbl = t.odT = t.deN = t.deT = t.ardent = t.shrugCd = t.rockT = t.kickT = t.kickHit = 0; t.shredK = 1; t.bleedBy = t.ardentBy = -1; t.spray = null; t.rayA = null; t.once = false;
       t.spin = t.spinMax;
       t.cmd = t.cast = t.dash = t.air = t.out = t.blink = t.charge = t.orbs = t.tether = t.chan = t.ret = t.hold = null;
@@ -429,6 +430,30 @@ export class World {
     const r = Math.hypot(x, z);
     if (r > lim) { x *= lim / r; z *= lim / r; }
     t.cmd = { x, z, t: 2.2 };
+    return true;
+  }
+
+  // FLASH is there for anyone who can move of its own accord: not while held,
+  // thrown or already in the middle of a dash or leap. Aiming, winding up or
+  // drawing breath for a skill does not stop it.
+  canFlash(t) {
+    return !!(t.flash > 0 && !this.result && t.spin > 0 && !t.gone && !t.out && !t.air && !t.dash && !t.blink && t.up <= 0 && t.stun <= 0 && t.snare <= 0
+      && t.charm <= 0 && t.ground <= 0 && t.egg <= 0 && !(t.tumble > 0 && t.launch > 0) && !(t.charge && t.charge.skill.veil));
+  }
+
+  // To the point given if it is within reach, else as far toward it as reach allows. Never past the wall.
+  flash(t, x, z) {
+    if (!this.canFlash(t) || !Number.isFinite(x + z)) return false;
+    let dx = x - t.x, dz = z - t.z;
+    const d = Math.hypot(dx, dz);
+    if (d > FLASH.range) { dx *= FLASH.range / d; dz *= FLASH.range / d; }
+    let nx = t.x + dx, nz = t.z + dz;
+    const lim = ARENA.R - t.radius - 0.2, r = Math.hypot(nx, nz);
+    if (r > lim) { nx *= lim / r; nz *= lim / r; }
+    const fx = t.x, fz = t.z;
+    t.flash--;
+    t.x = nx; t.z = nz;
+    this.emit('flash', { top: t, fx, fz });
     return true;
   }
 
@@ -550,6 +575,8 @@ export class World {
   }
 
   castNow(t, key, ax, az, wound, bx, bz) {
+    // A point that is not a point (a cursor with nowhere to be) must never get into the world.
+    if (!Number.isFinite(ax + az)) return false;
     if (!this.canCast(t, key)) return false;
     const base = skillOf(t, key), S = this.aimSkill(t, key);
     const held = t.hold && t.hold.key === key ? t.hold.t : wound;

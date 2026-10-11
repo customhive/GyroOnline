@@ -21,6 +21,9 @@ export const heightAt = (r) => {
   return ARENA.H * k * k;
 };
 
+// FLASH: every top can step straight to a spot nearby, once a round.
+export const FLASH = { key: 'F', range: 4 };
+
 export const ROUND_TIME = 75;
 export const ROUNDS_TO_WIN = 2;
 

@@ -70,6 +70,10 @@ button { font-family: inherit; color: inherit; cursor: pointer; }
 .skill.ult .s-num { font-size: 17px; }
 .s-key { position: absolute; left: -7px; top: -9px; min-width: 22px; height: 22px; padding: 0 5px; display: grid; place-items: center; font-size: 13px; font-weight: 700; color: #04101c; background: #fff; transform: skewX(-10deg); box-shadow: 0 2px 6px rgba(0, 0, 0, 0.6); }
 .skill.wait { border-color: #3a4566; }
+/* FLASH: smaller than the four, set a little apart, gold while it is still there to use. */
+.skill.flash { width: 50px; height: 50px; margin: 16px 0 0 10px; color: var(--gold); border-color: var(--gold); background: radial-gradient(circle at 50% 35%, #4b3a10, #0a0b16 75%); }
+.skill.flash .s-icon { inset: 9px; }
+.skill.flash.wait { border-color: #3a4566; background: #070b18; }
 .skill.wait .s-icon { opacity: 0.35; filter: grayscale(0.7); }
 /* A key whose colour says which weapon it is keeps that colour while it waits. */
 .skill.tinted.wait { border-color: color-mix(in srgb, var(--c) 75%, #000); }

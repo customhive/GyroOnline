@@ -2,7 +2,7 @@
 // the same move orders and skill casts a player can. It works from whatever
 // kit its blade has, so every skill needs an entry in `offence`, `defence`
 // or `reflex`.
-import { ARENA, KEYS, SKILLS, skillOf } from './config.js';
+import { ARENA, KEYS, SKILLS, FLASH, skillOf } from './config.js';
 import { intercept, predictAt, targetable, spinRatio, rooted, wallOf, rimOpen } from './sim.js';
 
 // Blades that fight from range back off when the other top gets this close.
@@ -62,6 +62,8 @@ export class CpuBrain {
     if (timeLeft < 0.6 && this.has('phantom')) return this.use('phantom', me.x + mx * 6, me.z + mz * 6);
     for (const id of ['blitz', 'valor', 'sweep']) if (timeLeft < 0.7 && this.has(id)) return this.use(id, me.x + mx * 9, me.z + mz * 9);
     if (timeLeft < 0.7 && this.has('distort') && !this.again('distort')) return this.use('distort', me.x + mx * 8, me.z + mz * 8);
+    // Something big about to land, nothing else to get out with, and one FLASH would clear it: spend it.
+    if (timeLeft < 0.35 && radius >= 3.5 && md < radius && radius + 1 - md < FLASH.range && w.canFlash(me) && w.rng() < L.dodge) return w.flash(me, me.x + mx * FLASH.range, me.z + mz * FLASH.range);
     w.issueMove(me, cx + mx * (radius + 4), cz + mz * (radius + 4));
     return true;
   }

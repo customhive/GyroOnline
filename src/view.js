@@ -292,7 +292,7 @@ export class View {
         break;
       }
       // Gone from one place, there in another.
-      case 'warp': {
+      case 'warp': case 'flash': {
         const t = e.top, c = this.colorOf(t);
         for (const [x, z] of [[e.fx, e.fz], [t.x, t.z]]) {
           const y = groundY(x, z);
