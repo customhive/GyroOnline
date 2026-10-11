@@ -51,7 +51,7 @@ function paintFloor(g) {
   g.fillStyle = '#161d33'; g.beginPath(); g.arc(0, 0, EXTENT, 0, Math.PI * 2); g.arc(0, 0, R, 0, Math.PI * 2, true); g.fill();
 }
 
-function paintGlow(g) {
+function paintGlow(g, stage = STAGES[0]) {
   const R = ARENA.R;
   g.fillStyle = '#000'; g.fillRect(-EXTENT, -EXTENT, EXTENT * 2, EXTENT * 2);
   g.lineCap = 'butt';
@@ -60,7 +60,11 @@ function paintGlow(g) {
   line(6.2, 0.05, '#2f7fd0', [0.5, 0.35]);
   line(9.6, 0.07, '#3aa8ff');
   // Danger band by the wall: this is where launched tops fly out.
-  line(12.35, 0.5, '#ff5a2a', [0.9, 0.6]);
+  // Only where there is a wall to be thrown against; an open edge has none.
+  // (On the canvas a screen angle runs the other way round.)
+  g.strokeStyle = '#ff5a2a'; g.lineWidth = 0.5; g.setLineDash([0.9, 0.6]);
+  for (const [a0, a1] of wallArcs(stage)) { g.beginPath(); g.arc(0, 0, 12.35, -a1, -a0); g.stroke(); }
+  g.setLineDash([]);
   line(11.95, 0.05, '#ff9a4a');
   g.strokeStyle = '#2c8fe0'; g.lineWidth = 0.05;
   for (let i = 0; i < 12; i++) {
@@ -158,7 +162,7 @@ export function createStage(canvas) {
     return geo;
   };
   const floorMat = new THREE.MeshStandardMaterial({
-    map: floorCanvas(2048, paintFloor), emissiveMap: floorCanvas(2048, paintGlow), emissive: 0xffffff, emissiveIntensity: 0.85,
+    map: floorCanvas(2048, paintFloor), emissiveMap: floorCanvas(2048, (g) => paintGlow(g)), emissive: 0xffffff, emissiveIntensity: 0.85,
     metalness: 0.82, roughness: 0.36, side: THREE.DoubleSide,
   });
   const bowl = new THREE.Mesh(mapUv(new THREE.LatheGeometry(prof, 128)), floorMat);
@@ -176,6 +180,9 @@ export function createStage(canvas) {
   const walls = new THREE.Group();
   scene.add(walls);
   const buildWalls = (g) => {
+    // The glowing floor markings follow the stage too.
+    paintGlow(floorMat.emissiveMap.image.getContext('2d'), g);
+    floorMat.emissiveMap.needsUpdate = true;
     for (const m of [...walls.children]) { walls.remove(m); m.geometry.dispose(); }
     for (const [a0, a1] of wallArcs(g)) {
       const len = a1 - a0, segs = Math.max(8, Math.round((128 * len) / (Math.PI * 2)));
