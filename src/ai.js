@@ -376,6 +376,12 @@ export class CpuBrain {
 
   update(dt) {
     const { world: w, me, foe, level: L } = this;
+    // CURTAIN CALL: braced, firing one shot at a time at where the target will be.
+    if (me.chan && !w.result && this.has('curtaincall') && w.rng() < L.cast) {
+      const p = this.jitter(intercept(me.x, me.z, foe, me, SKILLS.curtainshot.speed, 0), 1);
+      this.use('curtaincall', p.x, p.z);
+      return;
+    }
     if (w.result || me.out || me.air || me.blink || me.spin <= 0 || rooted(me) || me.stun > 0) return;
     if (this.reflex(dt)) return;
     this.t -= dt;

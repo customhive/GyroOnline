@@ -870,5 +870,51 @@ console.log('WORLD ENDER (Aatrox)');
   check(me.buff === 10 && Math.abs(big / plain - 1.3) < 0.01 && Math.abs(me.spin - 500 - big * 0.3) < 0.5, 'R: 10 seconds of more damage, part of it coming back as spin');
 }
 
+console.log('CURTAIN CALL (Jhin)');
+{
+  let { w, me, foe, run, saw } = setup('curtain', 22);
+  w.cast(me, 'W', foe.x, foe.z); run(0.6);
+  check(foe.stats.taken > 0 && foe.snare === 0 && foe.stun === 0, 'W: reaches across the arena; unmarked, it only hurts');
+  ({ w, me, foe, run, saw } = setup('curtain', 10));
+  w.hurt(foe, 10, me, 'x'); run(3); w.cast(me, 'W', foe.x, foe.z); run(0.4);
+  check(Math.abs(foe.snare - 1.35) < 0.3 && foe.stun === 0, 'W: struck within the last 4 seconds, the target is snared for 1.35');
+  ({ w, me, foe, run, saw } = setup('curtain', 10));
+  w.hurt(foe, 10, me, 'x'); run(4.2); w.cast(me, 'W', foe.x, foe.z); run(0.4);
+  check(foe.snare === 0, 'W: the mark is gone after 4 seconds');
+  ({ w, me, foe, run, saw } = setup('curtain', 12));
+  check(me.stk === 2 && w.cast(me, 'E', me.x + 3, me.z), 'E: two traps in store');
+  run(2.1); w.cast(me, 'E', me.x - 3, me.z); run(2.1);
+  check(me.stk === 0 && !w.canCast(me, 'E'), 'E: then none');
+  run(10);
+  check(me.stk === 1, 'E: one comes back after 14 seconds');
+  ({ w, me, foe, run, saw } = setup('curtain', 7));
+  w.cast(me, 'E', foe.x, foe.z); run(0.5);
+  check(!w.zones[0].c, 'E: not armed for the first second');
+  run(0.7);
+  check(w.zones[0].c === 1 && foe.slowK === 0.35 && foe.stats.taken === 0, 'E: stepped on, it becomes a 35% slowing field');
+  run(1.5); check(foe.stats.taken === 0, 'E: two seconds of fuse');
+  run(0.6); check(foe.stats.taken > 0, 'E: then it blows');
+  ({ w, me, foe, run, saw } = setup('curtain', 12));
+  w.cast(me, 'R', foe.x, foe.z); run(0.3);
+  check(!!me.chan && !w.projectiles.length && !w.canCast(me, 'R'), 'R: braced; nothing fires by itself');
+  run(1.5);
+  check(!w.projectiles.length && w.canCast(me, 'R'), 'R: it waits for the key');
+  w.cast(me, 'R', foe.x, foe.z);
+  check(w.projectiles.length === 1 && !w.canCast(me, 'R'), 'R pressed: one shot, then a beat before the next');
+  run(0.5);
+  check(foe.slowK === 0.8, 'R: a hit slows by 80%');
+  let fired = 1; for (let i = 0; i < 3; i++) { run(0.75); if (w.cast(me, 'R', foe.x + 4, foe.z)) fired++; }
+  check(fired === 4 && !me.chan && me.re.R === 0, 'R: four shots, and the stance ends');
+  ({ w, me, foe, run, saw } = setup('curtain', 12));
+  w.cast(me, 'R', foe.x, foe.z); run(0.6); w.cast(me, 'R', me.x + 9, me.z);
+  const p = w.projectiles[0];
+  check(Math.abs(Math.atan2(p.dx, -p.dz) - 0.5) < 0.02, 'R: aimed outside the fan, the shot goes along its edge');
+  run(9.6);
+  check(!me.chan && !w.canCast(me, 'R'), 'R: held 10 seconds at most; unfired shots are lost');
+  const dmg = (ratio) => { const s = setup('curtain', 12); s.foe.spin = s.foe.spinMax * ratio; const f = s.foe.spin; s.w.cast(s.me, 'R', s.foe.x, s.foe.z); s.run(0.6); s.w.cast(s.me, 'R', s.foe.x, s.foe.z); s.run(0.5); return f - s.foe.spin; };
+  const full = dmg(1), half = dmg(0.5);
+  check(Math.abs(half / full - 2.5) < 0.3, `R: +3% for every 1% of spin the target is missing (${full.toFixed(0)} -> ${half.toFixed(0)} at half)`);
+}
+
 console.log(bad ? `\n${bad} of ${n} checks failed` : `\nall ${n} checks passed`);
 process.exit(bad ? 1 : 0);

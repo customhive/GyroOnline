@@ -66,7 +66,7 @@ function writeTop(w, t) {
   if (t.charge) { const c = t.charge; w.u8(skillNo(c.skill)); w.u8(c.t * 150); w.i16((c.dx || 0) * DIR); w.i16((c.dz || 0) * DIR); }
   if (t.orbs) { const o = t.orbs; w.u8(skillNo(o.skill)); w.u8(o.alive); w.u8(o.t * 40); w.u16((((o.ang % TAU) + TAU) % TAU) * 10000); w.u8(o.cd * 200); }
   if (t.tether) { const h = t.tether; w.u8(skillNo(h.skill)); w.u8(h.t * 80); w.u16(h.acc * 100); w.u8(h.tick * 200); }
-  if (t.chan) { const c = t.chan; w.u8(c.t * 60); w.u8(c.n); w.i16(c.dx * DIR); w.i16(c.dz * DIR); }
+  if (t.chan) { const c = t.chan; w.u8(c.t * 20); w.u8(c.n); w.i16(c.dx * DIR); w.i16(c.dz * DIR); }
   if (t.ret) { w.i16(t.ret.x * POS); w.i16(t.ret.z * POS); }
   if (t.ret2) { w.i16(t.ret2.x * POS); w.i16(t.ret2.z * POS); }
   if (t.hold) { w.u8(KEYS.indexOf(t.hold.key)); w.u8(t.hold.t * 50); }
@@ -124,7 +124,7 @@ function readTop(r, t) {
     t.orbs = { alive, n, t: r.u8() / 40, ang: r.u16() / 10000, cd: r.u8() / 200, skill };
   } else t.orbs = null;
   if (f & F_TETHER) { const skill = skillAt(r.u8()); t.tether = { t: r.u8() / 80, T: skill.dur, skill, acc: r.u16() / 100, tick: r.u8() / 200 }; } else t.tether = null;
-  t.chan = g & G_CHAN ? { t: r.u8() / 60, n: r.u8(), ...readDir(r), skill: SKILLS.curtaincall } : null;
+  t.chan = g & G_CHAN ? { t: r.u8() / 20, n: r.u8(), ...readDir(r), skill: SKILLS.curtaincall } : null;
   t.ret = g & G_RET ? { x: r.i16() / POS, z: r.i16() / POS } : null;
   t.ret2 = g & G_RET2 ? { x: r.i16() / POS, z: r.i16() / POS } : null;
   t.hold = g & G_HOLD ? { key: KEYS[r.u8() & 3], t: r.u8() / 50 } : null;

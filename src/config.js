@@ -478,27 +478,28 @@ export const SKILLS = {
     range: 18, speed: 42, radius: 1.0, dmg: 52, kb: 11, exec: 0.8,
   },
   flourish: {
-    name: '致命の一閃', en: 'DEADLY FLOURISH', aim: 'line', cd: 9, tele: 0.45,
-    range: 22, speed: 60, radius: 0.6, dmg: 40, slow: 1.5, root: 1.2,
-    desc: '細く長い弾を撃ちスロウにする。直前2.5秒に自分の攻撃が当たっていれば、スタンに変わる。',
+    name: '致命の一閃', en: 'DEADLY FLOURISH', aim: 'line', cd: 12, tele: 0.45,
+    range: 24, speed: 60, radius: 0.6, dmg: 44, root: 1.35, markT: 4,
+    desc: 'アリーナの端まで届く細い弾を撃つ。直前4秒に自分の攻撃が当たっていれば、相手を1.35秒その場に縛る（スキルは使われる）。',
   },
   lotus: {
-    name: '蓮の罠', en: 'LOTUS TRAP', aim: 'ground', cd: 8,
-    range: 9, aoe: 3, trig: 1.7, arm: 0.6, fuse: 0.9, dur: 20, max: 2, dmg: 60, slow: 2, kb: 5,
-    desc: '見えにくい罠を置く（最大2個）。踏んだ相手をスロウにし、少し遅れて爆発する。',
+    name: '蓮の罠', en: 'LOTUS TRAP', aim: 'ground', cd: 2, stock: { max: 2, every: 14 },
+    range: 7.5, aoe: 3, trig: 1.7, arm: 1, fuse: 2, dur: 25, max: 3, dmg: 66, slowPct: 0.35, kb: 5,
+    desc: '見えにくい罠を置く。踏まれると35%スロウの領域になり、2秒後に爆発する。2個ぶん溜めておける（14秒で1個ぶん戻る）。',
   },
   curtaincall: {
-    name: '終幕', en: 'CURTAIN CALL', aim: 'cone', cd: 2, ult: true,
-    range: 26, half: 0.5, shots: 4, first: 0.5, every: 0.75,
-    desc: '【必殺技】その場に留まり、扇の中にいる相手を狙って超長射程弾を4発撃つ。最後の一発は特大。',
+    name: '終幕', en: 'CURTAIN CALL', aim: 'cone', cd: 2, ult: true, re: 'curtainfire',
+    range: 26, half: 0.5, shots: 4, first: 0.5, every: 0.7, window: 10,
+    desc: '【必殺技】その場で構え、扇の範囲を決める。そのあとRを押すたびに狙った方向へ超長射程弾を1発（最大4発、10秒以内）。当たると80%のスロウ。相手の回転が減っているほど重く、最後の一発は2倍。',
   },
+  curtainfire: { name: '終幕', en: 'CURTAIN CALL', aim: 'line', hidden: true, range: 26, radius: 1.0 },
   curtainshot: {
     name: '終幕', en: 'CURTAIN CALL', aim: 'line', hidden: true,
-    range: 30, speed: 46, radius: 1.0, dmg: 50, kb: 7, slow: 1,
+    range: 30, speed: 46, radius: 1.0, dmg: 34, kb: 7, slow: 0.5, slowPct: 0.8, exec: 3,
   },
   curtainlast: {
     name: '終幕', en: 'CURTAIN CALL', aim: 'line', hidden: true,
-    range: 30, speed: 46, radius: 1.4, dmg: 105, kb: 15, slow: 1.5, exec: 0.5,
+    range: 30, speed: 46, radius: 1.4, dmg: 68, kb: 15, slow: 0.5, slowPct: 0.8, exec: 3,
   },
   // ---- FROST PHOENIX: walls, chill and a second life ----------------------------
   flashfrost: {

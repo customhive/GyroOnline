@@ -291,8 +291,9 @@ export class World {
   }
 
   // States that block every skill, whatever its cooldown.
-  busy(t) {
+  busy(t, firing = false) {
     // A top in flight is dashing, but free to use its skills.
+    if (t.chan && firing) return !!(this.result || t.spin <= 0 || t.up > 0 || t.stun > 0);
     return !!(this.result || t.spin <= 0 || t.air || t.out || t.cast || (t.dash && !t.dash.skill.fly) || t.blink || (t.charge && !t.charge.skill.loose) || t.chan || t.up > 0 || t.stun > 0 || t.egg > 0);
   }
 
@@ -351,7 +352,10 @@ export class World {
   }
 
   canCast(t, key) {
-    if (this.busy(t) || !this.ready(t, key)) return false;
+    // CURTAIN CALL: braced, and each press of the key is one shot.
+    const firing = this.aimSkill(t, key).id === 'curtainfire';
+    if (firing && (!t.chan || t.cd[key] > 0)) return false;
+    if (this.busy(t, firing) || !this.ready(t, key)) return false;
     const base = skillOf(t, key);
     if (base.passive || (base.stock && t.stk <= 0)) return false;
     if (t.dash && this.aimSkill(t, key).aim === 'dash') return false;
@@ -742,8 +746,20 @@ export class World {
       case 'curtaincall':
         t.chan = { t: 0, n: 0, dx: c.dx, dz: c.dz, skill: S };
         t.cmd = null;
+        t.re[c.key] = S.window; t.cd[c.key] = S.first;
         this.emit('chan', { top: t, dx: c.dx, dz: c.dz });
         break;
+      case 'curtainfire': {
+        // One shot where it is aimed, kept inside the fan that was set.
+        const ch = t.chan, C = ch.skill, shot = ch.n === C.shots - 1 ? SKILLS.curtainlast : SKILLS.curtainshot;
+        const a0 = Math.atan2(ch.dz, ch.dx), want = Math.atan2(c.dz, c.dx);
+        const a = a0 + clamp(Math.atan2(Math.sin(want - a0), Math.cos(want - a0)), -C.half, C.half);
+        this.fire(t, shot, Math.cos(a), Math.sin(a));
+        ch.n++;
+        if (ch.n >= C.shots) { t.chan = null; this.emit('chanEnd', { top: t }); }
+        else { t.re[c.key] = C.window - ch.t; t.cd[c.key] = C.every; }
+        break;
+      }
       case 'aegis':
         t.guard = S.dur * t.blade.guardMul;
         this.emit('guard', { top: t, dur: t.guard });
@@ -1109,7 +1125,7 @@ export class World {
       t.scar = SCAR;
       if (from.dmark > 0 && kind !== 'deathmark') from.dacc += dmg;
     }
-    t.lastHit = { dmg, time: this.time, kind };
+    t.lastHit = { dmg, time: this.time, kind, by: foe && kind !== 'wall' ? from.side : -1 };
     // DENTING BLOWS: every third hit dents the target.
     const DB = foe && from.blade.dent;
     if (DB && kind !== 'wall' && kind !== 'dent') {
@@ -1444,6 +1460,7 @@ export class World {
       if (t.charge.t >= t.charge.T) this.chargeDone(t, opp);
     }
     if (t.chan) this.updateChan(t, opp, dt);
+    else if (t.re.R > 0 && skillOf(t, 'R').id === 'curtaincall') t.re.R = 0;
     if (t.orbs) this.updateOrbs(t, opp, dt);
     if (t.tether) this.updateTether(t, opp, dt);
     if (t.dash && t.dash.chase !== undefined) {
@@ -1611,18 +1628,8 @@ export class World {
   updateChan(t, opp, dt) {
     const ch = t.chan, S = ch.skill;
     ch.t += dt;
-    if (ch.t < S.first + ch.n * S.every) return;
-    const shot = ch.n === S.shots - 1 ? SKILLS.curtainlast : SKILLS.curtainshot;
-    let a = Math.atan2(ch.dz, ch.dx);
-    if (targetable(opp)) {
-      const lead = Math.hypot(opp.x - t.x, opp.z - t.z) / shot.speed;
-      const want = Math.atan2(opp.z + opp.vz * lead - t.z, opp.x + opp.vx * lead - t.x);
-      const off = Math.atan2(Math.sin(want - a), Math.cos(want - a));
-      a += clamp(off, -S.half, S.half);
-    }
-    this.fire(t, shot, Math.cos(a), Math.sin(a));
-    ch.n++;
-    if (ch.n >= S.shots) { t.chan = null; this.emit('chanEnd', { top: t }); }
+    // The stance is held only so long; what was not fired is lost.
+    if (ch.t >= S.window) { t.chan = null; this.emit('chanEnd', { top: t }); }
   }
 
   orbPos(t, i) {
@@ -1752,11 +1759,12 @@ export class World {
         case 'lotus':
           // c: sprung, a: when
           if (z.c) {
+            // Sprung: a slowing field until it goes off.
+            if (live && d < z.r + opp.radius * 0.3) this.slowBy(opp, 0.3, S.slowPct);
             if (z.t - z.a >= S.fuse) { z.dead = true; this.burst(t, S, z.x, z.z, z.r); }
           } else if (z.t >= z.T) this.endZone(z);
           else if (z.t >= S.arm && live && d < S.trig + opp.radius * 0.5) {
             z.c = 1; z.a = z.t;
-            opp.slow = Math.max(opp.slow, S.slow);
             this.emit('say', { top: opp, text: 'TRAP!', tone: 'red' });
           }
           break;
@@ -2212,7 +2220,8 @@ export class World {
     if (S.far) k *= 1 + S.far * clamp((S.range - p.left) / S.range, 0, 1);
     if (p.back && S.backMul) k *= S.backMul;
     if (p.back && S.backTrue) k *= v.blade.def; // the way back ignores defence
-    const scarred = v.scar > 0;
+    // Caught out: struck by this top's own attacks a moment ago.
+    const marked = !!v.lastHit && v.lastHit.by === o.side && this.time - v.lastHit.time < (S.markT || 0);
     // Each quill after the first cuts a little less.
     if (S.id === 'quill') k *= Math.max(0.1, 1 - S.fall * o.stack);
     const dmg = this.hurt(v, (p.dmg * k) / v.blade.def, o, S.id);
@@ -2223,7 +2232,7 @@ export class World {
     this.affect(o, v, S, p.dx, p.dz);
     o.x2 = false;
     if (S.id === 'galeq') { o.stack = Math.min(S.stacks, o.stack + 1); o.stackT = S.keep; }
-    if (S.id === 'flourish' && scarred) this.stun(v, S.root);
+    if (S.id === 'flourish' && marked) this.snare(v, S.root);
     if (S.tie) {
       o.tether = { t: 0, T: S.dur, skill: S, acc: 0, tick: 0 };
       this.emit('say', { top: v, text: S.tie, tone: '' });
