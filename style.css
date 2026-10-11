@@ -305,3 +305,29 @@ kbd { flex: none; width: 28px; height: 28px; display: grid; place-items: center;
 
 /* spin that will come back (grey health) */
 .g-grey { position: absolute; top: 0; bottom: 0; width: 0; background: repeating-linear-gradient(135deg, #c9d2e4 0 5px, #8e99b3 5px 10px); opacity: 0.85; }
+
+/* ---- title and room (one way in: make a room, set it up, start) ---- */
+.panel.title { width: min(760px, 94vw); text-align: left; }
+.primary.big { display: block; width: 100%; padding: 20px 10px; font-size: 24px; letter-spacing: 0.16em; }
+.note.center { text-align: center; margin: 12px 0 4px; }
+.panel.lobby { width: min(1080px, 96vw); }
+.lb-slot { display: grid; gap: 6px; align-content: start; }
+.lb-p { cursor: pointer; }
+.lb-p.edit { outline: 2px solid var(--gold); outline-offset: 2px; }
+.lb-ctl { display: grid; gap: 5px; min-height: 30px; }
+.lb-seg { display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; gap: 4px; }
+.lb-seg button { padding: 7px 4px; font-size: 13px; background: #080c18; border: 1px solid var(--line); }
+.lb-seg.small button { padding: 5px 4px; font-size: 11px; letter-spacing: 0.1em; }
+.lb-seg button.on { border-color: var(--gold); background: rgba(255, 216, 74, 0.12); box-shadow: 0 0 14px rgba(255, 216, 74, 0.22); }
+#lb-stages { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 16px; }
+.lb-stage { padding: 10px 12px; text-align: left; background: #080c18; border: 1px solid var(--line); }
+.lb-stage b { display: block; font-size: 15px; letter-spacing: 0.06em; }
+.lb-stage span { font-size: 11px; color: var(--dim); }
+.lb-stage.on { border-color: var(--cyan); background: rgba(53, 200, 255, 0.1); box-shadow: 0 0 18px rgba(53, 200, 255, 0.22); }
+.lb-stage:disabled { opacity: 0.45; cursor: default; }
+#lb-editing { font-size: 13px; font-weight: 400; letter-spacing: 0; color: var(--gold); }
+.blade:disabled { opacity: 0.45; cursor: default; }
+.blade.any { --c: #8fa0c8; }
+.lb-detail { display: grid; grid-template-columns: 300px 1fr; gap: 18px; margin: 4px 0 16px; align-items: start; }
+.lb-detail #sheet { grid-template-columns: 1fr; }
+@media (max-width: 900px) { .lb-detail { grid-template-columns: 1fr; } #lb-stages { grid-template-columns: 1fr; } }

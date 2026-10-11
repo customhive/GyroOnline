@@ -1,5 +1,5 @@
 // DOM heads-up display, menus and floating combat text.
-import { BLADES, DIFFICULTY, ROUNDS_TO_WIN, KEYS, skillOf, kitOf } from './config.js';
+import { BLADES, DIFFICULTY, STAGES, ROUNDS_TO_WIN, KEYS, skillOf, kitOf } from './config.js';
 
 const $ = (s, r = document) => r.querySelector(s);
 const el = (tag, cls, html) => { const e = document.createElement(tag); if (cls) e.className = cls; if (html != null) e.innerHTML = html; return e; };
@@ -109,11 +109,11 @@ export class UI {
     this.vignette = $('#vignette');
     this.flashEl = $('#flash');
     this.blade = 'azure';
-    this.level = 1;
     this.side = 0;        // which top is "you" (1 when playing as the guest online)
     this.fighters = [this.buildFighter(0), this.buildFighter(1)];
     this.skills = {};
     this.buildTitle();
+    this.meLabel = '';
     this.tags = [];
     this.lastTime = -1;
     $('#btn-mute').onclick = () => this.h.mute();
@@ -122,20 +122,12 @@ export class UI {
     $('#btn-quit').onclick = () => this.h.quit();
     $('#btn-again').onclick = () => this.h.again();
     $('#btn-lobby').onclick = () => this.h.lobby();
-    $('#btn-back').onclick = () => this.h.quit();
+    $('#btn-back').onclick = () => this.h.back();
     $('#btn-host').onclick = () => this.h.host();
     $('#lb-leave').onclick = () => this.h.quit();
     $('#lb-ready').onclick = () => this.h.ready();
     $('#lb-copy').onclick = () => this.h.copy();
     $('#lb-url').onclick = (e) => e.target.select();
-    const picks = $('#lb-blades');
-    for (const b of Object.values(BLADES)) {
-      const c = el('button', 'lb-blade', `<i></i><b>${b.en}</b><span>${b.typeJa}</span>`);
-      c.style.setProperty('--c', b.css);
-      c.dataset.id = b.id;
-      c.onclick = () => this.h.pick(b.id);
-      picks.appendChild(c);
-    }
     document.querySelectorAll('button').forEach((b) => b.addEventListener('mouseenter', () => this.h.hover()));
   }
 
@@ -178,31 +170,24 @@ export class UI {
       const bar = (label, v) => `<div class="stat"><span>${label}</span><div>${'<i class="on"></i>'.repeat(v)}${'<i></i>'.repeat(5 - v)}</div></div>`;
       c.innerHTML = `<div class="b-disc"><div class="b-disc-in"></div></div><div class="b-type">${b.type}</div><div class="b-en">${b.en}</div><div class="b-name">${b.name}</div>`;
       this.sheets[b.id] = `<div class="b-stats">${bar('攻撃', b.bars.atk)}${bar('防御', b.bars.def)}${bar('持久', b.bars.sta)}${bar('速度', b.bars.spd)}</div><p>${b.desc}</p>`;
-      c.onclick = () => { this.blade = b.id; this.h.ui(); this.refreshTitle(); };
+      c.onclick = () => this.h.pick(b.id);
       c.dataset.id = b.id;
       cards.appendChild(c);
     }
-    const lv = $('#levels');
-    DIFFICULTY.forEach((d, i) => {
-      const b = el('button', 'level', `<b>${d.name}</b><span>${d.ja}</span>`);
-      b.onclick = () => { this.level = i; this.h.ui(); this.refreshTitle(); };
-      b.dataset.i = i;
-      lv.appendChild(b);
-    });
-    $('#btn-start').onclick = () => this.h.start(this.blade, this.level);
-    this.refreshTitle();
+    const any = el('button', 'blade any', '<div class="b-type">CPU</div><div class="b-en">RANDOM</div><div class="b-name">おまかせ</div>');
+    any.dataset.id = 'random';
+    any.onclick = () => this.h.pick('random');
+    cards.prepend(any);
   }
 
-  refreshTitle() {
-    document.querySelectorAll('.blade').forEach((c) => c.classList.toggle('on', c.dataset.id === this.blade));
-    document.querySelectorAll('.level').forEach((c) => c.classList.toggle('on', Number(c.dataset.i) === this.level));
-    // The skill list follows the selected blade.
-    const b = BLADES[this.blade];
-    $('#how').style.setProperty('--c', b.css);
-    $('#how-name').textContent = b.name + ' のスキル';
-    $('#sheet').style.setProperty('--c', b.css);
-    $('#sheet').innerHTML = this.sheets[b.id];
-    $('#how').innerHTML = kitOf(b).map((S, i) => `<div class="how-row"><kbd>${KEYS[i]}</kbd><div class="how-icon">${iconOf(S)}</div><div><b>${S.name}</b><span>${S.desc}</span></div></div>`).join('');
+  // The stat sheet and skill list of one blade, shown under the blade grid.
+  showBlade(id) {
+    const b = BLADES[id];
+    $('#how').style.setProperty('--c', b ? b.css : '#3a4566');
+    $('#sheet').style.setProperty('--c', b ? b.css : '#3a4566');
+    $('#how-name').textContent = b ? b.name + ' のスキル' : 'おまかせ';
+    $('#sheet').innerHTML = b ? this.sheets[b.id] : '<p>対戦のたびにランダムなブレードが選ばれます。</p>';
+    $('#how').innerHTML = b ? kitOf(b).map((S, i) => `<div class="how-row"><kbd>${KEYS[i]}</kbd><div class="how-icon">${iconOf(S)}</div><div><b>${S.name}</b><span>${S.desc}</span></div></div>`).join('') : '';
   }
 
   show(id, on) { $('#' + id).classList.toggle('hidden', !on); }
@@ -219,11 +204,11 @@ export class UI {
     for (const t of world.tops) {
       const mine = t.side === side, f = this.fighters[this.slot(t)];
       f.root.style.setProperty('--c', t.blade.css);
-      f.tag.textContent = mine ? 'YOU' : foeLabel;
+      f.tag.textContent = mine ? this.meLabel || 'YOU' : foeLabel;
       f.name.textContent = t.blade.name;
       f.type.textContent = t.blade.typeJa + (!mine && foeNote ? ' ／ ' + foeNote : '');
       f.ghostV = f.shown = 1;
-      const tag = el('div', 'tag ' + (mine ? 'me' : 'foe'), `<span>${mine ? 'YOU' : foeLabel}</span><div><i></i></div>`);
+      const tag = el('div', 'tag ' + (mine ? 'me' : 'foe'), `<span>${mine ? this.meLabel || 'YOU' : foeLabel}</span><div><i></i></div>`);
       tag.style.setProperty('--c', t.blade.css);
       this.labels.appendChild(tag);
       this.tags[t.side] = { root: tag, fill: $('i', tag) };
@@ -266,43 +251,95 @@ export class UI {
     $('#btn-again').textContent = online ? '同じブレードで再戦' : 'もう一度';
     $('#btn-lobby').classList.toggle('hidden', !online);
     $('#btn-again').parentElement.classList.toggle('three', online);
-    $('#btn-back').textContent = online ? '退出する' : 'ブレード選択へ';
+    $('#btn-back').textContent = online ? '退出する' : 'ルームに戻る';
   }
 
-  // lobby: { role, status, url, me: { blade, ready }, peer: { blade, ready } | null }
+  // lobby: { role, status, url, slots: [{ kind: 'human' | 'cpu' | 'open', blade, level, ready }], edit, stage }
+  // Slot 0 is the host's. The host sets everything up; a guest only picks its own blade.
   showLobby(lb) {
+    const host = lb.role === 'host', mine = host ? 0 : 1, other = lb.slots[1 - mine], me = lb.slots[mine];
+    const linked = lb.status === 'connected';
     const status = {
       opening: 'ルームを準備しています…',
-      waiting: '相手の参加を待っています',
+      waiting: lb.slots[1].kind === 'cpu' ? 'CPUと対戦できます。招待URLから友だちが入ることもできます' : '招待URLを送って相手を待つか、相手の枠をCPUにしてください',
       connecting: 'ルームに接続しています…',
-      connected: lb.peer && lb.peer.ready && lb.me.ready ? 'まもなく開始します' : '接続しました。ブレードを選んで準備OKを押してください',
-      failed: lb.error || '接続できませんでした',
+      connected: host ? '相手が参加しました' : 'ルームに入りました。ブレードを選んで準備OKを押してください',
+      failed: host ? 'オンラインにつながりません（CPUとの対戦はできます）' : lb.error || '接続できませんでした',
     }[lb.status];
     const s = $('#lb-status');
     s.textContent = status;
     s.className = 'lb-status ' + lb.status;
-    $('#lb-invite').classList.toggle('hidden', lb.role !== 'host' || !lb.url);
+    $('#lb-invite').classList.toggle('hidden', !host || !lb.url || lb.slots[1].kind === 'human');
     if (lb.url && $('#lb-url').value !== lb.url) $('#lb-url').value = lb.url;
-    const card = (root, who, p) => {
-      const b = p && BLADES[p.blade];
-      root.style.setProperty('--c', b ? b.css : '#3a4566');
-      root.classList.toggle('ready', !!(p && p.ready));
-      root.classList.toggle('empty', !p);
-      root.innerHTML = `<span class="lb-who">${who}</span><b>${b ? b.en : '— — —'}</b><span class="lb-name">${b ? b.name + '（' + b.typeJa + '）' : '未接続'}</span><em>${p ? (p.ready ? 'READY' : '選択中…') : ''}</em>`;
-    };
-    card($('#lb-me'), 'YOU', lb.me);
-    card($('#lb-peer'), 'RIVAL', lb.peer);
-    document.querySelectorAll('.lb-blade').forEach((c) => {
-      c.classList.toggle('on', c.dataset.id === lb.me.blade);
-      c.disabled = lb.me.ready;
+
+    lb.slots.forEach((p, i) => {
+      const root = $('#lb-s' + i), b = BLADES[p.blade], you = i === mine;
+      const who = p.kind === 'cpu' ? 'CPU ／ ' + DIFFICULTY[p.level].name : p.kind === 'open' ? 'OPEN' : you ? 'YOU' : 'RIVAL';
+      const empty = p.kind === 'open';
+      root.style.setProperty('--c', empty ? '#3a4566' : b ? b.css : '#8fa0c8');
+      root.classList.toggle('ready', !empty && (p.kind === 'cpu' || p.ready));
+      root.classList.toggle('empty', empty);
+      root.classList.toggle('edit', lb.edit === i);
+      const state = empty ? '' : p.kind === 'cpu' ? 'READY' : p.ready ? 'READY' : '選択中…';
+      root.innerHTML = `<span class="lb-who">${who}</span><b>${empty ? '— — —' : b ? b.en : 'RANDOM'}</b><span class="lb-name">${empty ? '招待待ち' : b ? b.name + '（' + b.typeJa + '）' : 'おまかせ'}</span><em>${state}</em>`;
+      root.onclick = () => this.h.edit(i);
+
+      // What the host can make of each slot.
+      const ctl = $('#lb-c' + i);
+      ctl.innerHTML = '';
+      if (!host || (i === 1 && p.kind === 'human')) return;
+      const kinds = i === 0 ? [['human', '自分で操作'], ['cpu', 'CPU（観戦）']] : [['open', '招待を待つ'], ['cpu', 'CPU']];
+      const row = el('div', 'lb-seg');
+      for (const [k, label] of kinds) {
+        const btn = el('button', p.kind === k ? 'on' : '', label);
+        btn.onclick = () => this.h.slotKind(i, k);
+        row.appendChild(btn);
+      }
+      ctl.appendChild(row);
+      if (p.kind === 'cpu') {
+        const lv = el('div', 'lb-seg small');
+        DIFFICULTY.forEach((d, n) => {
+          const btn = el('button', p.level === n ? 'on' : '', d.name);
+          btn.title = d.ja;
+          btn.onclick = () => this.h.slotLevel(i, n);
+          lv.appendChild(btn);
+        });
+        ctl.appendChild(lv);
+      }
     });
-    const r = $('#lb-ready');
-    r.disabled = lb.status !== 'connected';
-    r.textContent = lb.me.ready ? '準備を取り消す' : '準備OK';
-    r.classList.toggle('armed', lb.me.ready);
-    const kit = $('#lb-kit');
-    kit.style.setProperty('--c', BLADES[lb.me.blade].css);
-    kit.innerHTML = kitOf(BLADES[lb.me.blade]).map((S, i) => `<div class="how-row"><kbd>${KEYS[i]}</kbd><div class="how-icon">${iconOf(S)}</div><div><b>${S.name}</b><span>${S.desc}</span></div></div>`).join('');
+
+    const st = $('#lb-stages');
+    st.innerHTML = '';
+    STAGES.forEach((g, n) => {
+      const btn = el('button', 'lb-stage' + (lb.stage === n ? ' on' : ''), `<b>${g.name}</b><span>${g.ja}${g.soon ? '（準備中）' : ''}</span>`);
+      btn.disabled = !host || !!g.soon;
+      btn.onclick = () => this.h.stage(n);
+      st.appendChild(btn);
+    });
+
+    // The blade grid edits one slot: your own, or (for the host) a CPU's.
+    const ed = lb.slots[lb.edit], can = lb.edit === mine ? me.kind === 'human' && !me.ready : host && ed.kind === 'cpu';
+    const mayEdit = can || (host && lb.edit === 0 && ed.kind === 'cpu');
+    $('#lb-editing').textContent = '　' + (lb.edit === mine && ed.kind === 'human' ? 'あなたのブレード' : ed.kind === 'cpu' ? `CPU（${lb.edit + 1}P）のブレード` : ed.kind === 'open' ? '（相手の枠は空いています）' : '相手のブレード');
+    document.querySelectorAll('.blade').forEach((c) => {
+      c.classList.toggle('on', c.dataset.id === ed.blade && ed.kind !== 'open');
+      c.disabled = !mayEdit || (c.dataset.id === 'random' && ed.kind !== 'cpu');
+      if (c.dataset.id === 'random') c.classList.toggle('hidden', ed.kind !== 'cpu');
+    });
+    this.showBlade(ed.kind === 'open' ? me.blade : ed.blade);
+
+    const r = $('#lb-ready'), rival = lb.slots[1];
+    if (host) {
+      // Against a CPU the button starts the match; against a person both sides ready up.
+      const vsHuman = rival.kind === 'human';
+      r.disabled = rival.kind === 'open';
+      r.textContent = rival.kind === 'open' ? '相手がいません' : !vsHuman ? 'ゲーム開始' : me.ready ? '開始を取り消す' : rival.ready ? 'ゲーム開始' : '開始（相手の準備を待つ）';
+      r.classList.toggle('armed', vsHuman && me.ready);
+    } else {
+      r.disabled = !linked;
+      r.textContent = me.ready ? '準備を取り消す' : '準備OK';
+      r.classList.toggle('armed', me.ready);
+    }
   }
 
   setRound(n) { $('#round').textContent = 'ROUND ' + n; }
@@ -316,9 +353,9 @@ export class UI {
     a.className = 'show ' + cls;
   }
 
-  finish(kind, won) {
+  finish(kind, won, watching) {
     const [en, ja] = FINISH[kind];
-    this.announce(en, `${ja}　<b>${won ? 'ROUND GET!' : 'ROUND LOST…'}</b>`, 'finish ' + (won ? 'win' : 'lose'), 2.6);
+    this.announce(en, `${ja}　<b>${watching || (won ? 'ROUND GET!' : 'ROUND LOST…')}</b>`, 'finish ' + (won ? 'win' : 'lose'), 2.6);
   }
 
   cutIn(skill, css, enemy) {
@@ -461,12 +498,12 @@ export class UI {
     return '';
   }
 
-  showResult(won, score, world, stats) {
+  showResult(won, score, world, stats, watching) {
     const p = world.tops[this.side], c = world.tops[1 - this.side];
     score = [score[this.side], score[1 - this.side]];
     $('#result').classList.toggle('lose', !won);
-    $('#res-title').textContent = won ? 'VICTORY' : 'DEFEAT';
-    $('#res-sub').textContent = won ? '見事な勝利！' : 'あと一歩…もう一度挑戦しよう';
+    $('#res-title').textContent = watching ? 'FINISH' : won ? 'VICTORY' : 'DEFEAT';
+    $('#res-sub').textContent = watching || (won ? '見事な勝利！' : 'あと一歩…もう一度挑戦しよう');
     $('#res-score').innerHTML = `<b style="color:${p.blade.css}">${score[0]}</b><span>-</span><b style="color:${c.blade.css}">${score[1]}</b>`;
     const row = (label, a, b) => `<tr><td>${a}</td><th>${label}</th><td>${b}</td></tr>`;
     $('#res-stats').innerHTML = `<tr class="head"><td style="color:${p.blade.css}">${p.blade.name}</td><th></th><td style="color:${c.blade.css}">${c.blade.name}</td></tr>`

@@ -45,7 +45,9 @@ const game = {
   blade: 'azure', level: 1,
   // --- online ---
   net: null,
-  lobby: { role: null, status: 'opening', url: '', error: '', me: { blade: 'azure', ready: false }, peer: null },
+  // The room. Slot 0 is the host's, slot 1 the other side: a guest, a CPU, or still open.
+  lobby: { role: null, status: 'opening', url: '', error: '', slots: [], edit: 0, stage: 0 },
+  spectate: false,     // nobody here is playing: both tops are CPUs
   outbox: [],          // host: events waiting to be sent
   snapT: 0, snapSeq: 0, tail: 0,
   inSeq: 0, ack: 0,    // guest: last input sent / host: last guest input applied
@@ -58,19 +60,22 @@ const player = () => game.world.tops[game.side];
 const rival = () => game.world.tops[1 - game.side];
 
 const ui = new UI({
-  start: (blade, level) => { audio.unlock(); audio.ui(); startCpuMatch(blade, level); },
-  // Online, "again" goes to the lobby already marked ready (same blade);
-  // "lobby" goes there unready, to change blade or just regroup.
-  again: () => { audio.ui(); if (online()) backToLobby(true); else startCpuMatch(game.blade, game.level); },
+  // "again" repeats the same match: against a CPU at once, against a person by readying up in the room.
+  again: () => { audio.ui(); if (online()) backToLobby(true); else if (game.lobby.role === 'host' && game.lobby.slots[1].kind === 'cpu') startLocalMatch(); else backToLobby(false); },
   lobby: () => { audio.ui(); backToLobby(false); },
+  back: () => { audio.ui(); if (online() && game.mode === 'guest') { leaveOnline(); toTitle(); } else backToLobby(false); },
   quit: () => { audio.ui(); leaveOnline(); toTitle(); },
   pause: () => togglePause(),
   mute: () => { audio.unlock(); audio.setMuted(!audio.muted); ui.setMuted(audio.muted); },
   ui: () => { audio.unlock(); audio.ui(); },
   hover: () => audio.hover(),
   host: () => { audio.unlock(); audio.ui(); openRoom(); },
-  ready: () => { audio.unlock(); audio.ui(); setReady(!game.lobby.me.ready); },
-  pick: (id) => { audio.unlock(); audio.ui(); if (!game.lobby.me.ready) { game.lobby.me.blade = id; ui.blade = id; lobbyChanged(); } },
+  ready: () => { audio.unlock(); audio.ui(); pressReady(); },
+  pick: (id) => { audio.unlock(); audio.ui(); pickBlade(id); },
+  edit: (i) => { audio.ui(); game.lobby.edit = i; lobbyRefresh(); },
+  slotKind: (i, kind) => { audio.ui(); setSlotKind(i, kind); },
+  slotLevel: (i, n) => { audio.ui(); game.lobby.slots[i].level = n; lobbyChanged(); },
+  stage: (n) => { audio.ui(); game.lobby.stage = n; lobbyChanged(); },
   copy: () => copyInvite(),
 });
 
@@ -81,7 +86,7 @@ function showScreen(name) {
 }
 
 function toTitle() {
-  game.state = 'title'; game.mode = 'cpu'; game.side = 0;
+  game.state = 'title'; game.mode = 'cpu'; game.side = 0; game.spectate = false; game.lobby.role = null;
   game.paused = false; game.world = null; game.aimKey = null; game.seq = null;
   view.setMatch(null, 0);
   view.orbiting = true;
@@ -107,7 +112,7 @@ function beginMatch(world, side, foeLabel, foeNote) {
 }
 
 function startCpuMatch(bladeId, levelIdx) {
-  game.mode = 'cpu';
+  game.mode = 'cpu'; game.spectate = false; ui.meLabel = '';
   game.blade = bladeId; game.level = levelIdx;
   const level = DIFFICULTY[levelIdx];
   const others = Object.keys(BLADES).filter((b) => b !== bladeId);
@@ -122,15 +127,34 @@ function startCpuMatch(bladeId, levelIdx) {
   startRound(1);
 }
 
+// A match set up in the room with a CPU on the other side, or on both.
+function startLocalMatch() {
+  const lb = game.lobby, ids = Object.keys(BLADES);
+  const any = (not) => { const l = ids.filter((b) => b !== not); return l[(Math.random() * l.length) | 0]; };
+  const b0 = lb.slots[0].blade === 'random' ? any(lb.slots[1].blade) : lb.slots[0].blade;
+  const b1 = lb.slots[1].blade === 'random' ? any(b0) : lb.slots[1].blade;
+  game.mode = 'cpu';
+  game.spectate = lb.slots[0].kind === 'cpu';
+  ui.meLabel = game.spectate ? 'CPU 1' : '';
+  const w = new World(BLADES[b0], BLADES[b1], (Date.now() & 0xffffff) + 1);
+  const lv = lb.slots.map((p) => DIFFICULTY[p.level]);
+  beginMatch(w, 0, game.spectate ? 'CPU 2' : 'CPU', lv[1].name);
+  // CPUs wind up before firing so their skills can be read and dodged.
+  const cpu = (t, level) => { for (const k of KEYS) t.windup[k] = (skillOf(t, k).tele || 0) * level.windup; return new CpuBrain(w, t, level); };
+  game.brain = cpu(w.tops[1], lv[1]);
+  game.autoBrain = game.spectate ? cpu(w.tops[0], lv[0]) : null;
+  startRound(1);
+}
+
 // Host and guest both build the same world: side 0 is the host's top.
 function startOnlineMatch(blades) {
+  game.spectate = false; ui.meLabel = '';
   const w = new World(BLADES[blades[0]], BLADES[blades[1]], 1);
   beginMatch(w, game.mode === 'host' ? 0 : 1, 'RIVAL', '');
   game.brain = null;
   game.outbox.length = 0; game.pending.length = 0;
   game.inSeq = 0; game.ack = 0; game.snapSeq = 0; game.lastSnap = -1; game.corrections = 0; game.errSum = game.errMax = 0; game.inbox = null;
-  game.lobby.me.ready = false;
-  if (game.lobby.peer) game.lobby.peer.ready = false;
+  for (const p of game.lobby.slots) p.ready = false;
   // Test aid: ?auto lets a bot play this side through the normal input path.
   game.autoBrain = params.has('auto') ? new CpuBrain(game.mode === 'host' ? w : remoteControlled(w), player(), DIFFICULTY[1]) : null;
 }
@@ -182,7 +206,7 @@ function endRound(e) {
   game.slow = { s: 0.16, t: e.kind === 'time' ? 0.3 : 1.25 };
   game.hitstop = e.kind === 'time' ? 0 : 0.2;
   game.tail = 4; // a few more snapshots so the guest sees the final state
-  ui.finish(e.kind, won);
+  ui.finish(e.kind, won, game.spectate ? `${e.winner.blade.name} が取った` : '');
   ui.setScore(game.score);
   ui.flash('#fff', e.kind === 'time' ? 0.2 : 0.7);
   audio.finish(won);
@@ -203,7 +227,8 @@ function showResult() {
   audio.stopMusic();
   ui.announceEl.className = '';
   ui.labels.innerHTML = '';
-  ui.showResult(game.score[game.side] > game.score[1 - game.side], game.score, game.world, game.finishes);
+  const lead = game.score[game.side] > game.score[1 - game.side];
+  ui.showResult(lead, game.score, game.world, game.finishes, game.spectate ? `${game.world.tops[lead ? game.side : 1 - game.side].blade.name} の勝ち` : '');
   showScreen('result');
 }
 
@@ -217,11 +242,18 @@ function newNet() {
   return game.net;
 }
 
+const mySlot = () => game.lobby.slots[game.lobby.role === 'guest' ? 1 : 0];
+
 function enterLobby(role) {
   game.mode = role; game.state = 'lobby';
   const lb = game.lobby;
-  lb.role = role; lb.status = 'opening'; lb.url = ''; lb.error = ''; lb.peer = null;
-  lb.me = { blade: ui.blade, ready: false };
+  lb.role = role; lb.status = 'opening'; lb.url = ''; lb.error = '';
+  const blade = BLADES[ui.blade] ? ui.blade : 'azure';
+  lb.slots = role === 'host'
+    ? [{ kind: 'human', blade, level: 1, ready: false }, { kind: 'open', blade: 'random', level: 1, ready: false }]
+    : [{ kind: 'human', blade: 'azure', level: 1, ready: false }, { kind: 'human', blade, level: 1, ready: false }];
+  lb.edit = role === 'host' ? 0 : 1;
+  lb.stage = 0;
   view.setMatch(null, 0);
   view.orbiting = true;
   showScreen('lobby');
@@ -238,42 +270,94 @@ function joinRoom(code) {
   newNet().join(code);
 }
 
-// Our own choice changed: tell the other side, then refresh.
+// Something in the room changed here: tell the other side, then refresh.
+// The host owns the room; a guest only reports its own blade and readiness.
 function lobbyChanged() {
   const lb = game.lobby;
-  if (game.net && game.net.connected) game.net.send({ t: 'lobby', blade: lb.me.blade, ready: lb.me.ready });
+  if (game.net && game.net.connected) {
+    if (lb.role === 'host') game.net.send({ t: 'room', slots: lb.slots, stage: lb.stage });
+    else game.net.send({ t: 'lobby', blade: lb.slots[1].blade, ready: lb.slots[1].ready });
+  }
   lobbyRefresh();
 }
 
-// Redraws the lobby and, on the host, starts the match once both are ready.
+// Redraws the room and, on the host, starts an online match once both are ready.
 function lobbyRefresh() {
   const lb = game.lobby;
   if (game.state === 'lobby') ui.showLobby(lb);
-  if (game.mode === 'host' && game.state === 'lobby' && lb.me.ready && lb.peer && lb.peer.ready) {
-    const blades = [lb.me.blade, lb.peer.blade];
+  if (lb.role === 'host' && game.state === 'lobby' && lb.slots[1].kind === 'human' && lb.slots[0].ready && lb.slots[1].ready && game.net && game.net.connected) {
+    const blades = [lb.slots[0].blade, lb.slots[1].blade];
+    // The host may hand its own top to a CPU and watch.
+    const cpu0 = lb.slots[0].kind === 'cpu' ? lb.slots[0].level : -1;
+    if (blades[0] === 'random') { const l = Object.keys(BLADES).filter((b) => b !== blades[1]); blades[0] = l[(Math.random() * l.length) | 0]; }
+    game.mode = 'host';
     game.net.send({ t: 'start', blades });
     startOnlineMatch(blades);
+    if (cpu0 >= 0) {
+      const w = game.world, t = w.tops[0], level = DIFFICULTY[cpu0];
+      for (const k of KEYS) t.windup[k] = (skillOf(t, k).tele || 0) * level.windup;
+      game.autoBrain = new CpuBrain(w, t, level);
+      game.spectate = true; ui.meLabel = 'CPU';
+      ui.startMatch(w, 0, 'RIVAL', '');
+    }
     startRound(1);
   }
 }
 
-function setReady(on) {
-  if (game.lobby.status !== 'connected') return;
-  game.lobby.me.ready = on;
+// The big button: start against a CPU, ready up against a person.
+function pressReady() {
+  const lb = game.lobby;
+  if (lb.role === 'host') {
+    if (lb.slots[1].kind === 'cpu') return startLocalMatch();
+    if (lb.slots[1].kind !== 'human') return;
+    lb.slots[0].ready = !lb.slots[0].ready;
+  } else {
+    if (lb.status !== 'connected') return;
+    lb.slots[1].ready = !lb.slots[1].ready;
+  }
   lobbyChanged();
 }
 
-// After a match both players return here; the link stays up for a rematch.
+// A blade for whichever slot is being edited: your own, or (for the host) a CPU's.
+function pickBlade(id) {
+  const lb = game.lobby, host = lb.role === 'host', mine = host ? 0 : 1;
+  if (game.state !== 'lobby') return;
+  let i = lb.edit;
+  const p = lb.slots[i];
+  const own = i === mine && p.kind === 'human' && !p.ready, cpu = host && p.kind === 'cpu';
+  if (!own && !cpu) return;
+  if (id === 'random' ? !cpu : !BLADES[id]) return;
+  p.blade = id;
+  if (own) ui.blade = id;
+  lobbyChanged();
+}
+
+function setSlotKind(i, kind) {
+  const lb = game.lobby, p = lb.slots[i];
+  if (lb.role !== 'host' || (i === 1 && p.kind === 'human')) return;
+  p.kind = kind; p.ready = false;
+  if (kind === 'human') p.blade = BLADES[ui.blade] ? ui.blade : 'azure';
+  else if (kind === 'cpu' && i === 1 && !BLADES[p.blade]) p.blade = 'random';
+  lb.slots[0].ready = false;
+  lb.edit = kind === 'open' ? 0 : i;
+  lobbyChanged();
+}
+
+// Back to the room after a match. Online the link stays up for a rematch.
 function backToLobby(ready) {
-  if (!game.net || !game.net.connected) { toTitle(); return; }
-  game.state = 'lobby'; game.world = null; game.seq = null;
+  const lb = game.lobby;
+  if (!lb.role || (lb.role === 'guest' && !(game.net && game.net.connected))) { leaveOnline(); toTitle(); return; }
+  game.mode = lb.role;
+  game.state = 'lobby'; game.world = null; game.seq = null; game.paused = false; game.spectate = false;
   view.setMatch(null, 0);
   view.orbiting = true;
   audio.stopMusic();
   ui.labels.innerHTML = '';
   ui.vignette.style.opacity = 0;
+  ui.setNet('');
   showScreen('lobby');
-  game.lobby.me.ready = !!ready;
+  for (const p of lb.slots) p.ready = false;
+  if (lb.slots[1].kind === 'human' && lb.slots[0].kind !== 'open') mySlot().ready = !!ready;
   lobbyChanged();
 }
 
@@ -303,7 +387,9 @@ function netStatus(state, detail) {
   const lb = game.lobby;
   if (state === 'failed') {
     lb.status = 'failed'; lb.error = FAILS[detail] || `接続できませんでした（${detail}）`;
-    if (game.state !== 'lobby') { ui.toast(lb.error); leaveOnline(); toTitle(); return; }
+    // A host without a connection can still play CPUs; a guest has nowhere to be.
+    if (lb.role === 'host') { if (game.state !== 'lobby' && online()) { ui.toast(lb.error); backToLobby(false); return; } }
+    else if (game.state !== 'lobby') { ui.toast(lb.error); leaveOnline(); toTitle(); return; }
   } else {
     lb.status = state;
     if (state === 'waiting') lb.url = inviteUrl(detail);
@@ -314,26 +400,26 @@ function netStatus(state, detail) {
 function netOpen() {
   const lb = game.lobby;
   lb.status = 'connected';
-  game.net.send({ t: 'hello', v: PROTOCOL, build: VERSION, blade: lb.me.blade, ready: lb.me.ready });
+  game.net.send({ t: 'hello', v: PROTOCOL, build: VERSION, blade: mySlot().blade, ready: mySlot().ready });
   if (game.state === 'lobby') ui.showLobby(lb);
 }
 
 function netClosed(reason) {
   const lb = game.lobby;
-  lb.peer = null; lb.me.ready = false;
   ui.setNet('');
   const mid = game.state !== 'lobby' && game.state !== 'title';
-  if (game.mode === 'host') {
+  if (lb.role === 'host') {
     // The room stays open so the same or another guest can come in.
+    const was = lb.slots[1].kind === 'human';
     lb.status = 'waiting';
-    game.state = 'lobby'; game.world = null; game.seq = null; game.paused = false;
-    view.setMatch(null, 0); view.orbiting = true;
-    audio.stopMusic();
-    ui.labels.innerHTML = '';
-    showScreen('lobby');
-    ui.showLobby(lb);
+    if (was) lb.slots[1] = { kind: 'open', blade: 'random', level: 1, ready: false };
+    lb.slots[0].ready = false;
+    if (lb.edit === 1 && was) lb.edit = 0;
+    // A match against a CPU just carries on.
+    if (!online()) { if (was) ui.toast('相手が退出しました'); return; }
+    backToLobby(false);
     ui.toast(mid ? '相手との接続が切れました' : '相手が退出しました');
-  } else if (game.mode === 'guest') {
+  } else if (lb.role === 'guest') {
     ui.toast(reason === 'timeout' ? '接続がタイムアウトしました' : 'ホストとの接続が切れました');
     leaveOnline();
     toTitle();
@@ -349,21 +435,40 @@ function netMessage(m) {
       if (m.v !== PROTOCOL) { netStatus('failed', 'version'); game.net.leave(); return; }
       // Compatible, but not the same build: worth knowing when something looks off.
       if (typeof m.build === 'string' && m.build !== VERSION) ui.toast(`相手は別の版です（${m.build.slice(0, 40)}）`);
+      if (lb.role !== 'host') break; // the host's room follows
     // falls through
-    case 'lobby':
-      if (!BLADES[m.blade]) return;
-      lb.peer = { blade: m.blade, ready: !!m.ready };
-      // Seeing the other side in the lobby while still on the result screen
+    case 'lobby': {
+      // A guest reporting itself. It takes the second slot, whatever was there.
+      if (lb.role !== 'host' || !BLADES[m.blade]) return;
+      const fresh = lb.slots[1].kind !== 'human';
+      lb.slots[1] = { kind: 'human', blade: m.blade, level: 1, ready: !!m.ready };
+      if (fresh) lb.slots[0].ready = false;
+      // Seeing the other side in the room while still on the result screen
       // means they want a rematch.
-      if (game.state === 'result') ui.toast(m.ready ? '相手が再戦を待っています' : '相手がロビーに戻りました');
+      if (game.state === 'result' && online()) ui.toast(m.ready ? '相手が再戦を待っています' : '相手がルームに戻りました');
+      else if (game.state !== 'lobby' && fresh) ui.toast('招待した相手がルームに入りました');
+      game.net.send({ t: 'room', slots: lb.slots, stage: lb.stage });
       lobbyRefresh();
       break;
+    }
+    case 'room': {
+      // The host's room as it stands. Our own slot stays ours.
+      if (lb.role !== 'guest' || !Array.isArray(m.slots) || m.slots.length !== 2) return;
+      const h = m.slots[0];
+      if (!h || !(BLADES[h.blade] || h.blade === 'random')) return;
+      lb.slots[0] = { kind: h.kind === 'cpu' ? 'cpu' : 'human', blade: h.blade, level: Math.max(0, Math.min(DIFFICULTY.length - 1, h.level | 0)), ready: !!h.ready };
+      lb.stage = Math.max(0, m.stage | 0);
+      if (game.state === 'result') ui.toast(h.ready ? '相手が再戦を待っています' : '相手がルームに戻りました');
+      lobbyRefresh();
+      break;
+    }
     case 'full': netStatus('failed', 'full'); break;
     case 'bye': if (game.net) game.net.drop('bye'); break;
 
     // ---- host -> guest ----
     case 'start':
-      if (game.mode !== 'guest' || !Array.isArray(m.blades) || !BLADES[m.blades[0]] || !BLADES[m.blades[1]]) return;
+      if (lb.role !== 'guest' || !Array.isArray(m.blades) || !BLADES[m.blades[0]] || !BLADES[m.blades[1]]) return;
+      game.mode = 'guest';
       startOnlineMatch(m.blades);
       break;
     case 'round':
@@ -475,6 +580,7 @@ function remoteControlled(world) {
 // Every order from this player goes through these two. The guest applies it
 // locally at once and also sends it to the host.
 function doMove(x, z) {
+  if (game.spectate) return false;
   const w = game.world, me = player();
   if (!w.issueMove(me, x, z)) return false;
   if (game.mode === 'guest') sendInput({ k: 'm', x: me.cmd.x, z: me.cmd.z });
@@ -482,6 +588,7 @@ function doMove(x, z) {
 }
 
 function doCast(key, x, z) {
+  if (game.spectate) return false;
   const w = game.world;
   if (!w.cast(player(), key, x, z)) return false;
   if (game.mode === 'guest') { w.events.length = 0; sendInput({ k: 'c', key, x, z }); }
@@ -490,7 +597,7 @@ function doCast(key, x, z) {
 
 // Begins winding up a skill that is charged by holding its key.
 function doHold(key) {
-  if (!game.world.hold(player(), key)) return false;
+  if (game.spectate || !game.world.hold(player(), key)) return false;
   if (game.mode === 'guest') { game.world.events.length = 0; sendInput({ k: 'h', key, x: 0, z: 0 }); }
   return true;
 }
@@ -519,7 +626,7 @@ function orderMove(silent) {
 }
 
 function tryCast(key, x, z, buffered) {
-  if (game.state !== 'fight' || game.paused) return false;
+  if (game.state !== 'fight' || game.paused || game.spectate) return false;
   const me = player();
   if (!doCast(key, x, z)) {
     // Pressed a moment too early (still reeling or mid-dash): hold the input
@@ -555,7 +662,7 @@ window.addEventListener('keydown', (e) => {
   if (k === 'ESCAPE') { if (game.aimKey) { if (!(game.world && player().hold)) game.aimKey = null; } else togglePause(); return; }
   if (k === 'P') return togglePause();
   if (k === 'M') { audio.unlock(); audio.setMuted(!audio.muted); ui.setMuted(audio.muted); return; }
-  if (game.state !== 'fight' || game.paused || !KEYS.includes(k)) return;
+  if (game.state !== 'fight' || game.paused || game.spectate || !KEYS.includes(k)) return;
   audio.unlock();
   // What the key does can change mid-fight (a second stage, a copied skill).
   const me = player(), S = game.world.aimSkill(me, k), base = skillOf(me, k);

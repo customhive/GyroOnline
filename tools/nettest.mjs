@@ -64,7 +64,7 @@ async function openTab(url, name) {
 }
 
 const STATE = `(() => { const g = __gc.game, n = g.net, w = g.world; return JSON.stringify({ state: g.state, mode: g.mode, lobby: g.lobby.status, url: g.lobby.url, err: g.lobby.error,
-  peer: g.lobby.peer, conn: !!(n && n.connected), fast: !!(n && n.fast), rtt: n ? Math.round(n.rtt * 1000) : null, round: g.round, score: g.score, left: Math.round(g.timeLeft),
+  peer: (() => { const p = g.lobby.slots[g.lobby.role === 'guest' ? 0 : 1]; return p && p.kind !== 'open' ? p : null; })(), conn: !!(n && n.connected), fast: !!(n && n.fast), rtt: n ? Math.round(n.rtt * 1000) : null, round: g.round, score: g.score, left: Math.round(g.timeLeft),
   err: { avg: +(g.errSum / Math.max(1, g.corrections)).toFixed(3), max: +g.errMax.toFixed(2) }, tops: w ? w.tops.map((t) => [+t.x.toFixed(2), +t.z.toFixed(2), Math.round(t.spin)]) : null, corrections: g.corrections, frames: g.frames,
   stats: n ? { out: n.stats.out, in: n.stats.in, lost: n.stats.lost, bpsOut: Math.round(n.stats.rateOut), bpsIn: Math.round(n.stats.rateIn) } : null }); })()`;
 
@@ -90,8 +90,8 @@ try {
   if (!gs.conn) throw new Error('guest could not connect');
   await host.shot('net-lobby-host'); await guest.front(); await guest.shot('net-lobby-guest');
 
-  await host.eval(`document.querySelector('.lb-blade[data-id=${hostBlade}]').click(); document.getElementById('lb-ready').click()`);
-  await guest.eval(`document.querySelector('.lb-blade[data-id=${guestBlade}]').click(); document.getElementById('lb-ready').click()`);
+  await host.eval(`document.querySelector('.blade[data-id=${hostBlade}]').click(); document.getElementById('lb-ready').click()`);
+  await guest.eval(`document.querySelector('.blade[data-id=${guestBlade}]').click(); document.getElementById('lb-ready').click()`);
   let shots = 0, maxDiff = 0, sumDiff = 0, samples = 0;
   const t0 = Date.now();
   while (Date.now() - t0 < 300000) {
@@ -121,7 +121,7 @@ try {
   console.log('back in lobby:', hs.state, gs.state, '| host sees rival ready:', hs.peer && hs.peer.ready, '| guest sees host ready:', gs.peer && gs.peer.ready);
   if (hs.state !== 'lobby' || gs.state !== 'lobby') throw new Error('both should be waiting in the lobby');
   await host.shot('net-lobby-after');
-  await host.eval(`document.querySelector('.lb-blade[data-id=azure]').click(); document.getElementById('lb-ready').click()`);
+  await host.eval(`document.querySelector('.blade[data-id=azure]').click(); document.getElementById('lb-ready').click()`);
   for (let i = 0; i < 40; i++) { await sleep(250); gs = await read(guest); if (gs.state === 'fight') break; }
   console.log('rematch started:', gs.state === 'fight', 'round', gs.round);
   await guest.eval(`document.getElementById('btn-quit').click()`);

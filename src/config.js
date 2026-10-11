@@ -1318,6 +1318,13 @@ export const kitOf = (blade) => KEYS.map((k) => SKILLS[blade.kit[k]]);
 for (const b of Object.values(BLADES)) b.emp = kitOf(b).find((S) => S.bonus) || null;
 for (const b of Object.values(BLADES)) b.hasUlt = kitOf(b).some((S) => S.ult);
 
+// Where the match is fought. Only the first is built so far.
+export const STAGES = [
+  { id: 'classic', name: 'スタンダード', ja: '壁に囲まれた基本のアリーナ' },
+  { id: 'gates', name: 'スリーゲート', ja: '壁に3か所の穴。そこから出ると場外', soon: true },
+  { id: 'open', name: 'オープン', ja: '壁なし。端から出ると場外', soon: true },
+];
+
 export const DIFFICULTY = [
   { id: 'easy', name: 'EASY', ja: 'やさしい', think: 0.95, aimErr: 3.2, dodge: 0.15, cast: 0.3, chase: 0.3, windup: 1.35 },
   { id: 'normal', name: 'NORMAL', ja: 'ふつう', think: 0.55, aimErr: 1.5, dodge: 0.5, cast: 0.5, chase: 0.5, windup: 1.0 },
