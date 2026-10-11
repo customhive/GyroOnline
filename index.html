@@ -51,6 +51,10 @@
     <div class="room-head">
       <h2><i>ROOM</i> ルーム</h2>
       <div id="lb-status" class="lb-status"></div>
+      <div id="lb-invite" class="ghost">
+        <label for="lb-url">招待URL</label>
+        <input id="lb-url" readonly><button id="lb-copy">コピー</button>
+      </div>
     </div>
     <div class="room-body">
       <div id="lb-cards" class="room-cards"></div>
@@ -70,11 +74,6 @@
         <div class="room-rules">
           <h3>RULE</h3>
           <div id="lb-rules"></div>
-        </div>
-        <div id="lb-invite" class="ghost">
-          <label for="lb-url">招待URL</label>
-          <div class="lb-urlrow"><input id="lb-url" readonly><button id="lb-copy">コピー</button></div>
-          <p class="note">このURLを開いた相手が、このルームに入れます。</p>
         </div>
         <div class="room-go">
           <button id="lb-ready" class="room-btn cyan">準備完了</button>

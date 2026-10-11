@@ -247,10 +247,9 @@ kbd { flex: none; width: 28px; height: 28px; display: grid; place-items: center;
 @keyframes breathe { from { opacity: 0.6; } to { opacity: 1; } }
 .lb-status.connected { border-color: #7dffb0; background: rgba(125, 255, 176, 0.08); }
 .lb-status.failed { border-color: var(--red); background: rgba(255, 59, 78, 0.1); color: #ffb0b8; }
-#lb-invite { margin-bottom: 16px; }
-#lb-invite label { display: block; margin-bottom: 5px; font-size: 11px; letter-spacing: 0.2em; color: var(--cyan); }
-.lb-urlrow { display: grid; grid-template-columns: 1fr 96px; gap: 8px; }
-#lb-url { width: 100%; padding: 11px 12px; font: 14px/1.2 Consolas, monospace; color: var(--ink); background: #060a14; border: 1px solid var(--line); user-select: text; -webkit-user-select: text; }
+#lb-invite { display: grid; grid-template-columns: auto minmax(0, 1fr) 72px; gap: 8px; align-items: stretch; }
+#lb-invite label { align-self: center; font-size: 11px; letter-spacing: 0.2em; color: var(--cyan); white-space: nowrap; }
+#lb-url { width: 100%; padding: 8px 10px; font: 13px/1.2 Consolas, monospace; color: var(--ink); background: #060a14; border: 1px solid var(--line); user-select: text; -webkit-user-select: text; }
 #lb-copy { font-size: 14px; font-weight: 700; color: #04101c; background: var(--cyan); border: 0; }
 #lb-copy:hover { filter: brightness(1.15); }
 .lb-players { display: grid; grid-template-columns: 1fr 50px 1fr; gap: 10px; align-items: stretch; margin-bottom: 14px; }
@@ -401,7 +400,7 @@ kbd { flex: none; width: 28px; height: 28px; display: grid; place-items: center;
    the rules, the invitation and the buttons. Everything about a seat is on its
    card, and no choice changes the size or place of anything. */
 .panel.room { width: min(1560px, 95vw); padding: 16px 22px 20px; }
-.room-head { display: grid; grid-template-columns: auto 1fr; gap: 16px; align-items: center; margin-bottom: 14px; }
+.room-head { display: grid; grid-template-columns: auto minmax(0, 1fr) 330px; gap: 16px; align-items: center; margin-bottom: 14px; }
 .room-head h2 { margin: 0; }
 .room-head .lb-status { margin: 0; }
 .room-body { display: grid; grid-template-columns: minmax(0, 1fr) 330px; gap: 18px; align-items: stretch; }
@@ -481,7 +480,7 @@ div.pc-team i { display: none; }
 
 /* The side column: fixed blocks, top to bottom. */
 .room-side { display: flex; flex-direction: column; gap: 12px; min-width: 0; }
-.room-stage, .room-rules, .room-side #lb-invite { padding: 10px 12px 12px; background: #080c18; border: 1px solid var(--line); }
+.room-stage, .room-rules { padding: 10px 12px 12px; background: #080c18; border: 1px solid var(--line); }
 .room-stage h3, .room-rules h3 { margin: 0 0 8px; font-size: 11px; letter-spacing: 0.26em; color: var(--cyan); }
 .stage-view { display: grid; grid-template-columns: 32px 1fr 32px; gap: 6px; align-items: center; }
 .stage-view button { height: 64px; font-size: 15px; background: #0b1122; border: 1px solid var(--line); }
@@ -507,8 +506,6 @@ div.pc-team i { display: none; }
 .rule.on b { color: var(--gold); }
 .rule:disabled { cursor: default; }
 .rule:disabled:not(.on) { opacity: 0.45; }
-.room-side #lb-invite label { font-size: 11px; letter-spacing: 0.2em; color: var(--cyan); }
-.room-side #lb-invite .note { margin-top: 6px; }
 .ghost { visibility: hidden; }
 .room-go { display: grid; gap: 8px; margin-top: auto; }
 .room-btn { width: 100%; height: 46px; padding: 0 10px; font-size: 16px; font-weight: 700; letter-spacing: 0.1em; color: #c9d5f0; background: #080c18; border: 1px solid var(--line); transition: border-color 0.1s, background 0.1s, box-shadow 0.1s, color 0.1s; }
@@ -523,6 +520,8 @@ div.pc-team i { display: none; }
 .room-btn.gold { height: 56px; font-size: 19px; }
 #lb-editing { font-size: 13px; font-weight: 400; letter-spacing: 0; color: var(--gold); }
 @media (max-width: 1100px) {
+  .room-head { grid-template-columns: auto minmax(0, 1fr); }
+  #lb-invite { grid-column: 1 / -1; }
   .room-body { grid-template-columns: 1fr; }
   .room-cards { height: auto; min-height: 0; grid-template-columns: 1fr 1fr; }
   .pcard { height: 460px; }
