@@ -1945,8 +1945,10 @@ export class World {
     }
     if (t.hold) {
       const S = skillOf(t, t.hold.key);
+      // Full, but reeling from a knock at that very moment: it goes off as soon as the top has steadied.
+      const reeling = !!S.wind.auto && t.tumble > 0 && t.hold.t < S.wind.max + 1;
       // Held too long, or no longer able to throw: the wind-up is wasted.
-      if (t.hold.t >= S.wind.max || this.result || t.spin <= 0 || t.out || t.air || t.egg > 0 || t.up > 0) {
+      if ((t.hold.t >= S.wind.max && !reeling) || this.result || t.spin <= 0 || t.out || t.air || t.egg > 0 || t.up > 0) {
         t.cd[t.hold.key] = (S.wind.cancelCd ?? S.cd) * t.blade.cdMul;
         if (S.ult) t.ult = Math.min(t.ult, 50);
         t.hold = null;

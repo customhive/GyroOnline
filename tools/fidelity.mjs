@@ -1501,6 +1501,12 @@ console.log('CRIMSON HUNGER (Briar)');
   check(Math.abs(d0 - 65) < 0.5, 'E: 35% less damage meanwhile');
   for (let i = 0; i < Math.round(1.1 / DT); i++) w.step(DT);
   check(me.buff === 0 && !me.hold && me.cd.E > 10, 'E: a full breath goes off by itself, and the scream ends the frenzy');
+  {
+    const s2 = setup('hunger', 9); s2.w.hold(s2.me, 'E'); s2.w.aimHold(s2.me, s2.foe.x, s2.foe.z);
+    s2.run(0.95); s2.me.tumble = 0.2; s2.run(0.1);
+    const held = !!s2.me.hold; s2.run(0.2);
+    check(held && !s2.me.hold && s2.saw('beam'), 'E: full while reeling from a knock, it waits and goes off once steady');
+  }
   const scream = (hold) => { const s2 = setup('hunger', 4); s2.me.spin = 600; s2.w.hold(s2.me, 'E'); s2.w.aimHold(s2.me, s2.foe.x, s2.foe.z); const sp = s2.me.spin; s2.run(hold); const healed = s2.me.spin - sp; if (hold < 1) s2.w.cast(s2.me, 'E', s2.foe.x, s2.foe.z); s2.run(0.15, false); return { ...s2, healed }; };
   const quick = scream(0.3), full = scream(1.0);
   check(quick.foe.stats.taken > 0 && full.foe.stats.taken > quick.foe.stats.taken * 2 && full.healed > quick.healed * 2, 'E: let go early it is weaker; the longer the breath, the more it mends and the harder it hits');
