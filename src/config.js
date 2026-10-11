@@ -291,12 +291,12 @@ export const BLADES = {
     desc: '攻撃を当て続けるほど強くなる（5秒当てないと消える）。12回ぶん溜まった状態なら、回転が尽きても一度だけ復活する。',
   },
   lunar: {
-    id: 'lunar', kit: { Q: 'calibrum', W: 'infernum', E: 'gravitum', R: 'vigil' },
+    id: 'lunar', kit: { Q: 'arsenal', W: 'phase', E: 'nextweapon', R: 'vigil' },
     name: 'ルナ・アーセナル', en: 'LUNAR ARSENAL', type: 'ATTACK', typeJa: 'アタック',
     color: 0x8fb8ff, css: '#8fb8ff', teeth: 4,
-    atk: 1.34, def: 1.02, mass: 0.94, speed: 13.5, decay: 6.2, spinMax: 1000, cdMul: 1.0, guardMul: 1.0,
+    atk: 1.28, def: 1.02, mass: 0.94, speed: 13.5, decay: 6.2, spinMax: 1000, cdMul: 1.0, guardMul: 1.0,
     bars: { atk: 5, def: 1, sta: 3, spd: 3 },
-    desc: '長射程の狙撃・扇状の炎・足止めの重力弾を使い分ける武器庫。',
+    desc: '5つの武器のうち2つを持ち、主と副を持ち替えながら戦う。撃ち切った武器は次の武器に入れ替わり、ラウンドをまたいで持ち越す。Eのスキルは無い。',
   },
   cosmos: {
     id: 'cosmos', kit: { Q: 'breath', W: 'flight', E: 'blackhole', R: 'fallingstar' },
@@ -1139,25 +1139,46 @@ export const SKILLS = {
     empower: 5, bonus: 30, kb: 5, up: 0.45,
   },
   // ---- LUNAR ARSENAL: a gun for every range ----------------------------------
-  calibrum: {
-    name: '月光狙撃', en: 'CALIBRUM', aim: 'line', kind: 'shot', icon: 'beam', cd: 6,
-    tele: 0.45, range: 20, speed: 52, radius: 0.7, dmg: 46, mark: 4,
-    desc: '長射程の狙撃。当たると印が付き、次のスキルが当たると炸裂する。',
+  arsenal: {
+    name: '武器のスキル', en: 'WEAPON SKILL', aim: 'line', icon: 'beam', cd: 4, re: 'bindeclipse',
+    weapons: ['moonshot', 'onslaught', 'gravshot', 'duskwave', 'sentry'], ammo: 5, short: ['狙', '鎌', '重', '炎', '輪'],
+    desc: 'いま主に持っている武器の技を出す。武器は5発撃つと次の武器に入れ替わる。狙撃銃＝長射程弾と印／鎌＝1.75秒加速しながら近くの相手を斬り続けて回復／重力砲＝スロウ弾、スロウ中にもう一度押すとどこにいても縛る／火炎＝扇状の炎／円月輪＝近づいた相手を撃つ見張りを置く。',
   },
-  infernum: {
-    name: '蒼炎放射', en: 'INFERNUM', aim: 'cone', kind: 'cone', icon: 'cone', cd: 5,
-    tele: 0.3, range: 7.5, half: 0.5, dmg: 50, kb: 4,
-    desc: '扇状に炎を噴く。',
+  phase: {
+    name: 'フェーズ', en: 'PHASE', aim: 'self', icon: 'buff', cd: 0.8, ai: 'phase',
+    desc: '主の武器と副の武器を入れ替える。待ち時間は武器ごとに別なので、撃ったら持ち替えてもう一方を撃てる。',
   },
-  gravitum: {
-    name: '重力弾', en: 'GRAVITUM', aim: 'line', kind: 'shot', icon: 'orb', cd: 10,
-    tele: 0.4, range: 12, speed: 34, radius: 0.8, dmg: 20, slow: 2.5, tie: 'ROOTING', dur: 0.9, breakRange: 99, pop: 12, root: 1.0,
-    desc: '当たった相手を強いスロウにし、0.9秒後にその場へ縛り付ける。',
+  nextweapon: {
+    name: '次の武器', en: 'NEXT WEAPON', aim: 'self', icon: 'orb', cd: 0, passive: true,
+    desc: '【常時効果】弾を撃ち切った武器の代わりに、次に手元へ来る武器。武器はラウンドをまたいで持ち越す。',
   },
+  moonshot: {
+    name: 'ムーンショット', en: 'CALIBRUM', aim: 'line', kind: 'shot', hidden: true, weapon: 0, cd: 4,
+    tele: 0.45, range: 13.5, speed: 52, radius: 0.7, dmg: 46, mark: 4.5,
+  },
+  onslaught: {
+    name: 'オンスロート', en: 'SEVERUM', aim: 'self', kind: 'field', hidden: true, weapon: 1, cd: 4,
+    follow: true, dur: 1.75, aoe: 4.6, dps: 44, leechIn: 0.35, haste: 1.75,
+  },
+  gravshot: {
+    name: '重力弾', en: 'GRAVITUM', aim: 'line', kind: 'shot', hidden: true, weapon: 2, cd: 5,
+    tele: 0.4, range: 10, speed: 34, radius: 0.8, dmg: 30, slow: 2.5, slowPct: 0.3, eclipse: 2.5,
+  },
+  bindeclipse: { name: '束縛のエクリプス', en: 'BINDING ECLIPSE', aim: 'self', hidden: true, ai: 'bindeclipse', dmg: 40, snareT: 0.6, bigSnare: 0.8 },
+  duskwave: {
+    name: 'ダスクウェーブ', en: 'INFERNUM', aim: 'cone', kind: 'cone', hidden: true, weapon: 3, cd: 2.5,
+    tele: 0.3, range: 5.6, half: 0.5, dmg: 42, kb: 3,
+  },
+  sentry: {
+    name: 'セントリー', en: 'CRESCENDUM', aim: 'ground', hidden: true, weapon: 4, cd: 3, ai: 'ground',
+    range: 4, aoe: 1.1, dur: 20, live: 4, reach: 5, wake: 0.35, rate: 0.8, max: 3,
+  },
+  sentryshot: { name: '見張り', en: 'SENTRY', aim: 'line', hidden: true, range: 9, speed: 32, radius: 0.55, dmg: 20, kb: 1.5, tumble: 0, launch: 0 },
   vigil: {
     name: '月光の番人', en: 'MOONLIGHT VIGIL', aim: 'line', kind: 'shot', icon: 'star', cd: 2, ult: true,
-    tele: 0.4, range: 16, speed: 24, radius: 1.4, dmg: 70, slow: 1.5, splash: 4, splashDmg: 100,
-    desc: '【必殺技】ゆっくり進む月光弾。当たるか射程の端で大きく爆発する。',
+    tele: 0.4, range: 12, speed: 24, radius: 1.4, dmg: 70, splash: 4, splashDmg: 70,
+    arm: [{ mark: 4.5 }, { heal: 90 }, { slow: 2.5, slowPct: 0.99 }, { dmg: 50 }, { sentry: true }],
+    desc: '【必殺技】ゆっくり進む月光弾。当たるか射程の端で大きく爆発する。主の武器で追加効果が変わる：狙撃銃＝2倍で炸裂する印／鎌＝回復／重力砲＝ほぼ動けなくなるスロウ／火炎＝追加ダメージ／円月輪＝その場に起動済みの見張り。',
   },
   // ---- STAR FORGER: breath, gravity, a falling star --------------------------
   breath: {

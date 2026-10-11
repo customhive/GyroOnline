@@ -348,6 +348,15 @@ export class CpuBrain {
           if (d < far && want(again ? 0.4 : 0.1)) return at(this.jitter(ahead(S.charge * 0.7), 0.4));
           break;
         }
+        case 'bindeclipse':
+          if (foe.slow > 0) return go();
+          break;
+        case 'phase': {
+          // Swap when the weapon in hand is cooling down and the other one is ready.
+          const qk = KEYS.find((q) => skillOf(me, q).weapons);
+          if (me.cd[qk] > 0.8 && me.wcd[me.wo] <= 0) return go();
+          break;
+        }
         case 'shieldheal':
           // Cashed in only as the shield is about to lapse anyway.
           if (me.shield > 10 && me.shieldT < 0.5) return go();

@@ -17,7 +17,7 @@ const toWall = (x, z, dx, dz) => {
 };
 const v3 = new THREE.Vector3();
 // Zones that stand on the floor as an object, not only as a decal.
-const OBJECTS = { shadow: 'clone', arise: 'clone', turret: 'turret', keg: 'keg', icewall: 'wall', windwall: 'wall', divide: 'wall' };
+const OBJECTS = { shadow: 'clone', arise: 'clone', turret: 'turret', sentry: 'turret', keg: 'keg', icewall: 'wall', windwall: 'wall', divide: 'wall' };
 const TOXIC = 0x9dff3a, BLOOD = 0xff3040, ICE = 0xcfefff;
 
 export class View {
@@ -1095,7 +1095,7 @@ export class View {
         G.ring(z.x, z.z, z.r * 0.45, z.r * 0.5, 0xffe9a8, 0.3 * fade);
         timer();
         return true;
-      case 'turret':
+      case 'turret': case 'sentry':
         if (mine) G.ring(z.x, z.z, S.reach - 0.05, S.reach, c, 0.12);
         G.ring(z.x, z.z, 1.2, 1.35, col, 0.7);
         return true;

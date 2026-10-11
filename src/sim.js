@@ -58,6 +58,9 @@ export function makeTop(side, blade) {
     store: 0,              // damage banked by blades that turn it into a shield
     tag: 0, tagT: 0,       // nails stuck in this top
     perm: 0,               // growth that lasts the whole match, not just the round
+    // LUNAR ARSENAL: main and off-hand weapon, the ones waiting, shots left in each, each one's cooldown.
+    // Like `perm`, the weapons carry over from round to round.
+    wm: 0, wo: 1, wq: [2, 3, 4], wa: [5, 5, 5, 5, 5], wcd: [0, 0, 0, 0, 0],
     dot: 0, dotT: 0, drop: 0, hist: [], histT: 0, // bookkeeping only; not sent over the network
     cd: { Q: 0, W: 0, E: 0, R: 0 },
     re: { Q: 0, W: 0, E: 0, R: 0 }, // recast windows
@@ -276,6 +279,7 @@ export class World {
       t.ret2 = t.empS = null;
       t.stack = t.stackT = t.last = t.dmark = t.dacc = t.egg = t.eggHp = t.dot = t.dotT = t.drop = 0;
       t.sleep = 0; t.styleLast = '';
+      t.wcd.fill(0);
       t.haste = t.charm = t.pin = t.store = t.tag = t.tagT = t.histT = t.stun = t.snare = t.slowK = 0;
       t.hist = [];
       t.toggle = t.eggUsed = false;
@@ -307,6 +311,8 @@ export class World {
     // THE DARKIN BLADE is three different swings on one key.
     if (S.id === 'darkinblade') return SKILLS['darkin' + (t.re[key] > 0 ? Math.min(3, t.stack + 1) : 1)];
     if (S.re && t.re[key] > 0) return SKILLS[S.re];
+    // LUNAR ARSENAL: the key fires whatever weapon is in the main hand.
+    if (S.weapons) return SKILLS[S.weapons[t.wm]];
     // Another skill of the kit can change what this key fires for a while.
     if (S.alt && t.re[S.altKey] > 0) return SKILLS[S.alt];
     if (S.id === 'mimic' && t.re[key] > 0) return SKILLS.recall;
@@ -543,8 +549,25 @@ export class World {
     return hit;
   }
 
+  // LUNAR ARSENAL: the main hand changes (swapped, or emptied and replaced).
+  rearm(t) {
+    const k = KEYS.find((q) => skillOf(t, q).weapons);
+    t.cd[k] = t.wcd[t.wm]; t.re[k] = 0;
+    this.emit('say', { top: t, text: SKILLS[skillOf(t, k).weapons[t.wm]].en, tone: '' });
+  }
+
   execute(t, c) {
     const S = c.skill, opp = this.other(t);
+    if (S.weapon !== undefined) {
+      // Each weapon keeps its own cooldown, and every use is one of its five shots.
+      t.cd[c.key] = t.wcd[S.weapon] = S.cd * t.blade.cdMul;
+      if (--t.wa[S.weapon] <= 0) {
+        // Empty: it goes to the back of the line, reloaded, and the next one comes to hand.
+        t.wa[S.weapon] = skillOf(t, c.key).ammo;
+        t.wq.push(t.wm); t.wm = t.wq.shift();
+        this.rearm(t);
+      }
+    }
     // STEEL GALE in the middle of SWEEPING BLADE: no thrust, a ring around where the dash ends.
     if ((S.id === 'galeq' || S.id === 'tornado') && t.dash && t.dash.skill.id === 'sweep') {
       if (S.id === 'tornado') t.stack = 0;
@@ -588,6 +611,25 @@ export class World {
         this.slowBy(t, S.dur, S.selfSlow);
         // The style is spent when it ends.
         t.stackT = S.dur;
+        break;
+      case 'phase':
+        [t.wm, t.wo] = [t.wo, t.wm];
+        this.rearm(t);
+        break;
+      case 'bindeclipse': {
+        // BINDING ECLIPSE: wherever it is, a target under the gravity slow is rooted.
+        if (opp.slow <= 0 || !targetable(opp)) break;
+        const dmg = this.hurt(opp, (S.dmg * t.blade.atk) / opp.blade.def, t, S.id);
+        this.snare(opp, opp.slowK >= 0.9 ? S.bigSnare : S.snareT);
+        opp.slow = 0;
+        t.stats.skillHits++;
+        this.emit('strike', { top: opp, src: t, skill: S, x: opp.x, z: opp.z, dmg });
+        break;
+      }
+      case 'sentry':
+        // An older sentry does not last long once a new one is set.
+        for (const q of this.own(t, 'sentry')) if (!q.c) { q.c = 1; q.a = q.t + S.live; }
+        this.zone(t, S, c.ax, c.az);
         break;
       case 'tornado':
         t.stack = 0;
@@ -1360,6 +1402,7 @@ export class World {
   }
 
   updateTop(t, dt, opp) {
+    for (let i = 0; i < t.wcd.length; i++) t.wcd[i] = Math.max(0, t.wcd[i] - dt);
     for (const k of KEYS) {
       t.cd[k] = Math.max(0, t.cd[k] - dt);
       if (t.re[k] <= 0) continue;
@@ -1944,6 +1987,19 @@ export class World {
         case 'feather':
           if (z.t >= z.T || this.result) z.dead = true;
           break;
+        case 'sentry':
+          // c: woken, a: when it then runs out, b: time to its next shot
+          if (z.t >= z.T || (z.c && z.t >= z.a) || this.result) { this.endZone(z); break; }
+          if (live && d < z.r * 0.4 + opp.radius) { this.endZone(z); break; } // run over
+          if (!z.c) { if (live && d < S.reach) { z.c = 1; z.a = z.t + S.live; z.b = S.wake; } break; }
+          z.b -= dt;
+          if (z.b <= 0 && live && d < S.reach + 2) {
+            const shot = SKILLS.sentryshot, lead = d / shot.speed;
+            const ax = opp.x + opp.vx * lead - z.x, az = opp.z + opp.vz * lead - z.z, n = Math.hypot(ax, az) || 1;
+            this.fire(t, shot, ax / n, az / n, { x: z.x, z: z.z });
+            z.b = S.rate;
+          }
+          break;
         case 'bubbletrap':
           if (z.t >= z.T || this.result) { this.endZone(z); break; }
           if (z.t >= S.arm && live && d < z.r + opp.radius * 0.5 && opp.guard <= 0) {
@@ -2060,6 +2116,8 @@ export class World {
     if (inside) {
       if (S.slowIn) this.slowBy(opp, 0.3, S.slowPct);
       if (S.dps) this.dot(opp, (S.dps * dt * t.blade.atk) / opp.blade.def, t);
+      // SEVERUM drinks what it cuts.
+      if (S.leechIn && !this.result) t.spin = Math.min(t.spinMax, t.spin + ((S.dps * dt * t.blade.atk) / opp.blade.def) * S.leechIn);
       if (S.pullIn && d > 0.3) this.push(opp, (z.x - opp.x) / d, (z.z - opp.z) / d, S.pullIn * dt);
       // No dashing through a planted guard.
       if (S.block && (opp.dash || opp.blink)) {
@@ -2373,9 +2431,20 @@ export class World {
     // An overcharge is kept going by landing shots.
     if (o.buff > 0 && o.blade.buff && o.blade.buff.extendTo) o.buff = o.blade.buff.extendTo;
     if (S.reOnHit) { const k = this.keyOf(o, S.id); if (k) o.re[k] = S.reOnHit; }
+    // GRAVITUM: while its slow lasts, the same key roots the target.
+    if (S.eclipse) { const k = KEYS.find((q) => skillOf(o, q).weapons); if (k && o.wm === S.weapon) o.re[k] = S.eclipse; }
     if (S.permHit && o.perm < S.permHit) { o.perm++; this.emit('say', { top: o, text: '+' + o.perm, tone: 'gold' }); }
     if (S.spawn) this.zone(o, SKILLS[S.spawn], v.x, v.z);
     if (S.splash) this.burst(o, S, p.x, p.z, S.splash, { dmg: S.splashDmg, as: {} });
+    // MOONLIGHT VIGIL does something more for each weapon in hand.
+    if (S.id === 'vigil') {
+      const A = S.arm[o.wm];
+      if (A.mark) { v.mark = A.mark; v.markK = 2; }
+      if (A.heal) this.mend(o, A.heal);
+      if (A.slow) { this.slowBy(v, A.slow, A.slowPct); const k = KEYS.find((q) => skillOf(o, q).weapons); if (k) o.re[k] = A.slow; }
+      if (A.dmg) this.hurt(v, (A.dmg * o.blade.atk) / v.blade.def, o, S.id);
+      if (A.sentry) this.zone(o, SKILLS.sentry, v.x - p.dx * 2.6, v.z - p.dz * 2.6, { c: 1, a: SKILLS.sentry.live });
+    }
     // The third quill to land pins the target.
     if (S.id === 'quill') { o.stack++; o.stackT = 1.5; if (o.stack === 3) this.snare(v, S.root); }
     // Only one blade of a wind slash can land.

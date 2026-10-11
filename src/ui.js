@@ -423,8 +423,13 @@ export class UI {
   // The small counter on a skill button: stacks, shots left, objects out.
   note(world, me, S, key) {
     const foe = world.other(me);
+    if (S.weapons) return me.re[key] > 0 ? '縛' : S.short[me.wm] + me.wa[me.wm];
+    if (S.weapon !== undefined) return kitOf(me.blade).find((q) => q.weapons).short[S.weapon] + me.wa[S.weapon];
+    if (S.id === 'bindeclipse') return '縛';
     switch (S.id) {
       case 'inferno': return me.stack ? me.blade.style.ranks[Math.min(me.stack, me.blade.style.max) - 1] : '';
+      case 'phase': return kitOf(me.blade).find((q) => q.weapons).short[me.wo];
+      case 'nextweapon': return kitOf(me.blade).find((q) => q.weapons).short[me.wq[0]];
       case 'galeq': return me.stack >= S.stacks ? '竜巻' : me.stack ? String(me.stack) : '';
       case 'fourshot': return String(S.shots - me.stack);
       case 'brokenwings': return me.re[key] > 0 ? String(3 - me.stack) : '';

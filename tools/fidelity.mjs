@@ -1087,5 +1087,46 @@ console.log('STYLE RANKER (Samira)');
   check(kept === 1 && me.stack === 0, 'style: gone after 8 seconds without landing anything');
 }
 
+console.log('LUNAR ARSENAL (Aphelios)');
+{
+  let { w, me, foe, run, saw } = setup('lunar', 10);
+  check(w.aimSkill(me, 'Q').id === 'moonshot' && me.wo === 1 && me.wq.join() === '2,3,4', 'starts with the rifle in hand, the scythe in the other, then gravity, flame, chakram');
+  w.cast(me, 'Q', foe.x, foe.z); run(0.3);
+  check(foe.mark > 0 && me.wa[0] === 4 && me.cd.Q > 3, 'Q with the rifle: a long shot that marks; one of five shots used');
+  check(w.cast(me, 'W', me.x, me.z) && w.aimSkill(me, 'Q').id === 'onslaught' && me.wo === 0 && me.cd.Q === 0, 'W: swaps the two; the other weapon has its own cooldown');
+  me.x = 0; me.z = 1.6; foe.x = 0; foe.z = -1.6; me.spin = 500;
+  w.cast(me, 'Q', me.x, me.z); run(1.5);
+  check(me.spin > 505 && me.haste > 0 && foe.stats.taken > 60, 'Q with the scythe: cuts whatever is near for 1.75 seconds, healing and faster');
+  run(1); w.cast(me, 'W', me.x, me.z);
+  check(w.aimSkill(me, 'Q').id === 'moonshot' && me.cd.Q > 0 && me.cd.Q < 2, 'W back: the rifle is still cooling down from before');
+  ({ w, me, foe, run, saw } = setup('lunar', 10));
+  for (let i = 0; i < 5; i++) { me.cd.Q = 0; w.cast(me, 'Q', me.x + 9, me.z); run(0.1); }
+  check(me.wm === 2 && me.wq.join() === '3,4,0' && me.wa[0] === 5 && w.aimSkill(me, 'Q').id === 'gravshot', 'five shots: the rifle goes to the back of the line, reloaded, and the gravity cannon comes to hand');
+  me.cd.Q = 0; w.cast(me, 'Q', foe.x, foe.z); run(0.4);
+  check(foe.slowK === 0.3 && w.aimSkill(me, 'Q').id === 'bindeclipse' && w.canCast(me, 'Q'), 'Q with gravity: a slow, and the key opens again');
+  foe.x = 9; foe.z = -9; const am = me.wa[2]; w.cast(me, 'Q', me.x, me.z);
+  check(foe.snare > 0.5 && foe.slow === 0 && me.wa[2] === am, 'Q again: wherever it is, the slowed target is rooted; no shot used');
+  ({ w, me, foe, run, saw } = setup('lunar', 6));
+  me.wm = 3; w.cast(me, 'Q', foe.x, foe.z);
+  check(saw('cone') || setup.last.w.events.some((e) => e.type === 'cone'), 'Q with the flame: a fan');
+  ({ w, me, foe, run, saw } = setup('lunar', 14));
+  me.wm = 4; w.cast(me, 'Q', me.x, me.z - 3); run(1);
+  const sn = w.own(me, 'sentry')[0];
+  check(!!sn && !sn.c && foe.stats.taken === 0, 'Q with the chakram: a sentry that sleeps until something comes near');
+  foe.x = sn.x + 3; foe.z = sn.z; run(1.5);
+  check(sn.c === 1 && foe.stats.taken > 0, 'the sentry wakes and shoots');
+  run(3); check(!w.own(me, 'sentry').length, 'and is gone four seconds after waking');
+  w.resetRound();
+  check(me.wm === 4 && me.wa[4] === 4, 'the weapons carry into the next round');
+  const vig = (wm) => { const s = setup('lunar', 6); s.me.wm = wm; s.me.spin = 500; s.w.cast(s.me, 'R', s.foe.x, s.foe.z); s.run(0.5); return s; };
+  const v0 = vig(0), v1 = vig(1), v2 = vig(2), v3 = vig(3), v4 = vig(4);
+  check(v0.foe.mark > 0 && v0.foe.markK === 2, 'R with the rifle: a mark that goes off twice as hard');
+  check(v1.me.spin > 580, 'R with the scythe: heals');
+  check(v2.foe.slowK === 0.99 && v2.w.aimSkill(v2.me, 'Q').id === 'bindeclipse', 'R with gravity: all but stopped, and open to the root');
+  check(v3.foe.stats.taken > v1.foe.stats.taken + 20, 'R with the flame: more damage');
+  check(v4.w.own(v4.me, 'sentry').some((q) => q.c), 'R with the chakram: a sentry, already awake, where it hit');
+  check(!w.canCast(me, 'E'), 'E: there is none');
+}
+
 console.log(bad ? `\n${bad} of ${n} checks failed` : `\nall ${n} checks passed`);
 process.exit(bad ? 1 : 0);
