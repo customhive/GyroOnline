@@ -8,7 +8,7 @@
 import { SKILLS, KEYS } from './config.js';
 import { initZone } from './sim.js';
 
-export const PROTOCOL = 15;
+export const PROTOCOL = 16;
 export const PKT_SNAPSHOT = 1, PKT_PING = 2, PKT_PONG = 3;
 
 const SKILL_IDS = Object.keys(SKILLS);
@@ -73,7 +73,7 @@ function writeTop(w, t) {
   if (t.chan) { const c = t.chan; w.u16(skillNo(c.skill)); w.u8(c.t * 20); w.u8(c.n); w.i16(c.dx * DIR); w.i16(c.dz * DIR); }
   if (t.ret) { w.i16(t.ret.x * POS); w.i16(t.ret.z * POS); }
   if (t.ret2) { w.i16(t.ret2.x * POS); w.i16(t.ret2.z * POS); }
-  if (t.hold) { w.u8(KEYS.indexOf(t.hold.key)); w.u8(t.hold.t * 50); }
+  if (t.hold) { w.u8(KEYS.indexOf(t.hold.key)); w.u8(t.hold.t * 50); w.i16((t.hold.dx || 0) * DIR); w.i16((t.hold.dz || 0) * DIR); }
 }
 
 function readDir(r) {
@@ -132,7 +132,7 @@ function readTop(r, t) {
   t.chan = g & G_CHAN ? { skill: skillAt(r.u16()), t: r.u8() / 20, n: r.u8(), ...readDir(r) } : null;
   t.ret = g & G_RET ? { x: r.i16() / POS, z: r.i16() / POS } : null;
   t.ret2 = g & G_RET2 ? { x: r.i16() / POS, z: r.i16() / POS } : null;
-  t.hold = g & G_HOLD ? { key: KEYS[r.u8() & 3], t: r.u8() / 50 } : null;
+  t.hold = g & G_HOLD ? { key: KEYS[r.u8() & 3], t: r.u8() / 50, dx: r.i16() / DIR, dz: r.i16() / DIR } : null;
 }
 
 // meta: { seq, ack, timeLeft }

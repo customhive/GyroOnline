@@ -1015,7 +1015,15 @@ export class View {
       // The death mark shows on whoever carries it.
       const foe = (t.dmark > 0 && w.tops[t.dmarkTo]) || w.other(t);
       // Winding something up: the other side sees how far it reaches by now.
-      if (t.hold && t.side !== this.playerSide) { const R = w.holdRange(t, t.hold.key); G.ring(t.x, t.z, R - 0.08, R, this.dangerOf(t), 0.5 + 0.3 * Math.sin(this.time * 18)); }
+      if (t.hold && t.side !== this.playerSide) {
+        const H = t.hold, S = w.aimSkill(t, H.key), R = w.holdRange(t, H.key, true), col = this.dangerOf(t), pulse = 0.5 + 0.3 * Math.sin(this.time * 18);
+        G.ring(t.x, t.z, R - 0.08, R, col, pulse);
+        // And, once it is known, which way: the lane or fan it would fill if let go now.
+        if (H.dx || H.dz) {
+          if (S.aim === 'cone') G.sector(t.x, t.z, H.dx, H.dz, R, S.half, col, 0.1 + 0.06 * pulse, 0.85);
+          else { const len = Math.min(R, toWall(t.x, t.z, H.dx, H.dz)); if (len > 1.5) G.lane(t.x + H.dx * 1.4, t.z + H.dz * 1.4, H.dx, H.dz, len - 1.4, S.aim === 'dash' ? 1.25 : S.radius, col, 0.1 + 0.06 * pulse, 0.85); }
+        }
+      }
       // Low enough to be executed: marked for all to see.
       const X = SKILLS[t.blade.kit.R];
       if (X.line && !X.per && foe.egg <= 0 && !foe.out && spinRatio(foe) < X.line) {

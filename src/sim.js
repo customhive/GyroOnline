@@ -454,8 +454,18 @@ export class World {
   // is kept here, in the simulation, so both ends of a match agree on it.
   hold(t, key) {
     if (!this.canCast(t, key) || !this.aimSkill(t, key).wind) return false;
-    t.hold = { key, t: 0 };
+    t.hold = { key, t: 0, dx: 0, dz: 0 };
     this.emit('hold', { top: t, key });
+    return true;
+  }
+
+  // Which way a skill being wound up is pointed. It changes nothing about the
+  // throw (that is aimed when the key is let go); it is there so the other
+  // side can see where the blow is going to come from.
+  aimHold(t, x, z) {
+    if (!t.hold) return false;
+    const dx = x - t.x, dz = z - t.z, d = Math.hypot(dx, dz);
+    if (d > 0.01) { t.hold.dx = dx / d; t.hold.dz = dz / d; }
     return true;
   }
 

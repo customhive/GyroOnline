@@ -42,6 +42,7 @@ const game = {
   dragPt: null,        // the first point of a skill aimed with two
   rapidKey: null,      // a held-to-fire key; it keeps firing while other skills are aimed and cast
   cursor: { sx: innerWidth / 2, sy: innerHeight / 2, x: 0, z: 0 },
+  aimT: 0,             // guest: time until the host is next told where a wound-up skill points
   mouseDown: false, moveRepeat: 0,
   ultWasReady: false,
   blade: 'azure', level: 1,
@@ -622,6 +623,7 @@ function netMessage(m, id) {
       const peer = game.peers.find((p) => p.id === id), t = peer && w.tops[peer.side];
       if (!t) return;
       if (m.k === 'm') w.issueMove(t, num(m.x), num(m.z));
+      else if (m.k === 'a') w.aimHold(t, num(m.x), num(m.z));
       else if (m.k === 'h' && KEYS.includes(m.key)) w.hold(t, m.key);
       else if (m.k === 'c' && KEYS.includes(m.key)) w.cast(t, m.key, num(m.x), num(m.z), 0, m.bx === undefined ? undefined : num(m.bx), m.bz === undefined ? undefined : num(m.bz));
       peer.ack = m.s | 0;
@@ -672,7 +674,7 @@ function reconcile() {
   game.pending = game.pending.filter((p) => { const d = (p.s - ack) & 0xffff; return d !== 0 && d < 0x8000; });
   const me = player();
   for (const p of game.pending) {
-    if (p.k === 'm') w.issueMove(me, p.x, p.z); else if (p.k === 'h') w.hold(me, p.key); else w.cast(me, p.key, p.x, p.z, 0, p.bx, p.bz);
+    if (p.k === 'm') w.issueMove(me, p.x, p.z); else if (p.k === 'a') w.aimHold(me, p.x, p.z); else if (p.k === 'h') w.hold(me, p.key); else w.cast(me, p.key, p.x, p.z, 0, p.bx, p.bz);
   }
   // The snapshot left the host half a round trip ago and has waited here
   // since it arrived.
@@ -728,6 +730,18 @@ function doHold(key) {
   if (game.spectate || !game.world.hold(player(), key)) return false;
   if (game.mode === 'guest') { game.world.events.length = 0; sendInput({ k: 'h', key, x: 0, z: 0 }); }
   return true;
+}
+
+// While a skill is being wound up, the others are shown which way it points.
+// The guest tells the host a few times a second, not every frame.
+function aimHeld(rdt) {
+  const me = player();
+  if (!me.hold || game.spectate) { game.aimT = 0; return; }
+  refreshCursor();
+  game.world.aimHold(me, game.cursor.x, game.cursor.z);
+  if (game.mode !== 'guest') return;
+  game.aimT -= rdt;
+  if (game.aimT <= 0) { game.aimT = 0.1; sendInput({ k: 'a', x: game.cursor.x, z: game.cursor.z }); }
 }
 
 function sendInput(p) {
@@ -1063,6 +1077,7 @@ function frame(rdt, draw = true) {
         refreshCursor();
         doCast(game.rapidKey, game.cursor.x, game.cursor.z);
       }
+      if (game.state === 'fight' && !game.paused) aimHeld(rdt);
       if (game.mouseDown && game.state === 'fight' && !game.paused) {
         game.moveRepeat -= rdt;
         if (game.moveRepeat <= 0) { game.moveRepeat = 0.1; orderMove(true); }
