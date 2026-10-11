@@ -125,6 +125,10 @@ export class UI {
     $('#btn-back').onclick = () => this.h.back();
     $('#btn-host').onclick = () => this.h.host();
     $('#lb-leave').onclick = () => this.h.quit();
+    $('#pk-ok').onclick = () => this.h.edit(-1);
+    $('#picker').onclick = (e) => { if (e.target.id === 'picker') this.h.edit(-1); };
+    $('#st-prev').onclick = () => this.h.stage(-1);
+    $('#st-next').onclick = () => this.h.stage(1);
     $('#lb-ready').onclick = () => this.h.ready();
     $('#lb-copy').onclick = () => this.h.copy();
     $('#lb-url').onclick = (e) => e.target.select();
@@ -164,12 +168,14 @@ export class UI {
     // With this many blades the cards only name them; the selected one is
     // described in full beside the skill list.
     this.sheets = {};
+    this.bars = {};
     for (const b of Object.values(BLADES)) {
       const c = el('button', 'blade');
       c.style.setProperty('--c', b.css);
       const bar = (label, v) => `<div class="stat"><span>${label}</span><div>${'<i class="on"></i>'.repeat(v)}${'<i></i>'.repeat(5 - v)}</div></div>`;
       c.innerHTML = `<div class="b-disc"><div class="b-disc-in"></div></div><div class="b-type">${b.type}</div><div class="b-en">${b.en}</div><div class="b-name">${b.name}</div>`;
-      this.sheets[b.id] = `<div class="b-stats">${bar('攻撃', b.bars.atk)}${bar('防御', b.bars.def)}${bar('持久', b.bars.sta)}${bar('速度', b.bars.spd)}</div><p>${b.desc}</p>`;
+      this.bars[b.id] = `<div class="b-stats">${bar('攻撃', b.bars.atk)}${bar('防御', b.bars.def)}${bar('持久', b.bars.sta)}${bar('速度', b.bars.spd)}</div>`;
+      this.sheets[b.id] = `${this.bars[b.id]}<p>${b.desc}</p>`;
       c.onclick = () => this.h.pick(b.id);
       c.dataset.id = b.id;
       cards.appendChild(c);
@@ -254,10 +260,23 @@ export class UI {
     $('#btn-back').textContent = online ? '退出する' : 'ルームに戻る';
   }
 
-  // lobby: { role, status, url, slots: [{ kind: 'human' | 'cpu' | 'open', blade, level, ready }], edit, stage }
+  // A top-down sketch of a stage: the floor, and whatever wall it has.
+  stagePic(g) {
+    const R = 78, arc = (a0, a1) => `M ${100 + R * Math.cos(a0)} ${100 - R * Math.sin(a0)} A ${R} ${R} 0 ${a1 - a0 > Math.PI ? 1 : 0} 0 ${100 + R * Math.cos(a1)} ${100 - R * Math.sin(a1)}`;
+    let wall = '';
+    if (g.wall && !g.gaps.length) wall = `<circle cx="100" cy="100" r="${R}" class="sp-wall"/>`;
+    else if (g.wall) {
+      const gs = [...g.gaps].sort((p, q) => p[0] - q[0]);
+      gs.forEach((p, i) => { const q = gs[(i + 1) % gs.length], a0 = p[0] + p[1], a1 = q[0] - q[1] + (i === gs.length - 1 ? Math.PI * 2 : 0); wall += `<path d="${arc(a0, a1)}" class="sp-wall"/>`; });
+      for (const p of gs) wall += `<path d="${arc(p[0] - p[1], p[0] + p[1])}" class="sp-gap"/>`;
+    } else wall = `<circle cx="100" cy="100" r="${R}" class="sp-gap"/>`;
+    return `<svg viewBox="0 0 200 200"><circle cx="100" cy="100" r="${R + 14}" class="sp-out"/><circle cx="100" cy="100" r="${R}" class="sp-floor"/><circle cx="100" cy="100" r="52" class="sp-ring"/><circle cx="100" cy="100" r="26" class="sp-ring"/><polygon points="100,88 110.4,94 110.4,106 100,112 89.6,106 89.6,94" class="sp-ring"/>${wall}</svg>`;
+  }
+
+  // lobby: { role, status, url, slots: [{ kind: 'human' | 'cpu' | 'open', blade, level, ready }], edit, picking, stage }
   // Slot 0 is the host's. The host sets everything up; a guest only picks its own blade.
   showLobby(lb) {
-    const host = lb.role === 'host', mine = host ? 0 : 1, other = lb.slots[1 - mine], me = lb.slots[mine];
+    const host = lb.role === 'host', mine = host ? 0 : 1, me = lb.slots[mine];
     const linked = lb.status === 'connected';
     const status = {
       opening: 'ルームを準備しています…',
@@ -272,68 +291,81 @@ export class UI {
     $('#lb-invite').classList.toggle('hidden', !host || !lb.url || lb.slots[1].kind === 'human');
     if (lb.url && $('#lb-url').value !== lb.url) $('#lb-url').value = lb.url;
 
+    // One tall card for each seat.
+    const editable = (i) => { const p = lb.slots[i]; return i === mine ? p.kind === 'human' && !p.ready : false; };
+    const cards = $('#lb-cards');
+    cards.innerHTML = '';
     lb.slots.forEach((p, i) => {
-      const root = $('#lb-s' + i), b = BLADES[p.blade], you = i === mine;
-      const who = p.kind === 'cpu' ? 'CPU ／ ' + DIFFICULTY[p.level].name : p.kind === 'open' ? 'OPEN' : you ? 'YOU' : 'RIVAL';
-      const empty = p.kind === 'open';
-      root.style.setProperty('--c', empty ? '#3a4566' : b ? b.css : '#8fa0c8');
-      root.classList.toggle('ready', !empty && (p.kind === 'cpu' || p.ready));
-      root.classList.toggle('empty', empty);
-      root.classList.toggle('edit', lb.edit === i);
-      const state = empty ? '' : p.kind === 'cpu' ? 'READY' : p.ready ? 'READY' : '選択中…';
-      root.innerHTML = `<span class="lb-who">${who}</span><b>${empty ? '— — —' : b ? b.en : 'RANDOM'}</b><span class="lb-name">${empty ? '招待待ち' : b ? b.name + '（' + b.typeJa + '）' : 'おまかせ'}</span><em>${state}</em>`;
-      root.onclick = () => this.h.edit(i);
+      const b = BLADES[p.blade], you = i === mine, empty = p.kind === 'open';
+      const can = !empty && (editable(i) || (host && p.kind === 'cpu'));
+      const who = p.kind === 'cpu' ? 'CPU' : empty ? 'OPEN' : you ? 'YOU' : 'RIVAL';
+      const seat = el('div', 'seat');
+      const card = el('button', 'pcard' + (empty ? ' empty' : '') + (!empty && (p.kind === 'cpu' || p.ready) ? ' ready' : '') + (you ? ' mine' : ''));
+      card.style.setProperty('--c', empty ? '#3a4566' : b ? b.css : '#8fa0c8');
+      card.disabled = !can;
+      const skills = b ? kitOf(b).map((S, k) => `<div class="pc-skill" title="${S.desc.replace(/"/g, '&quot;')}"><kbd>${KEYS[k]}</kbd><div class="how-icon">${iconOf(S)}</div><span>${S.name}</span></div>`).join('') : '';
+      card.innerHTML = `<div class="pc-top"><span class="pc-no">${i + 1}P</span><span class="pc-who">${who}${p.kind === 'cpu' ? ' ／ ' + DIFFICULTY[p.level].name : ''}</span><em>${empty ? '' : p.kind === 'cpu' || p.ready ? 'READY' : '選択中'}</em></div>`
+        + (empty
+          ? `<div class="pc-wait"><div class="pc-plus">＋</div><b>招待待ち</b><span>招待URLを開いた相手がここに入ります。<br>下のボタンでCPUを入れることもできます。</span></div>`
+          : `<div class="pc-disc"><i></i></div><div class="pc-type">${b ? b.type : 'CPU'}</div><div class="pc-en">${b ? b.en : 'RANDOM'}</div><div class="pc-name">${b ? b.name : 'おまかせ'}</div>`
+            + (b ? `${this.bars[b.id]}<p class="pc-desc">${b.desc}</p><div class="pc-skills">${skills}</div>` : '<p class="pc-desc">対戦のたびにランダムなブレードが選ばれます。</p>')
+            + `<div class="pc-foot">${can ? 'クリックでブレードを変える' : you && p.ready ? '準備OK' : ''}</div>`);
+      card.onclick = () => this.h.edit(i);
+      seat.appendChild(card);
 
-      // What the host can make of each slot.
-      const ctl = $('#lb-c' + i);
-      ctl.innerHTML = '';
-      if (!host || (i === 1 && p.kind === 'human')) return;
-      const kinds = i === 0 ? [['human', '自分で操作'], ['cpu', 'CPU（観戦）']] : [['open', '招待を待つ'], ['cpu', 'CPU']];
-      const row = el('div', 'lb-seg');
-      for (const [k, label] of kinds) {
-        const btn = el('button', p.kind === k ? 'on' : '', label);
-        btn.onclick = () => this.h.slotKind(i, k);
-        row.appendChild(btn);
+      // What the host can make of each seat.
+      const ctl = el('div', 'lb-ctl');
+      if (host && !(i === 1 && p.kind === 'human')) {
+        const kinds = i === 0 ? [['human', '自分で操作'], ['cpu', 'CPU（観戦）']] : [['open', '招待を待つ'], ['cpu', 'CPU']];
+        const row = el('div', 'lb-seg');
+        for (const [k, label] of kinds) {
+          const btn = el('button', p.kind === k ? 'on' : '', label);
+          btn.onclick = () => this.h.slotKind(i, k);
+          row.appendChild(btn);
+        }
+        ctl.appendChild(row);
+        if (p.kind === 'cpu') {
+          const lv = el('div', 'lb-seg small');
+          DIFFICULTY.forEach((d, n) => {
+            const btn = el('button', p.level === n ? 'on' : '', d.name);
+            btn.title = d.ja;
+            btn.onclick = () => this.h.slotLevel(i, n);
+            lv.appendChild(btn);
+          });
+          ctl.appendChild(lv);
+        }
       }
-      ctl.appendChild(row);
-      if (p.kind === 'cpu') {
-        const lv = el('div', 'lb-seg small');
-        DIFFICULTY.forEach((d, n) => {
-          const btn = el('button', p.level === n ? 'on' : '', d.name);
-          btn.title = d.ja;
-          btn.onclick = () => this.h.slotLevel(i, n);
-          lv.appendChild(btn);
-        });
-        ctl.appendChild(lv);
-      }
+      seat.appendChild(ctl);
+      cards.appendChild(seat);
     });
 
-    const st = $('#lb-stages');
-    st.innerHTML = '';
-    STAGES.forEach((g, n) => {
-      const btn = el('button', 'lb-stage' + (lb.stage === n ? ' on' : ''), `<b>${g.name}</b><span>${g.ja}${g.soon ? '（準備中）' : ''}</span>`);
-      btn.disabled = !host || !!g.soon;
-      btn.onclick = () => this.h.stage(n);
-      st.appendChild(btn);
-    });
+    const g = STAGES[lb.stage];
+    $('#st-pic').innerHTML = this.stagePic(g);
+    $('#st-name').textContent = g.name + (g.soon ? '（準備中）' : '');
+    $('#st-ja').textContent = g.ja;
+    $('#st-prev').disabled = $('#st-next').disabled = !host;
+    $('#st-prev').classList.toggle('hidden', !host);
+    $('#st-next').classList.toggle('hidden', !host);
 
-    // The blade grid edits one slot: your own, or (for the host) a CPU's.
-    const ed = lb.slots[lb.edit], can = lb.edit === mine ? me.kind === 'human' && !me.ready : host && ed.kind === 'cpu';
-    const mayEdit = can || (host && lb.edit === 0 && ed.kind === 'cpu');
-    $('#lb-editing').textContent = '　' + (lb.edit === mine && ed.kind === 'human' ? 'あなたのブレード' : ed.kind === 'cpu' ? `CPU（${lb.edit + 1}P）のブレード` : ed.kind === 'open' ? '（相手の枠は空いています）' : '相手のブレード');
-    document.querySelectorAll('.blade').forEach((c) => {
-      c.classList.toggle('on', c.dataset.id === ed.blade && ed.kind !== 'open');
-      c.disabled = !mayEdit || (c.dataset.id === 'random' && ed.kind !== 'cpu');
-      if (c.dataset.id === 'random') c.classList.toggle('hidden', ed.kind !== 'cpu');
-    });
-    this.showBlade(ed.kind === 'open' ? me.blade : ed.blade);
+    // The blade picker, laid over the room, edits one seat.
+    const open = !!lb.picking && lb.slots[lb.edit].kind !== 'open';
+    $('#picker').classList.toggle('hidden', !open);
+    if (open) {
+      const ed = lb.slots[lb.edit];
+      $('#lb-editing').textContent = '　' + (ed.kind === 'cpu' ? `CPU（${lb.edit + 1}P）` : 'あなた');
+      document.querySelectorAll('.blade').forEach((c) => {
+        c.classList.toggle('on', c.dataset.id === ed.blade);
+        if (c.dataset.id === 'random') c.classList.toggle('hidden', ed.kind !== 'cpu');
+      });
+      this.showBlade(ed.blade);
+    }
 
     const r = $('#lb-ready'), rival = lb.slots[1];
     if (host) {
       // Against a CPU the button starts the match; against a person both sides ready up.
       const vsHuman = rival.kind === 'human';
-      r.disabled = rival.kind === 'open';
-      r.textContent = rival.kind === 'open' ? '相手がいません' : !vsHuman ? 'ゲーム開始' : me.ready ? '開始を取り消す' : rival.ready ? 'ゲーム開始' : '開始（相手の準備を待つ）';
+      r.disabled = rival.kind === 'open' || !!g.soon;
+      r.textContent = g.soon ? 'このステージは準備中' : rival.kind === 'open' ? '相手がいません' : !vsHuman ? 'ゲーム開始' : me.ready ? '開始を取り消す' : rival.ready ? 'ゲーム開始' : '開始（相手の準備待ち）';
       r.classList.toggle('armed', vsHuman && me.ready);
     } else {
       r.disabled = !linked;

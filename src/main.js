@@ -6,7 +6,7 @@
 // its own top answers input at once, then corrects itself from each snapshot
 // (rewind to the host's state, re-apply inputs the host has not seen yet,
 // simulate forward by the measured delay).
-import { BLADES, DIFFICULTY, ROUND_TIME, ROUNDS_TO_WIN, KEYS, skillOf } from './config.js';
+import { BLADES, DIFFICULTY, STAGES, ROUND_TIME, ROUNDS_TO_WIN, KEYS, skillOf } from './config.js';
 import { World, spinRatio } from './sim.js';
 import { CpuBrain } from './ai.js';
 import { View } from './view.js';
@@ -72,15 +72,17 @@ const ui = new UI({
   host: () => { audio.unlock(); audio.ui(); openRoom(); },
   ready: () => { audio.unlock(); audio.ui(); pressReady(); },
   pick: (id) => { audio.unlock(); audio.ui(); pickBlade(id); },
-  edit: (i) => { audio.ui(); game.lobby.edit = i; lobbyRefresh(); },
+  // Opens the blade picker on a seat (-1 closes it).
+  edit: (i) => { audio.ui(); const lb = game.lobby; if (i < 0) lb.picking = false; else { lb.edit = i; lb.picking = true; } lobbyRefresh(); },
   slotKind: (i, kind) => { audio.ui(); setSlotKind(i, kind); },
   slotLevel: (i, n) => { audio.ui(); game.lobby.slots[i].level = n; lobbyChanged(); },
-  stage: (n) => { audio.ui(); game.lobby.stage = n; lobbyChanged(); },
+  stage: (d) => { audio.ui(); const lb = game.lobby; if (lb.role !== 'host') return; lb.stage = (lb.stage + d + STAGES.length) % STAGES.length; lobbyChanged(); },
   copy: () => copyInvite(),
 });
 
 function showScreen(name) {
   for (const id of ['title', 'lobby', 'result', 'pause']) ui.show(id, id === name);
+  if (name !== 'lobby') { game.lobby.picking = false; ui.show('picker', false); }
   ui.show('hud', name === 'hud');
   document.body.classList.toggle('menu', name !== 'hud');
 }
@@ -253,6 +255,7 @@ function enterLobby(role) {
     ? [{ kind: 'human', blade, level: 1, ready: false }, { kind: 'open', blade: 'random', level: 1, ready: false }]
     : [{ kind: 'human', blade: 'azure', level: 1, ready: false }, { kind: 'human', blade, level: 1, ready: false }];
   lb.edit = role === 'host' ? 0 : 1;
+  lb.picking = false;
   lb.stage = 0;
   view.setMatch(null, 0);
   view.orbiting = true;
@@ -307,6 +310,8 @@ function lobbyRefresh() {
 // The big button: start against a CPU, ready up against a person.
 function pressReady() {
   const lb = game.lobby;
+  lb.picking = false;
+  if (lb.role === 'host' && STAGES[lb.stage].soon) return;
   if (lb.role === 'host') {
     if (lb.slots[1].kind === 'cpu') return startLocalMatch();
     if (lb.slots[1].kind !== 'human') return;
@@ -340,6 +345,7 @@ function setSlotKind(i, kind) {
   else if (kind === 'cpu' && i === 1 && !BLADES[p.blade]) p.blade = 'random';
   lb.slots[0].ready = false;
   lb.edit = kind === 'open' ? 0 : i;
+  lb.picking = false;
   lobbyChanged();
 }
 
@@ -457,7 +463,7 @@ function netMessage(m) {
       const h = m.slots[0];
       if (!h || !(BLADES[h.blade] || h.blade === 'random')) return;
       lb.slots[0] = { kind: h.kind === 'cpu' ? 'cpu' : 'human', blade: h.blade, level: Math.max(0, Math.min(DIFFICULTY.length - 1, h.level | 0)), ready: !!h.ready };
-      lb.stage = Math.max(0, m.stage | 0);
+      lb.stage = Math.max(0, Math.min(STAGES.length - 1, m.stage | 0));
       if (game.state === 'result') ui.toast(h.ready ? '相手が再戦を待っています' : '相手がルームに戻りました');
       lobbyRefresh();
       break;

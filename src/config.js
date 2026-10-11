@@ -1318,11 +1318,13 @@ export const kitOf = (blade) => KEYS.map((k) => SKILLS[blade.kit[k]]);
 for (const b of Object.values(BLADES)) b.emp = kitOf(b).find((S) => S.bonus) || null;
 for (const b of Object.values(BLADES)) b.hasUlt = kitOf(b).some((S) => S.ult);
 
-// Where the match is fought. Only the first is built so far.
+// Where the match is fought. `gaps` are the openings in the rim wall, as
+// [centre angle, half width] in radians; `wall: false` has no wall at all.
+// Only the first is built so far.
 export const STAGES = [
-  { id: 'classic', name: 'スタンダード', ja: '壁に囲まれた基本のアリーナ' },
-  { id: 'gates', name: 'スリーゲート', ja: '壁に3か所の穴。そこから出ると場外', soon: true },
-  { id: 'open', name: 'オープン', ja: '壁なし。端から出ると場外', soon: true },
+  { id: 'classic', name: 'スタンダード', en: 'STANDARD', ja: '壁に囲まれた基本のアリーナ。強く吹き飛ばして壁に叩きつけると場外。', wall: true, gaps: [] },
+  { id: 'gates', name: 'スリーゲート', en: 'THREE GATES', ja: '壁の3か所に穴が開いている。穴から転がり出ると場外。', wall: true, gaps: [[Math.PI / 2, 0.38], [Math.PI / 2 + (Math.PI * 2) / 3, 0.38], [Math.PI / 2 + (Math.PI * 4) / 3, 0.38]], soon: true },
+  { id: 'open', name: 'オープン', en: 'OPEN RING', ja: '壁が無い。端から出るとそのまま場外。', wall: false, gaps: [], soon: true },
 ];
 
 export const DIFFICULTY = [

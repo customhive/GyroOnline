@@ -42,41 +42,54 @@
     <h1>GYRO<span>CLASH</span></h1>
     <div class="logo-ja">ジャイロクラッシュ</div>
   </div>
-  <div class="panel title">
-    <button id="btn-host" class="primary big">ルームを作る</button>
-    <p class="note center">ルームでブレードとステージを選び、CPUや友だちと対戦します。招待URLを送れば、開いた相手がそのまま同じルームに入れます。CPUどうしの対戦を眺めることもできます。</p>
-    <h2 class="gap"><i>HOW</i> あそびかた</h2>
-    <p class="lead">コマは放っておいても自動で戦います。<b>フィールドをクリック</b>するとその地点へ向かい、<b>Q W E R</b> のスキルで流れを変えましょう。回転を削り切るか、場外へ吹き飛ばせば勝ち。2ラウンド先取。</p>
-    <p class="lead small">照準中はスキルの<b>当たる範囲</b>が表示されます。相手の動きを読んで、先回りして撃とう。赤い予告範囲は相手のスキル。クリックで移動して避けよう。</p>
-  </div>
+  <button id="btn-host" class="primary start">START</button>
 </div>
 
 <div id="lobby" class="screen hidden">
-  <div class="panel lobby">
-    <h2><i>ROOM</i> ルーム</h2>
-    <div id="lb-status" class="lb-status"></div>
-    <div id="lb-invite" class="hidden">
-      <label for="lb-url">招待URL</label>
-      <div class="lb-urlrow"><input id="lb-url" readonly><button id="lb-copy">コピー</button></div>
-      <p class="note">このURLを対戦相手に送ってください。ブラウザで開くだけで、このルームに参加できます。</p>
+  <div class="panel room">
+    <div class="room-head">
+      <h2><i>ROOM</i> ルーム</h2>
+      <div id="lb-status" class="lb-status"></div>
     </div>
-    <div class="lb-players">
-      <div class="lb-slot"><div class="lb-p" id="lb-s0"></div><div class="lb-ctl" id="lb-c0"></div></div>
-      <div class="lb-vs">VS</div>
-      <div class="lb-slot"><div class="lb-p" id="lb-s1"></div><div class="lb-ctl" id="lb-c1"></div></div>
+    <div class="room-body">
+      <div id="lb-cards" class="room-cards"></div>
+      <div class="room-side">
+        <div class="room-stage">
+          <h3>STAGE</h3>
+          <div class="stage-view">
+            <button id="st-prev" aria-label="前のステージ">◀</button>
+            <div id="st-pic"></div>
+            <button id="st-next" aria-label="次のステージ">▶</button>
+          </div>
+          <b id="st-name"></b>
+          <span id="st-ja"></span>
+        </div>
+        <div id="lb-invite" class="hidden">
+          <label for="lb-url">招待URL</label>
+          <div class="lb-urlrow"><input id="lb-url" readonly><button id="lb-copy">コピー</button></div>
+          <p class="note">このURLを開いた相手が、このルームに入れます。</p>
+        </div>
+        <div class="room-go">
+          <button id="lb-ready" class="primary">ゲーム開始</button>
+          <button id="lb-leave">退出する</button>
+        </div>
+      </div>
     </div>
-    <h2><i>STAGE</i> ステージ</h2>
-    <div id="lb-stages"></div>
-    <h2><i>BLADE</i> ブレード<span id="lb-editing"></span></h2>
-    <div id="blades"></div>
-    <div class="lb-detail">
-      <div><h3 id="how-name"></h3><div id="sheet"></div></div>
-      <div id="how"></div>
+  </div>
+</div>
+
+<div id="picker" class="screen overlay hidden">
+  <div class="panel picker">
+    <h2><i>BLADE</i> ブレードを選ぶ<span id="lb-editing"></span></h2>
+    <div class="picker-body">
+      <div id="blades"></div>
+      <div class="picker-detail">
+        <h3 id="how-name"></h3>
+        <div id="sheet"></div>
+        <div id="how"></div>
+      </div>
     </div>
-    <div class="res-btns">
-      <button id="lb-ready" class="primary">ゲーム開始</button>
-      <button id="lb-leave">退出する</button>
-    </div>
+    <div class="res-btns"><button id="pk-ok" class="primary">決定</button></div>
   </div>
 </div>
 
