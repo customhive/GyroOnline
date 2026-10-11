@@ -405,7 +405,9 @@ function pressStart() {
 
 // A blade for whichever slot is being edited: your own, or (for the host) a CPU's.
 function pickBlade(id) {
-  const lb = game.lobby, host = lb.role === 'host', mine = host ? 0 : 1;
+  // `lb.me`, not a fixed seat: a guest is put wherever there is room, which is
+  // 3P or 4P when 2P is closed or taken.
+  const lb = game.lobby, host = lb.role === 'host', mine = lb.me;
   if (game.state !== 'lobby') return;
   let i = lb.edit;
   const p = lb.slots[i];
