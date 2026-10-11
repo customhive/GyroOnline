@@ -953,7 +953,7 @@ export const SKILLS = {
   },
   keg: {
     name: '火薬樽', en: 'POWDER KEG', aim: 'ground', icon: 'trap', cd: 0.5, stock: { max: 3, every: 8 },
-    ai: 'ground', range: 8, aoe: 3.6, dur: 25, max: 5, hp: 3, decay: 0.5, touch: 0.5, dmg: 72, slow: 2, slowPct: 0.8, kb: 5, blowHaste: 2,
+    ai: 'ground', range: 8, aoe: 3.6, dur: 25, max: 5, hp: 3, decay: 1, touch: 0.5, dmg: 72, slow: 2, slowPct: 0.8, kb: 5, blowHaste: 2,
     desc: '火薬樽を置く。3個ぶん溜めておける（8秒で1個ぶん戻る）。樽の耐久は3で、時間とともに1まで減る。誰のどんな攻撃や体当たりでも1ずつ削れ、自分がとどめを刺せば爆発して近くの樽も誘爆し、80%のスロウ。相手にとどめを刺されると不発。',
   },
   barrage: {
