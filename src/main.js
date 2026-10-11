@@ -80,6 +80,10 @@ const ui = new UI({
   // Opens the blade picker on a seat (-1 closes it).
   edit: (i) => { audio.ui(); const lb = game.lobby; if (i < 0) lb.picking = false; else { lb.edit = i; lb.picking = true; } lobbyRefresh(); },
   slotKind: (i, kind) => { audio.ui(); setSlotKind(i, kind); },
+  // Who sits in a seat, chosen from its menu: a kind and, for a CPU, a level.
+  seat: (i, kind, level) => { audio.ui(); const p = game.lobby.slots[i]; if (p && level !== undefined && game.lobby.role === 'host' && p.link === undefined) p.level = level; setSlotKind(i, kind); },
+  // 0: everyone for themselves, 1: two teams, 2: two teams with friendly fire
+  rule: (n) => { audio.ui(); const lb = game.lobby; if (lb.role !== 'host') return; const was = lb.teams; lb.teams = n > 0; lb.ff = n === 2; if (was !== lb.teams) for (const p of lb.slots) p.ready = false; lobbyChanged(); },
   slotLevel: (i, n) => { audio.ui(); game.lobby.slots[i].level = n; lobbyChanged(); },
   mode: (teams) => { audio.ui(); const lb = game.lobby; if (lb.role !== 'host') return; lb.teams = !!teams; for (const p of lb.slots) p.ready = false; lobbyChanged(); },
   ff: (on) => { audio.ui(); const lb = game.lobby; if (lb.role !== 'host') return; lb.ff = !!on; lobbyChanged(); },

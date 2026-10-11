@@ -80,11 +80,10 @@ try {
   if (!hs.url) throw new Error('host never got a room: ' + hs.err);
   const code = new URL(hs.url).searchParams.get('room');
   // Seats: host, a person, a person, a CPU.
-  await host.eval(`(() => { const seat = (i) => [...document.querySelectorAll('.seat')][i]; seat(2).querySelectorAll('.lb-seg button')[0].click(); })()`);
-  await host.eval(`(() => { const seat = (i) => [...document.querySelectorAll('.seat')][i]; seat(3).querySelectorAll('.lb-seg button')[1].click(); })()`);
+  await host.eval(`__gc.ui.h.seat(2, 'open'); __gc.ui.h.seat(3, 'cpu', 1)`);
   // With "team" as the fourth argument the match is two against two.
   const team = process.argv[5] === 'team';
-  if (team) await host.eval(`[...document.querySelectorAll('#lb-mode button')][1].click()`);
+  if (team) await host.eval(`__gc.ui.h.rule(1)`);
   console.log('host seats:', await host.eval(SEATS));
   const g1 = await openTab(base + '?room=' + code + '&auto&quick' + extra, 'guest1');
   const g2 = await openTab(base + '?room=' + code + '&auto&quick' + extra, 'guest2');

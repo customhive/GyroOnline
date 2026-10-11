@@ -117,6 +117,10 @@ export class UI {
     // body so the cards' cut corners cannot clip it.
     this.tipEl = el('div', 'tip');
     document.body.appendChild(this.tipEl);
+    // And one floating menu, for choosing who sits in a seat.
+    this.menuEl = el('div', 'seat-menu');
+    document.body.appendChild(this.menuEl);
+    document.addEventListener('click', () => this.menu(null));
     this.meLabel = '';
     this.tags = [];
     this.lastTime = -1;
@@ -294,6 +298,26 @@ export class UI {
     t.style.left = x + 'px'; t.style.top = y + 'px';
   }
 
+  // A small floating menu under `at` (or closes it, with nothing given).
+  // items: [{ label, note, on, pick }]
+  menu(at, items) {
+    const m = this.menuEl;
+    if (!at) { m.classList.remove('on'); m.at = null; return; }
+    if (m.at === at && m.classList.contains('on')) { this.menu(null); return; }
+    m.innerHTML = '';
+    for (const it of items) {
+      const btn = el('button', it.on ? 'on' : '', `<b>${it.label}</b>${it.note ? `<span>${it.note}</span>` : ''}`);
+      btn.onclick = (e) => { e.stopPropagation(); this.menu(null); it.pick(); };
+      m.appendChild(btn);
+    }
+    m.at = at;
+    m.classList.add('on');
+    const r = at.getBoundingClientRect();
+    m.style.minWidth = r.width + 'px';
+    m.style.left = Math.max(8, Math.min(innerWidth - m.offsetWidth - 8, r.left)) + 'px';
+    m.style.top = Math.min(innerHeight - m.offsetHeight - 8, r.bottom + 4) + 'px';
+  }
+
   // A top-down sketch of a stage: the floor, and whatever wall it has.
   stagePic(g) {
     const R = 78, arc = (a0, a1) => `M ${100 + R * Math.cos(a0)} ${100 - R * Math.sin(a0)} A ${R} ${R} 0 ${a1 - a0 > Math.PI ? 1 : 0} 0 ${100 + R * Math.cos(a1)} ${100 - R * Math.sin(a1)}`;
@@ -323,95 +347,88 @@ export class UI {
     const s = $('#lb-status');
     // Why the game cannot start yet is said here, not on the button.
     const lopsided = lb.teams && new Set(lb.slots.filter((p) => p.kind !== 'none').map((p) => p.team)).size < 2;
-    s.textContent = host && lopsided ? 'チーム戦は、AとBの両方に1人以上必要です。カードの A / B を押すとチームを変えられます' : status;
+    s.textContent = host && lopsided ? 'チーム戦は、AとBの両方に1人以上必要です。カードの下の TEAM を押すとチームを変えられます' : status;
     s.className = 'lb-status ' + lb.status;
     // The host always has the invitation to hand; it does not come and go with the seats.
     $('#lb-invite').classList.toggle('hidden', !host);
     $('#lb-invite').classList.toggle('ghost', host && !lb.url);
     if (lb.url && $('#lb-url').value !== lb.url) $('#lb-url').value = lb.url;
 
-    // One tall card for each seat.
+    // One tall card for each seat. Everything about a seat is on its card:
+    // who sits there (a menu), the blade, and in a team match the team.
     const editable = (i) => { const p = lb.slots[i]; return i === mine ? p.kind === 'human' && !p.ready : false; };
     const cards = $('#lb-cards');
     cards.innerHTML = '';
     this.tip(null);
+    this.menu(null);
     lb.slots.forEach((p, i) => {
       const b = BLADES[p.blade], you = i === mine, empty = p.kind === 'open', off = p.kind === 'none';
-      const can = !empty && !off && (editable(i) || (host && p.kind === 'cpu'));
-      const who = p.kind === 'cpu' ? 'CPU' : empty ? 'OPEN' : off ? '' : (you ? 'YOU' : i === 0 ? 'HOST' : 'PLAYER');
-      const seat = el('div', 'seat');
-      const card = el('button', 'pcard' + (empty || off ? ' empty' : '') + (off ? ' off' : '') + (!empty && !off && (p.kind === 'cpu' || p.ready) ? ' ready' : '') + (you ? ' mine' : ''));
-      card.style.setProperty('--c', empty || off ? '#3a4566' : b ? b.css : '#8fa0c8');
-      card.disabled = !can;
-      const skills = b ? kitOf(b).map((S, k) => `<div class="pc-skill" data-k="${k}"><kbd>${KEYS[k]}</kbd><div class="how-icon">${iconOf(S)}</div><span>${S.name}</span></div>`).join('') : '';
-      card.innerHTML = `<div class="pc-top"><span class="pc-no">${i + 1}P</span>${lb.teams && !empty && !off ? `<span class="pc-team ${p.team ? 'b' : 'a'}">${p.team ? 'B' : 'A'}</span>` : ''}<span class="pc-who">${who}</span><em>${empty || off ? '' : p.kind === 'cpu' ? DIFFICULTY[p.level].name : p.ready ? 'READY' : '準備中'}</em></div>`
-        + (off
-          ? `<div class="pc-wait"><b>なし</b><span>この席は使いません。<br>下のボタンでCPUを入れられます。</span></div>`
-          : empty
-          ? `<div class="pc-wait"><div class="pc-plus">＋</div><b>参加待ち</b><span>招待URLを開いた相手がここに入ります。<br>下のボタンでCPUに変えられます。</span></div>`
-          : `<div class="pc-disc"><i></i></div><div class="pc-type">${b ? b.type : '？？？'}</div><div class="pc-en">${b ? b.en : 'RANDOM'}</div><div class="pc-name">${b ? b.name : 'おまかせ'}</div>`
-            + (b ? `${this.bars[b.id]}<p class="pc-desc">${b.desc}</p><div class="pc-skills">${skills}</div>` : '<p class="pc-desc">対戦のたびにランダムなブレードが選ばれます。</p>')
-            + `<div class="pc-foot">${can ? 'クリックでブレードを変える' : you && p.ready ? '準備完了' : ''}</div>`);
-      card.onclick = () => this.h.edit(i);
-      card.classList.toggle('team-a', !!lb.teams && !empty && !off && !p.team);
-      card.classList.toggle('team-b', !!lb.teams && !empty && !off && !!p.team);
-      if (b) card.querySelectorAll('.pc-skill').forEach((row) => {
-        const k = Number(row.dataset.k);
-        row.onmouseenter = () => this.tip(row, kitOf(b)[k], b, KEYS[k]);
-        row.onmouseleave = () => this.tip(null);
-      });
-      seat.appendChild(card);
+      const active = !empty && !off;
+      const can = active && (editable(i) || (host && p.kind === 'cpu'));
+      const taken = i !== mine && p.kind === 'human';
+      const card = el('div', 'pcard' + (active ? '' : ' empty') + (off ? ' off' : '') + (active && (p.kind === 'cpu' || p.ready) ? ' ready' : '') + (you ? ' mine' : '')
+        + (lb.teams && active ? (p.team ? ' team-b' : ' team-a') : ''));
+      card.style.setProperty('--c', active ? (b ? b.css : '#8fa0c8') : '#3a4566');
 
-      // The team sits in the card's header; the host can move anyone, everyone else only themselves.
-      const tb = card.querySelector('.pc-team');
-      if (tb) {
-        const may = (host || you) && !(p.kind === 'human' && p.ready);
-        tb.classList.toggle('can', may);
-        tb.title = may ? 'クリックでチームを変える' : '';
-        tb.onclick = (e) => { e.stopPropagation(); if (may) this.h.team(i); };
+      // The header: the seat number and how things stand.
+      const state = !active ? '' : p.kind === 'cpu' ? 'READY' : p.ready ? 'READY' : '準備中';
+      const head = el('div', 'pc-top', `<span class="pc-no">${i + 1}P</span><span class="pc-who">${you ? 'YOU' : i === 0 && p.kind === 'human' ? 'HOST' : ''}</span><em>${state}</em>`);
+      card.appendChild(head);
+
+      // Who sits here. The host picks from a menu; everyone else just reads it.
+      const label = p.kind === 'cpu' ? `CPU ・ ${DIFFICULTY[p.level].name}` : empty ? '人間（参加待ち）' : off ? 'なし' : i === 0 ? '自分で操作' : taken || !host ? 'プレイヤー' : '人間';
+      const sel = el(host && !taken ? 'button' : 'div', 'seat-sel', `<span>${host && i === 0 && p.kind === 'human' ? '自分で操作' : label}</span>${host && !taken ? '<i>▾</i>' : ''}`);
+      if (host && !taken) {
+        const items = [];
+        if (i === 0) items.push({ label: '自分で操作', on: p.kind === 'human', pick: () => this.h.seat(i, 'human') });
+        else items.push({ label: '人間（招待URLから参加）', on: p.kind === 'open', pick: () => this.h.seat(i, 'open') });
+        DIFFICULTY.forEach((d, n) => items.push({ label: `CPU ・ ${d.name}`, note: d.ja, on: p.kind === 'cpu' && p.level === n, pick: () => this.h.seat(i, 'cpu', n) }));
+        if (i > 0) items.push({ label: 'なし', note: 'この席を使わない', on: off, pick: () => this.h.seat(i, 'none') });
+        sel.onclick = (e) => { e.stopPropagation(); this.menu(sel, items); };
       }
-      // Under each card, for the host: what the seat is, and a CPU's level. Both
-      // rows are always there (the level greyed out unless it is a CPU), so
-      // nothing moves about as the choices change.
-      const ctl = el('div', 'lb-ctl');
-      if (host) {
-        const taken = i !== mine && p.kind === 'human';
-        const kinds = i === 0 ? [['human', '自分で操作'], ['cpu', 'CPU']] : [['open', '人間'], ['cpu', 'CPU'], ['none', 'なし']];
-        const row = el('div', 'lb-seg');
-        for (const [k, label] of kinds) {
-          const btn = el('button', p.kind === k || (taken && k === 'open') ? 'on' : '', label);
-          btn.disabled = taken;
-          btn.onclick = () => this.h.slotKind(i, k);
-          row.appendChild(btn);
-        }
-        ctl.appendChild(row);
-        const lv = el('div', 'lb-seg small');
-        DIFFICULTY.forEach((d, n) => {
-          const btn = el('button', p.kind === 'cpu' && p.level === n ? 'on' : '', d.name);
-          btn.title = d.ja;
-          btn.disabled = p.kind !== 'cpu';
-          btn.onclick = () => this.h.slotLevel(i, n);
-          lv.appendChild(btn);
+      card.appendChild(sel);
+
+      // The blade. Clicking it opens the picker.
+      const body = el('div', 'pc-body' + (can ? ' can' : ''));
+      if (!active) {
+        body.innerHTML = empty
+          ? `<div class="pc-wait"><div class="pc-plus">＋</div><b>参加待ち</b><span>招待URLを開いた相手が<br>ここに入ります</span></div>`
+          : `<div class="pc-wait"><b>—</b></div>`;
+      } else {
+        const skills = b ? kitOf(b).map((S, k) => `<div class="pc-skill" data-k="${k}"><kbd>${KEYS[k]}</kbd><div class="how-icon">${iconOf(S)}</div><span>${S.name}</span></div>`).join('') : '';
+        body.innerHTML = `<div class="pc-disc"><i></i></div><div class="pc-type">${b ? b.type : '？？？'}</div><div class="pc-en">${b ? b.en : 'RANDOM'}</div><div class="pc-name">${b ? b.name : 'おまかせ'}</div>`
+          + (b ? `${this.bars[b.id]}<p class="pc-desc">${b.desc}</p><div class="pc-skills">${skills}</div>` : '<p class="pc-desc">対戦のたびにランダムなブレードが選ばれます。</p>');
+        if (can) body.onclick = () => this.h.edit(i);
+        if (b) body.querySelectorAll('.pc-skill').forEach((row) => {
+          const k = Number(row.dataset.k);
+          row.onmouseenter = () => this.tip(row, kitOf(b)[k], b, KEYS[k]);
+          row.onmouseleave = () => this.tip(null);
         });
-        ctl.appendChild(lv);
       }
-      seat.appendChild(ctl);
-      cards.appendChild(seat);
+      card.appendChild(body);
+
+      // The foot of the card: the team in a team match, otherwise a word about what a click does.
+      const foot = el('div', 'pc-foot');
+      if (lb.teams && active) {
+        const may = (host || you) && !(p.kind === 'human' && p.ready);
+        const tb = el(may ? 'button' : 'div', 'pc-team ' + (p.team ? 'b' : 'a'), `<b>TEAM ${p.team ? 'B' : 'A'}</b>${may ? '<i>⇄</i>' : ''}`);
+        if (may) { tb.title = 'クリックでチームを変える'; tb.onclick = (e) => { e.stopPropagation(); this.h.team(i); }; }
+        foot.appendChild(tb);
+      } else foot.innerHTML = `<span>${can ? 'クリックでブレードを変える' : you && p.ready ? '準備完了' : ''}</span>`;
+      card.appendChild(foot);
+      cards.appendChild(card);
     });
 
-    // The rules: everyone for themselves or two teams, and whether a team can hurt its own.
-    const seg = (root, items, on, fn) => {
-      root.innerHTML = '';
-      for (const [v, label] of items) {
-        const btn = el('button', on === v ? 'on' : '', label);
-        btn.disabled = !host;
-        btn.onclick = () => fn(v);
-        root.appendChild(btn);
-      }
-    };
-    seg($('#lb-mode'), [[false, 'バトルロイヤル'], [true, 'チーム戦']], !!lb.teams, (v) => this.h.mode(v));
-    seg($('#lb-ff'), [[false, '味方への攻撃 OFF'], [true, 'ON']], !!lb.ff, (v) => this.h.ff(v));
-    $('#lb-ff').classList.toggle('ghost', !lb.teams);
+    // The rules, as one choice: everyone for themselves, two teams, or two teams that can hurt their own.
+    const rule = lb.teams ? (lb.ff ? 2 : 1) : 0;
+    const rules = $('#lb-rules');
+    rules.innerHTML = '';
+    [['バトルロイヤル', '全員が敵。最後の1体が勝ち'], ['チーム戦', '2チームに分かれる。味方には当たらない'], ['チーム戦（同士討ちあり）', '味方の攻撃も当たる']].forEach(([name, note], n) => {
+      const btn = el('button', 'rule' + (rule === n ? ' on' : ''), `<i></i><b>${name}</b><span>${note}</span>`);
+      btn.disabled = !host;
+      btn.onclick = () => this.h.rule(n);
+      rules.appendChild(btn);
+    });
 
     const g = STAGES[lb.stage];
     $('#st-pic').innerHTML = this.stagePic(g);
