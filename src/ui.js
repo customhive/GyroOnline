@@ -237,7 +237,8 @@ export class UI {
       f.type.textContent = t.blade.typeJa + (notes[t.side] ? ' ／ ' + notes[t.side] : '');
       f.ghostV = f.shown = 1;
       const tag = el('div', 'tag ' + (mine ? 'me' : mate ? 'mate' : 'foe'), `<span>${label}</span><div><i></i></div>`);
-      tag.style.setProperty('--c', t.blade.css);
+      // The bar and name over a top say whose side it is on, not which blade it is:
+      // the top itself already wears the blade's colour.
       this.labels.appendChild(tag);
       this.tags[t.side] = { root: tag, fill: $('i', tag) };
     }

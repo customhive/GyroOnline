@@ -379,7 +379,10 @@ kbd { flex: none; width: 28px; height: 28px; display: grid; place-items: center;
 #result.many #res-stats .head td { font-size: 13px; }
 
 /* ---- teams ---- */
-.tag.mate span { color: #7dffb0; }
+/* Over each top: this player green, team mates blue, everyone else red. */
+.tag.me { --c: #5be38f; }
+.tag.mate { --c: #4aa8ff; }
+.tag.foe { --c: #ff4a5a; }
 
 /* The rows under a card keep their height whatever is chosen. */
 /* A card's height follows the window, never what is on it. */
