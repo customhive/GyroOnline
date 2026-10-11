@@ -128,6 +128,8 @@ export class CpuBrain {
       if (p && Math.hypot(foe.x - p.x, foe.z - p.z) < SKILLS.shatter.aoe - 0.6 && w.rng() < L.cast + 0.3) return this.use('flashfrost');
     }
     if (this.has('lastbreath') && w.rng() < L.cast + 0.3) return this.use('lastbreath');
+    // STEEL GALE in the middle of SWEEPING BLADE: the ring catches what the dash passes.
+    if (me.dash && me.dash.skill.id === 'sweep' && !me.dash.spin && this.has('galeq') && Math.hypot(foe.x - me.x, foe.z - me.z) < 5 && w.rng() < L.cast + 0.3) return this.use('galeq', foe.x, foe.z);
     // Held-to-fire skills: keep firing while the target is in reach.
     for (const k of KEYS) {
       const S = w.aimSkill(me, k);
@@ -340,6 +342,12 @@ export class CpuBrain {
         case 'foxfire':
           if (d < S.seek + 2 && want()) return go();
           break;
+        case 'darkin': {
+          // Each swing has its own reach; the last one is right in front.
+          const far = S.kind === 'slam' ? S.ahead + S.aoe - 0.6 : S.range - 0.6;
+          if (d < far && want(again ? 0.4 : 0.1)) return at(this.jitter(ahead(S.charge * 0.7), 0.4));
+          break;
+        }
         case 'shieldheal':
           // Cashed in only as the shield is about to lapse anyway.
           if (me.shield > 10 && me.shieldT < 0.5) return go();

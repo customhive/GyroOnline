@@ -45,7 +45,7 @@ export const BLADES = {
     id: 'gale', kit: { Q: 'galeq', W: 'windwall', E: 'sweep', R: 'lastbreath' },
     name: 'ゲイル・ロンド', en: 'GALE RONDO', type: 'ATTACK', typeJa: 'アタック',
     color: 0xdfeaf2, css: '#dfeaf2', teeth: 4,
-    atk: 1.25, def: 1.0, mass: 0.95, speed: 15.5, decay: 7.0, spinMax: 1000, cdMul: 1.0, guardMul: 1.0,
+    atk: 1.56, def: 1.16, mass: 0.95, speed: 15.5, decay: 6.6, spinMax: 1000, cdMul: 1.0, guardMul: 1.0,
     bars: { atk: 5, def: 2, sta: 2, spd: 5 },
     desc: '風を溜めて竜巻で打ち上げ、空中の相手に必殺技を叩き込む。',
   },
@@ -266,10 +266,10 @@ export const BLADES = {
     id: 'darkin', kit: { Q: 'darkinblade', W: 'chains', E: 'umbral', R: 'worldender' },
     name: 'ワールド・エンダー', en: 'WORLD ENDER', type: 'ATTACK', typeJa: 'アタック',
     color: 0xc81e3c, css: '#c81e3c', teeth: 3,
-    atk: 1.2, def: 1.05, mass: 1.15, speed: 13.5, decay: 6.4, spinMax: 1000, cdMul: 1.0, guardMul: 1.0,
+    atk: 1.6, def: 1.32, mass: 1.15, speed: 13.5, decay: 5.8, spinMax: 1000, cdMul: 1.0, guardMul: 1.0,
     bars: { atk: 5, def: 3, sta: 3, spd: 3 },
-    buff: { atk: 1.25, speed: 1.2, regen: 8 },
-    desc: '3連の大剣で打ち上げる重い剣士。必殺技の間は攻撃も速度も上がり、回転が回復し続ける。',
+    buff: { atk: 1.3, speed: 1.2, leech: 0.3 },
+    desc: '形の違う3連の大剣を、剣先で当てていく剣士。必殺技の間は攻撃も速度も上がり、与えたダメージで回復する。',
   },
   rose: {
     id: 'rose', kit: { Q: 'flair', W: 'whirl', E: 'wildrush', R: 'inferno' },
@@ -422,8 +422,8 @@ export const SKILLS = {
   // ---- GALE RONDO: stack wind, knock up, finish in the air -------------------
   galeq: {
     name: '旋風刃', en: 'STEEL GALE', aim: 'line', cd: 2.4, tele: 0.3,
-    range: 7.5, speed: 46, radius: 1.0, dmg: 42, kb: 4, tumble: 0.15, launch: 0, stacks: 2, keep: 8,
-    desc: '短い突きを放つ。QかEを合わせて2回当てると、次の一撃が相手を打ち上げる長射程の竜巻になる。',
+    range: 4.5, speed: 46, radius: 1.0, dmg: 42, kb: 4, tumble: 0.15, launch: 0, stacks: 2, keep: 8, ring: 3.2,
+    desc: '短い突きを放つ。QかEを合わせて2回当てると、次の一撃が相手を打ち上げる長射程の竜巻になる。Eの突進中に使うと、突進の終わりに自分の周りを斬る（竜巻が溜まっていれば周りを打ち上げる）。',
   },
   tornado: {
     name: '旋風', en: 'TORNADO', aim: 'line', hidden: true,
@@ -435,9 +435,9 @@ export const SKILLS = {
     desc: '狙った方向に風の壁を4秒張る。相手の飛び道具を消す。',
   },
   sweep: {
-    name: '颯歩', en: 'SWEEPING BLADE', aim: 'dash', cd: 3, tele: 0.35,
+    name: '颯歩', en: 'SWEEPING BLADE', aim: 'dash', cd: 6, tele: 0.35, re: 'sweep', reHit: 2, againMul: 1.25, fly: true,
     dist: 5.5, minDist: 5.5, speed: 36, through: true, pass: 36, slow: 0.4,
-    desc: '相手をすり抜ける短い突進。すれ違いざまにダメージを与え、Qの風も溜まる。',
+    desc: '相手をすり抜ける短い突進。すれ違いざまにダメージを与え、Qの風も溜まる。当てると2秒以内にもう一度だけ使え、2回目は25%強い。突進中にもスキルを使える。',
   },
   lastbreath: {
     name: '終の息吹', en: 'LAST BREATH', aim: 'self', cd: 2, ult: true, need: 'up',
@@ -1040,24 +1040,39 @@ export const SKILLS = {
   },
   // ---- WORLD ENDER: three swings and the end of the world --------------------
   darkinblade: {
-    name: 'ダーキンブレード', en: 'THE DARKIN BLADE', aim: 'ground', kind: 'blast', icon: 'blast', cd: 10,
-    tele: 0.15, re: 'darkinblade', casts: 3, window: 3.5, range: 6, aoe: 2.7, delay: 0.45, dmg: 42, up: 0.5,
-    desc: '大剣を叩きつけて打ち上げる。続けて3回まで使える。',
+    name: 'ダーキンブレード', en: 'THE DARKIN BLADE', aim: 'line', icon: 'blast', cd: 6, re: 'darkinblade', window: 4,
+    desc: '大剣を3回まで続けて振る。1回目は長い直線、2回目は扇、3回目は目の前への叩きつけで、振るたびに25%強くなる。剣先（3回目は中心）で当てるとダメージが75%増え、相手を打ち上げる。振りかぶる間もEで位置をずらせる。',
   },
   chains: {
-    name: '業火の鎖', en: 'INFERNAL CHAINS', aim: 'line', kind: 'shot', icon: 'hook', cd: 11,
-    tele: 0.4, range: 10, speed: 30, radius: 0.8, dmg: 22, slow: 1.3, tie: 'CHAINED', dur: 1.3, safe: 4, breakRange: 6, pop: 30, yank: 16,
-    desc: '鎖でつなぐ。1.3秒のあいだに離れなければ、手元まで引きずり戻す。',
+    name: '業火の鎖', en: 'INFERNAL CHAINS', aim: 'line', kind: 'shot', icon: 'hook', cd: 12,
+    tele: 0.4, range: 6.6, speed: 30, radius: 0.8, dmg: 30, slow: 1.5, slowPct: 0.35, spawn: 'chainzone',
+    desc: '鎖を放ち、当たった相手を1.5秒間35%のスロウにする。当たった場所の周りに1.5秒留まっていると、その中心へ引きずり戻して追加ダメージ。',
+  },
+  darkin1: {
+    name: 'ダーキンブレード', en: 'THE DARKIN BLADE', aim: 'line', kind: 'beam', hidden: true, ai: 'darkin', window: 4,
+    charge: 0.6, loose: true, still: true, range: 5.6, radius: 1.2, tip: 3.5, dmg: 44, tipMul: 0.75, tipUp: 0.25,
+  },
+  darkin2: {
+    name: 'ダーキンブレード', en: 'THE DARKIN BLADE', aim: 'cone', kind: 'cone', hidden: true, ai: 'darkin', window: 4,
+    charge: 0.6, loose: true, still: true, range: 4.6, half: 0.55, tip: 3.0, dmg: 55, tipMul: 0.75, tipUp: 0.25,
+  },
+  darkin3: {
+    name: 'ダーキンブレード', en: 'THE DARKIN BLADE', aim: 'line', kind: 'slam', hidden: true, ai: 'darkin', window: 4,
+    charge: 0.6, loose: true, still: true, range: 2, radius: 1.2, ahead: 1.8, aoe: 2.3, tip: 1.2, dmg: 66, tipMul: 0.75, tipUp: 0.25,
+  },
+  chainzone: {
+    name: '業火の鎖', en: 'INFERNAL CHAINS', aim: 'ground', kind: 'field', hidden: true,
+    aoe: 2.6, dur: 1.5, endDmg: 30, endPull: 14,
   },
   umbral: {
     name: '影の突進', en: 'UMBRAL DASH', aim: 'dash', kind: 'dash', icon: 'dash', cd: 5,
-    dist: 4.5, minDist: 3, speed: 34, dmg: 10, keep: 0.3, kb: 4, heal: 0.05,
-    desc: '短く突進し、減った回転を少し取り戻す。',
+    dist: 3, minDist: 1.5, speed: 34, halt: true,
+    desc: '短く踏み込む。Qを振りかぶっている間にも使えるので、剣先を合わせたり、相手の技をかわしたりできる。',
   },
   worldender: {
     name: 'ワールドエンダー', en: 'WORLD ENDER', aim: 'self', kind: 'buff', icon: 'star', cd: 2, ult: true,
-    dur: 9,
-    desc: '【必殺技】9秒間、攻撃と速度が上がり、回転が回復し続ける。',
+    dur: 10,
+    desc: '【必殺技】10秒間、攻撃と速度が上がり、与えたダメージの一部で回転が回復する。',
   },
   // ---- STYLE RANKER: shoot, cut, pass through --------------------------------
   flair: {

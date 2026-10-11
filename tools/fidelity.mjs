@@ -795,5 +795,80 @@ console.log('NOX SHADE (Zed)');
   check(w.canCast(me, 'R') && w.cast(me, 'R', me.x, me.z) && Math.hypot(me.x - home.x, me.z - home.z) < 0.2, 'R again: back to where it started');
 }
 
+console.log('GALE RONDO (Yasuo)');
+{
+  let { w, me, foe, run, saw } = setup('gale', 9);
+  w.cast(me, 'Q', foe.x, foe.z); run(0.5);
+  check(foe.stats.taken === 0, 'Q: a short thrust');
+  ({ w, me, foe, run, saw } = setup('gale', 4));
+  w.cast(me, 'E', foe.x, foe.z);
+  check(!!me.dash && w.canCast(me, 'Q'), 'E: Q can be used in the middle of the dash');
+  w.cast(me, 'Q', foe.x, foe.z);
+  check(!w.projectiles.length, 'Q during E: no thrust');
+  for (let i = 0; i < 30 && me.dash; i++) w.step(DT);
+  setup.last.seen.push(...w.events.splice(0));
+  check(saw('blast', (e) => e.skill.id === 'galeq' && e.hit > 0), 'Q during E: a ring around where the dash ends');
+  check(me.stack === 2, 'Q during E: the dash and the ring each gather wind');
+  check(me.re.E > 0 && me.cd.E > 5, 'E: cutting through opens one more, on a 6-second cooldown');
+  me.x = 0; me.z = 2; foe.x = 0; foe.z = -2; foe.tumble = 0;
+  me.cd.Q = 0; w.cast(me, 'E', foe.x, foe.z); w.cast(me, 'Q', foe.x, foe.z);
+  for (let i = 0; i < 30 && me.dash; i++) w.step(DT);
+  check(foe.up > 0, 'Q during E with the wind gathered: everything around goes up');
+  check(me.re.E === 0 && !w.canCast(me, 'E'), 'E: only one extra dash');
+  ({ w, me, foe, run, saw } = setup('gale', 4));
+  w.cast(me, 'E', foe.x, foe.z); for (let i = 0; i < 30 && me.dash; i++) w.step(DT);
+  const first = foe.stats.taken; me.x = 0; me.z = 2; foe.x = 0; foe.z = -2; foe.tumble = 0; foe.vx = foe.vz = 0;
+  w.cast(me, 'E', foe.x, foe.z); for (let i = 0; i < 30 && me.dash; i++) w.step(DT);
+  check(Math.abs((foe.stats.taken - first) / first - 1.25) < 0.03, 'E again: 25% harder');
+  ({ w, me, foe, run, saw } = setup('gale', 4));
+  w.cast(me, 'E', me.x + 5, me.z); run(0.5);
+  check(me.re.E === 0, 'E: a miss opens nothing');
+}
+
+console.log('WORLD ENDER (Aatrox)');
+{
+  const swing = (d, n, side = 0) => {
+    const s = setup('darkin', d);
+    for (let i = 1; i < n; i++) { const fz = s.foe.z; s.foe.z = s.me.z + 5; s.w.cast(s.me, 'Q', 0, -9); s.run(0.65); s.foe.z = fz; }
+    s.foe.x = side; const f0 = s.foe.stats.taken;
+    const kind = s.w.aimSkill(s.me, 'Q').kind;
+    s.w.cast(s.me, 'Q', 0, -9); s.run(0.3); const early = s.foe.stats.taken - f0; s.run(0.4);
+    return { ...s, dmg: s.foe.stats.taken - f0, early, kind };
+  };
+  let a = swing(3.4, 1), b = swing(5.6, 1), c = swing(9, 1);
+  check(a.kind === 'beam' && a.early === 0 && a.dmg > 0, 'Q1: a long line, after a wind-up');
+  check(Math.abs(b.dmg / a.dmg - 1.75) < 0.02 && b.foe.up > 0 && a.foe.up === 0, `Q1: the far end hits 75% harder and knocks up (${a.dmg.toFixed(0)} -> ${b.dmg.toFixed(0)})`);
+  check(c.dmg === 0, 'Q1: out of reach beyond that');
+  const a2 = swing(2.6, 2), b2 = swing(4.4, 2), c2 = swing(3.4, 2, 5);
+  check(a2.kind === 'cone' && Math.abs(a2.dmg / a.dmg - 1.25) < 0.02, 'Q2: a fan, 25% harder');
+  check(Math.abs(b2.dmg / a2.dmg - 1.75) < 0.02 && b2.foe.up > 0, 'Q2: its outer edge is the sweet spot');
+  check(c2.dmg === 0, 'Q2: nothing off to the side');
+  const a3 = swing(4.2, 3), b3 = swing(2.6, 3), c3 = swing(7, 3);
+  check(a3.kind === 'slam' && Math.abs(a3.dmg / a.dmg - 1.5) < 0.02, 'Q3: a slam right in front, 50% harder');
+  check(Math.abs(b3.dmg / a3.dmg - 1.75) < 0.02 && b3.foe.up > 0, 'Q3: its middle is the sweet spot');
+  check(c3.dmg === 0 && !c3.w.canCast(c3.me, 'Q') && c3.me.cd.Q > 3, 'Q: three swings, then the cooldown that started with the first');
+  let { w, me, foe, run, saw } = setup('darkin', 8.4);
+  w.cast(me, 'Q', 0, -9); run(0.2);
+  check(!w.issueMove(me, 5, 5) && !w.canCast(me, 'W') && w.canCast(me, 'E'), 'Q: no walking or other skills while winding up, but E works');
+  const z0 = me.z; w.cast(me, 'E', 0, -9); run(0.5);
+  check(z0 - me.z > 2.5 && foe.stats.taken > 0 && foe.up > 0, 'E during Q: steps in, and the swing lands with its tip from the new spot');
+  ({ w, me, foe, run, saw } = setup('darkin', 12));
+  const e0 = me.z; w.cast(me, 'E', 0, -9); for (let i = 0; i < 30 && me.dash; i++) w.step(DT);
+  check(Math.abs(e0 - me.z - 3) < 0.4, `E: a short dash of 3 (${(e0 - me.z).toFixed(2)})`);
+  ({ w, me, foe, run, saw } = setup('darkin', 6));
+  w.cast(me, 'W', foe.x, foe.z); run(0.3);
+  check(foe.slowK === 0.35 && w.own(me, 'chainzone').length === 1 && !me.tether, 'W: a 35% slow, and a ring where it hit');
+  const before = foe.stats.taken; run(1.4);
+  check(foe.stats.taken > before, 'W: still inside after 1.5 seconds: dragged to the middle and hit again');
+  ({ w, me, foe, run, saw } = setup('darkin', 6));
+  w.cast(me, 'W', foe.x, foe.z); run(0.3);
+  const b4 = foe.stats.taken; foe.x = 8; run(1.4);
+  check(foe.stats.taken === b4, 'W: stepping out of the ring avoids it');
+  ({ w, me, foe, run, saw } = setup('darkin', 6));
+  const plain = w.hurt(foe, 50, me, 'x'); me.spin = 500; w.cast(me, 'R', me.x, me.z);
+  const big = w.hurt(foe, 50, me, 'x');
+  check(me.buff === 10 && Math.abs(big / plain - 1.3) < 0.01 && Math.abs(me.spin - 500 - big * 0.3) < 0.5, 'R: 10 seconds of more damage, part of it coming back as spin');
+}
+
 console.log(bad ? `\n${bad} of ${n} checks failed` : `\nall ${n} checks passed`);
 process.exit(bad ? 1 : 0);

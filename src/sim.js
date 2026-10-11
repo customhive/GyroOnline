@@ -282,7 +282,7 @@ export class World {
   }
 
   issueMove(t, x, z) {
-    if (this.result || t.air || t.out || t.dash || t.blink || rooted(t) || t.stun > 0 || t.snare > 0 || !Number.isFinite(x + z)) return false;
+    if (this.result || t.air || t.out || t.dash || t.blink || rooted(t) || (t.charge && t.charge.skill.still) || t.stun > 0 || t.snare > 0 || !Number.isFinite(x + z)) return false;
     const lim = ARENA.R - t.radius - 0.2;
     const r = Math.hypot(x, z);
     if (r > lim) { x *= lim / r; z *= lim / r; }
@@ -293,13 +293,15 @@ export class World {
   // States that block every skill, whatever its cooldown.
   busy(t) {
     // A top in flight is dashing, but free to use its skills.
-    return !!(this.result || t.spin <= 0 || t.air || t.out || t.cast || (t.dash && !t.dash.skill.fly) || t.blink || t.charge || t.chan || t.up > 0 || t.stun > 0 || t.egg > 0);
+    return !!(this.result || t.spin <= 0 || t.air || t.out || t.cast || (t.dash && !t.dash.skill.fly) || t.blink || (t.charge && !t.charge.skill.loose) || t.chan || t.up > 0 || t.stun > 0 || t.egg > 0);
   }
 
   // The skill a key would cast right now: its second stage while the recast
   // window is open, the tornado once the wind is stacked, the copy for MIMIC.
   aimSkill(t, key) {
     const S = skillOf(t, key);
+    // THE DARKIN BLADE is three different swings on one key.
+    if (S.id === 'darkinblade') return SKILLS['darkin' + (t.re[key] > 0 ? Math.min(3, t.stack + 1) : 1)];
     if (S.re && t.re[key] > 0) return SKILLS[S.re];
     // Another skill of the kit can change what this key fires for a while.
     if (S.alt && t.re[S.altKey] > 0) return SKILLS[S.alt];
@@ -353,6 +355,8 @@ export class World {
     const base = skillOf(t, key);
     if (base.passive || (base.stock && t.stk <= 0)) return false;
     if (t.dash && this.aimSkill(t, key).aim === 'dash') return false;
+    // In the middle of a swing, only a dash to shift its footing.
+    if (t.charge && this.aimSkill(t, key).kind !== 'dash') return false;
     if (t.hold && t.hold.key !== key) return false;
     if (skillOf(t, key).id !== 'aegis' && t.tumble > 0) return false;
     return !this.blocked(t, key);
@@ -470,6 +474,13 @@ export class World {
   // What a dash does when it stops, however it stopped.
   dashDone(t, d) {
     const S = d.skill;
+    // A step, not a charge: it ends standing where it meant to.
+    if (S.halt) t.vx = t.vz = 0;
+    if (d.spin) {
+      const Q = d.spin, G = SKILLS.galeq;
+      const hit = this.burst(t, Q, t.x, t.z, G.ring, { dmg: Q.dmg, as: Q.id === 'tornado' ? { up: Q.up } : {} });
+      if (hit && Q.id === 'galeq') { t.stack = Math.min(G.stacks, t.stack + 1); t.stackT = G.keep; }
+    }
     if (S.id === 'brokenwings' && t.stack >= 3) {
       t.stack = 0;
       this.burst(t, S, t.x, t.z, S.aoe, { dmg: S.slam, as: { up: S.slamUp } });
@@ -524,6 +535,12 @@ export class World {
 
   execute(t, c) {
     const S = c.skill, opp = this.other(t);
+    // STEEL GALE in the middle of SWEEPING BLADE: no thrust, a ring around where the dash ends.
+    if ((S.id === 'galeq' || S.id === 'tornado') && t.dash && t.dash.skill.id === 'sweep') {
+      if (S.id === 'tornado') t.stack = 0;
+      t.dash.spin = S;
+      return;
+    }
     // TURRET ENGINEER's ultimate upgrades the next basic skill.
     const big = !!(S.big && t.blade.id === 'gear' && t.buff > 0);
     if (big) t.buff = 0;
@@ -531,6 +548,14 @@ export class World {
       case 'sonic': case 'anchor': case 'galeq': case 'frostbite': case 'sigil': case 'ethereal': case 'flourish':
         // A mimicked sigil leaves a mark that goes off twice as hard.
         this.fire(t, S, c.dx, c.dz, { x2: skillOf(t, c.key).id === 'mimic' });
+        break;
+      case 'darkin1': case 'darkin2': case 'darkin3':
+        t.stack = c.re ? t.stack + 1 : 1;
+        t.stackT = S.window + 1;
+        if (t.stack < 3) t.re[c.key] = S.window;
+        t.charge = { t: 0, T: S.charge, skill: S, dx: c.dx, dz: c.dz };
+        t.cmd = null;
+        this.emit('charge', { top: t, T: S.charge, skill: S });
         break;
       case 'tornado':
         t.stack = 0;
@@ -570,6 +595,7 @@ export class World {
         break;
       case 'blitz': case 'sweep': case 'guillotine':
         this.startDash(t, S, c.dx, c.dz, clamp(c.dist, S.minDist, S.dist));
+        t.dash.again = c.re;
         break;
       case 'brokenwings':
         t.stack = c.re ? t.stack + 1 : 1;
@@ -1505,6 +1531,29 @@ export class World {
   chargeDone(t, opp) {
     const S = t.charge.skill;
     if (S.id === 'nova') { this.novaBlast(t, opp); return; }
+    if (S.tip) {
+      // THE DARKIN BLADE: a line, then a fan, then a slam; the edge (or the middle of the slam) is the sweet spot.
+      const { dx, dz } = t.charge;
+      t.charge = null;
+      const rx = opp.x - t.x, rz = opp.z - t.z, d = Math.hypot(rx, rz), along = rx * dx + rz * dz, side = Math.abs(rz * dx - rx * dz);
+      const cx = t.x + dx * (S.ahead || 0), cz = t.z + dz * (S.ahead || 0), m = Math.hypot(opp.x - cx, opp.z - cz);
+      let inside, tip;
+      if (S.kind === 'beam') { inside = along > -1 && along < S.range + opp.radius * 0.6 && side < S.radius + opp.radius * 0.6; tip = along >= S.tip; }
+      else if (S.kind === 'cone') { inside = this.inCone(t, opp, dx, dz, S); tip = d >= S.tip; }
+      else { inside = m < S.aoe + opp.radius * 0.5; tip = m < S.tip; }
+      let hit = 0;
+      if (targetable(opp) && inside) {
+        const g = opp.guard > 0 ? 0.3 : 1;
+        hit = this.hurt(opp, (S.dmg * (tip ? 1 + S.tipMul : 1) * g * t.blade.atk) / opp.blade.def, t, S.id);
+        if (g === 1 && tip) this.lift(opp, S.tipUp);
+        t.stats.skillHits++;
+      }
+      const tg = hit ? opp : null;
+      if (S.kind === 'beam') this.emit('beam', { top: t, skill: S, x: t.x, z: t.z, dx, dz, hit, target: tg });
+      else if (S.kind === 'cone') this.emit('cone', { top: t, skill: S, dx, dz, hit, target: tg });
+      else this.emit('blast', { top: t, skill: S, x: cx, z: cz, r: S.aoe, hit, target: tg });
+      return;
+    }
     if (S.kind === 'shot') { const { dx, dz } = t.charge; t.charge = null; if (S.fan) this.fan(t, S, dx, dz, S.fan); else this.fire(t, S, dx, dz); return; }
     if (S.kind === 'cone') { const { dx, dz } = t.charge; t.charge = null; this.coneHit(t, S, dx, dz); return; }
     if (S.kind === 'beam') {
@@ -1877,7 +1926,8 @@ export class World {
         const hit = this.burst(t, S, z.x, z.z, z.r, { dmg: S.endDmg * (1 + (S.ripeMul || 0) * ripe), as: { stun: S.endStun, slow: S.endSlow, slowPct: S.ripen ? S.endSlowPct + (S.ripeSlowPct - S.endSlowPct) * ripe : S.endSlowPct, kb: S.endKb } });
         // Its owner standing inside when it goes off is shielded instead.
         if (S.endShield && Math.hypot(t.x - z.x, t.z - z.z) < z.r) { t.shield = S.endShield; t.shieldT = 2.5; }
-        void hit;
+        // INFERNAL CHAINS: whoever is still inside is dragged to the middle.
+        if (hit && S.endPull) this.pull(opp, z, S.endPull);
       }
       this.endZone(z);
       return;
@@ -1942,8 +1992,10 @@ export class World {
         const h = s.dash, v = this.other(s);
         if (!h || !h.skill.through || h.hit || !h.skill.pass || this.result) continue;
         h.hit = true;
-        const dmg = this.hurt(v, (h.skill.pass * s.blade.atk) / v.blade.def, s, h.skill.id);
+        const dmg = this.hurt(v, (h.skill.pass * (h.again ? h.skill.againMul || 1 : 1) * s.blade.atk) / v.blade.def, s, h.skill.id);
         this.affect(s, v, h.skill, h.dx, h.dz);
+        // Cutting through opens one more dash.
+        if (h.skill.reHit && !h.again) { const k = this.keyOf(s, h.skill.id); if (k) s.re[k] = h.skill.reHit; }
         s.stats.skillHits++;
         this.emit('strike', { top: v, src: s, skill: h.skill, x: v.x, z: v.z, dmg });
         // SWEEPING BLADE feeds the same wind as STEEL GALE.

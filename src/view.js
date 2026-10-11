@@ -860,16 +860,6 @@ export class View {
         const g = holo.group.position, k = Math.min(1, rdt * 10);
         g.set(g.x + (h.x - g.x) * k, groundY(h.x, h.z), g.z + (h.z - g.z) * k);
         holo.spin.rotation.y -= 30 * dt;
-        // A faint, wavering ribbon along the path between the two.
-        const pts = t.hist;
-        for (let i = 0; i + 4 < pts.length; i += 4) {
-          const a = pts[i], b = pts[i + 4], dx = b.x - a.x, dz = b.z - a.z, d = Math.hypot(dx, dz);
-          if (d < 0.05) continue;
-          const wave = 0.5 + 0.5 * Math.sin(this.time * 5 - i * 0.45);
-          this.ground.rect(a.x, a.z, dx / d, dz / d, d, 0.1 + 0.1 * wave, c, 0.05 + 0.07 * wave, 0.09);
-        }
-        const last = pts[pts.length - 1 - ((pts.length - 1) % 4)], lx = t.x - last.x, lz = t.z - last.z, ld = Math.hypot(lx, lz);
-        if (ld > 0.05) this.ground.rect(last.x, last.z, lx / ld, lz / ld, ld, 0.14, c, 0.08, 0.09);
       }
     }
     v.trail.boost = t.dash || t.blink ? 1 : t.air ? 0.6 : t.empower > 0 ? 0.5 : 0;
@@ -962,12 +952,22 @@ export class View {
         const S = t.charge.skill, ch = t.charge, col = this.dangerOf(t), a = Math.atan2(ch.dz, ch.dx);
         G.sector(t.x, t.z, ch.dx, ch.dz, S.range, S.half, col, 0.12, 0.85);
         G.ring(t.x, t.z, 0, S.range * Math.min(1, ch.t / ch.T), col, 0.25, 0.09, a - S.half, a + S.half);
+        // The edge of the blade, where it bites deepest.
+        if (S.tip) G.ring(t.x, t.z, S.tip, S.range, 0xffffff, 0.22 + 0.1 * Math.sin(this.time * 18), 0.1, a - S.half, a + S.half);
+      } else if (t.charge && t.charge.skill.ahead) {
+        // A slam just in front: the middle is the sweet spot.
+        const S = t.charge.skill, ch = t.charge, k = Math.min(1, ch.t / ch.T), col = this.dangerOf(t), cx = t.x + ch.dx * S.ahead, cz = t.z + ch.dz * S.ahead;
+        G.ring(cx, cz, 0, S.aoe, col, 0.12);
+        G.ring(cx, cz, 0, S.aoe * k, col, 0.22);
+        G.ring(cx, cz, S.aoe - 0.14, S.aoe, col, 0.95);
+        G.ring(cx, cz, 0, S.tip, 0xffffff, 0.22 + 0.1 * Math.sin(this.time * 18));
       } else if (t.charge && (t.charge.skill.kind === 'beam' || t.charge.skill.kind === 'shot')) {
         // The lane a beam is about to fill.
         const S = t.charge.skill, ch = t.charge, k = Math.min(1, ch.t / ch.T), col = this.dangerOf(t);
         const len = Math.min(S.range, toWall(t.x, t.z, ch.dx, ch.dz));
         G.lane(t.x, t.z, ch.dx, ch.dz, len, S.radius, col, 0.1 + 0.06 * Math.sin(this.time * 22), 0.85);
         G.rect(t.x, t.z, ch.dx, ch.dz, len, S.radius * k, col, 0.28);
+        if (S.tip && len > S.tip) G.rect(t.x + ch.dx * S.tip, t.z + ch.dz * S.tip, ch.dx, ch.dz, len - S.tip, S.radius, 0xffffff, 0.22 + 0.1 * Math.sin(this.time * 18));
       } else if (t.charge) {
         const S = t.charge.skill, k = Math.min(1, t.charge.t / t.charge.T), col = this.dangerOf(t);
         const pulse = 0.5 + 0.5 * Math.sin(this.time * 22), in0 = S.inner || 0;
