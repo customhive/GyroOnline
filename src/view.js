@@ -834,7 +834,7 @@ export class View {
     // Mid-blink the body is gone; only the streak of light is left.
     v.spin.visible = v.blur.visible = !t.blink;
 
-    const ready = t.ult >= 100 && !this.world.result;
+    const ready = t.ult >= 100 && !this.world.result && !!t.blade.hasUlt;
     v.aura.material.opacity = (0.1 + 0.16 * sr + (ready ? 0.22 + 0.14 * Math.sin(this.time * 9) : 0)) * (1 - v.fall);
     v.aura.visible = lift < 0.5;
     v.aura.scale.setScalar(ready ? 7.5 : 5.5);

@@ -240,9 +240,9 @@ export const BLADES = {
     id: 'star', kit: { Q: 'paddle', W: 'thief', E: 'bubble', R: 'portal' },
     name: 'トワイライト・スター', en: 'TWILIGHT STAR', type: 'ATTACK', typeJa: 'アタック',
     color: 0xffb38a, css: '#ffb38a', teeth: 5,
-    atk: 1.18, def: 0.92, mass: 0.92, speed: 15.5, decay: 6.8, spinMax: 1000, cdMul: 1.0, guardMul: 1.0,
+    atk: 1.4, def: 1.05, mass: 0.92, speed: 15.5, decay: 6.4, spinMax: 1000, cdMul: 1.0, guardMul: 1.0,
     bars: { atk: 5, def: 1, sta: 2, spd: 5 },
-    desc: '遠くから当てるほど痛い星と、時間差で眠らせる泡。必殺技で飛び込み、すぐ元の場所へ帰れる。',
+    desc: '打ち直して遠くから当てるほど痛い星と、時間差で眠らせる泡。Rは1秒だけ別の場所から撃つための瞬間移動で、ゲージの必殺技は持たない。',
   },
   spark: {
     id: 'spark', kit: { Q: 'burstfire', W: 'ultrashock', E: 'surge', R: 'crash' },
@@ -968,10 +968,16 @@ export const SKILLS = {
   },
   // ---- TWILIGHT STAR: the further the better ---------------------------------
   paddle: {
-    name: '流れ星', en: 'PADDLE STAR', aim: 'line', kind: 'shot', icon: 'star', cd: 5,
-    tele: 0.4, range: 16, speed: 30, radius: 0.8, dmg: 24, far: 1.4,
-    desc: '星を投げる。遠くまで飛んでから当たるほどダメージが上がる（最大2.4倍）。',
+    name: '流れ星', en: 'PADDLE STAR', aim: 'line', kind: 'shot', icon: 'star', cd: 6.5, re: 'paddle2', noRe: true,
+    tele: 0.4, range: 7, speed: 30, radius: 0.8, dmg: 40, rest: 'reststar',
+    desc: '星を打つ。何にも当たらなければ飛んだ先で1秒止まり、その間にもう一度押すと、星のいる場所から狙った地点のほうへ飛ばし直せる。飛ばし直した星は長く飛ぶほど重くなる（最大2.5倍）。',
   },
+  paddle2: {
+    name: '流れ星', en: 'PADDLE STAR', aim: 'ground', kind: 'shot', hidden: true,
+    range: 28, aoe: 0.8, speed: 30, radius: 0.8, dmg: 40, far: 1.5, farAt: 17.5,
+  },
+  reststar: { name: '流れ星', en: 'PADDLE STAR', aim: 'ground', kind: 'field', hidden: true, aoe: 0.8, dur: 1 },
+  bubbletrap: { name: 'おやすみ泡', en: 'SLEEPY TROUBLE BUBBLE', aim: 'ground', hidden: true, aoe: 1.8, dur: 4.8, arm: 0.8 },
   thief: {
     name: '呪文泥棒', en: 'SPELL THIEF', aim: 'self', kind: 'bolts', icon: 'star', cd: 8,
     bolt: 'starbolt', n: 3, haste: 2,
@@ -982,14 +988,15 @@ export const SKILLS = {
     range: 10, speed: 30, radius: 0.5, dmg: 15, kb: 1.5, tumble: 0, launch: 0,
   },
   bubble: {
-    name: 'おやすみ泡', en: 'SLEEPY TROUBLE BUBBLE', aim: 'line', kind: 'shot', icon: 'orb', cd: 10,
-    range: 11, speed: 26, radius: 0.9, dmg: 18, slow: 1.4, tie: 'DROWSY', dur: 1.2, breakRange: 99, pop: 30, root: 1.6,
-    desc: '当たった相手はうとうとしてスロウになり、1.2秒後に眠って1.6秒動けなくなる。',
+    name: 'おやすみ泡', en: 'SLEEPY TROUBLE BUBBLE', aim: 'line', kind: 'shot', icon: 'orb', cd: 14,
+    range: 7, speed: 26, radius: 0.9, dmg: 30, slow: 1.4, slowPct: 0.3, tie: 'DROWSY', dur: 1.4, breakRange: 99, pop: 0, root: 1.3, sleep: true, wake: 30,
+    trap: 'bubbletrap', refundSelf: 0.3,
+    desc: '当たった相手はうとうとして、1.4秒後に眠って1.3秒動けなくなる。眠った相手への最初の一撃は重くなる。外れた泡はその場で4秒間の罠になる。当てると待ち時間が30%戻る。',
   },
   portal: {
-    name: 'ポータルジャンプ', en: 'PORTAL JUMP', aim: 'blink', kind: 'blink', icon: 'blink', cd: 2, ult: true,
-    re: 'recall', window: 1.8, range: 7, speed: 60, aoe: 3.2, dmg: 95, kb: 6,
-    desc: '【必殺技】瞬間移動して周囲を吹き飛ばす。1.8秒以内にもう一度押すと元の場所へ帰る。',
+    name: 'ポータルジャンプ', en: 'PORTAL JUMP', aim: 'blink', kind: 'blink', icon: 'blink', cd: 5,
+    range: 5, speed: 60, autoRet: 1, still: true, ai: 'none',
+    desc: '狙った方向へ瞬間移動し、1秒後に元の場所へ自動で戻る。移動先では動けないが、スキルは使える。',
   },
   // ---- SPARK SURGE: never stop shooting --------------------------------------
   burstfire: {
@@ -1250,6 +1257,7 @@ export const skillOf = (top, key) => SKILLS[top.blade.kit[key]];
 export const kitOf = (blade) => KEYS.map((k) => SKILLS[blade.kit[k]]);
 // The skill (if any) that powers up a blade's next body hit.
 for (const b of Object.values(BLADES)) b.emp = kitOf(b).find((S) => S.bonus) || null;
+for (const b of Object.values(BLADES)) b.hasUlt = kitOf(b).some((S) => S.ult);
 
 export const DIFFICULTY = [
   { id: 'easy', name: 'EASY', ja: 'やさしい', think: 0.95, aimErr: 3.2, dodge: 0.15, cast: 0.3, chase: 0.3, windup: 1.35 },

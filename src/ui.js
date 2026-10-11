@@ -373,7 +373,10 @@ export class UI {
       f.num.textContent = Math.ceil(Math.max(0, t.spin) * 3.6) + ' rpm';
       f.root.classList.toggle('low', r < 0.25);
       f.ult.style.transform = `scaleX(${t.ult / 100})`;
-      f.ultBox.classList.toggle('ready', t.ult >= 100);
+      const hasUlt = KEYS.some((k) => skillOf(t, k).ult);
+      f.ultBox.classList.toggle('ready', hasUlt && t.ult >= 100);
+      // Some blades have no gauge skill at all.
+      f.ultBox.style.visibility = hasUlt ? '' : 'hidden';
 
       const tag = this.tags[i];
       const hide = t.out || world.result;

@@ -39,6 +39,7 @@ export function makeTop(side, blade) {
     frost: 0,              // iced over: FROSTBITE bites twice as deep
     doom: 0,               // marked for execution the moment its spin drops below the line
     shred: 0,              // dented: takes more damage for a while
+    sleep: 0,              // asleep: the next blow hits harder and wakes it (host only)
     stk: 0, stkT: 0,       // uses stored up for the blade's stocked skill, and time to the next
     streamT: 0,            // a held stream of fire: time left before it counts as let go
     markK: 1,              // how hard the mark on this top goes off
@@ -273,6 +274,7 @@ export class World {
       t.markK = 1;
       t.ret2 = t.empS = null;
       t.stack = t.stackT = t.last = t.dmark = t.dacc = t.egg = t.eggHp = t.dot = t.dotT = t.drop = 0;
+      t.sleep = 0;
       t.haste = t.charm = t.pin = t.store = t.tag = t.tagT = t.histT = t.stun = t.snare = t.slowK = 0;
       t.hist = [];
       t.toggle = t.eggUsed = false;
@@ -282,7 +284,7 @@ export class World {
   }
 
   issueMove(t, x, z) {
-    if (this.result || t.air || t.out || t.dash || t.blink || rooted(t) || (t.charge && t.charge.skill.still) || t.stun > 0 || t.snare > 0 || !Number.isFinite(x + z)) return false;
+    if (this.result || t.air || t.out || t.dash || t.blink || rooted(t) || (t.charge && t.charge.skill.still) || (t.ret && skillOf(t, 'R').autoRet) || t.stun > 0 || t.snare > 0 || !Number.isFinite(x + z)) return false;
     const lim = ARENA.R - t.radius - 0.2;
     const r = Math.hypot(x, z);
     if (r > lim) { x *= lim / r; z *= lim / r; }
@@ -562,6 +564,15 @@ export class World {
         t.cmd = null;
         this.emit('charge', { top: t, T: S.charge, skill: S });
         break;
+      case 'paddle2': {
+        // From where the star rests, toward the point given.
+        const q = this.own(t, 'reststar')[0];
+        if (!q) break;
+        const dx = c.ax - q.x, dz = c.az - q.z, d = Math.hypot(dx, dz) || 1;
+        q.dead = true;
+        this.fire(t, S, dx / d, dz / d, { x: q.x - (dx / d) * 0.9, z: q.z - (dz / d) * 0.9 });
+        break;
+      }
       case 'tornado':
         t.stack = 0;
         this.fire(t, S, c.dx, c.dz);
@@ -962,6 +973,8 @@ export class World {
       case 'blink': {
         const dist = clamp(c.dist, 2, S.range);
         if (S.re) { if (S.re === 'recall') t.ret = { x: t.x, z: t.z }; t.re[c.key] = S.window; }
+        // Held where it lands (it can still cast) until it snaps back.
+        if (S.autoRet) { t.ret = { x: t.x, z: t.z }; t.re[c.key] = S.autoRet + dist / S.speed; t.snare = Math.max(t.snare, t.re[c.key]); }
         t.blink = { dx: c.dx, dz: c.dz, speed: S.speed, t: dist / S.speed, skill: S };
         t.cmd = null; t.tumble = 0;
         this.emit('blink', { top: t, dx: c.dx, dz: c.dz, dist });
@@ -1124,6 +1137,8 @@ export class World {
       if (from.blade.permDmg) dmg *= 1 + from.blade.permDmg * from.perm;
     }
     if (t.charge) dmg *= t.charge.skill.armor ?? 1;
+    // Asleep: the first blow lands twice over (up to a limit) and wakes it.
+    if (foe && t.sleep > 0 && kind !== 'dot') { dmg += Math.min(dmg, (SKILLS.bubble.wake * from.blade.atk) / t.blade.def); t.sleep = 0; t.stun = 0; }
     const B = t.buff > 0 && t.blade.buff;
     if (B && B.armor) dmg *= B.armor;
     if (t.shield > 0) {
@@ -1326,6 +1341,12 @@ export class World {
       t.re[k] = Math.max(0, t.re[k] - dt);
       // A window that closes with uses left over gives some of the cooldown back.
       const S = skillOf(t, k);
+      // PORTAL JUMP snaps back by itself.
+      if (t.re[k] <= 0 && S.autoRet && t.ret && !t.out && !this.result) {
+        const fx = t.x, fz = t.z;
+        t.x = t.ret.x; t.z = t.ret.z; t.vx = t.vz = 0; t.cmd = null; t.ret = null; t.dash = t.blink = null;
+        this.emit('warp', { top: t, fx, fz });
+      }
       if (t.re[k] <= 0 && S.refundUnused && t.stack < S.casts) t.cd[k] *= 1 - S.refundUnused * (S.casts - t.stack);
     }
     t.tumble = Math.max(0, t.tumble - dt);
@@ -1401,6 +1422,7 @@ export class World {
       t.histT -= dt;
       if (t.histT <= 0) { t.histT = 0.1; t.hist.push({ x: t.x, z: t.z, spin: t.spin }); if (t.hist.length > t.blade.rewind * 10) t.hist.shift(); }
     }
+    if (t.sleep > 0) t.sleep = Math.max(0, t.sleep - dt);
     if (t.shieldT > 0) { t.shieldT -= dt; if (t.shieldT <= 0) { t.shieldT = 0; t.shield = 0; } }
     if (t.bleedT > 0) { t.bleedT -= dt; if (t.bleedT <= 0) { t.bleedT = 0; t.bleed = 0; } }
     if (t.stackT > 0) { t.stackT -= dt; if (t.stackT <= 0) { t.stackT = 0; t.stack = 0; } }
@@ -1703,6 +1725,7 @@ export class World {
       if (!gone) {
         const dmg = this.hurt(opp, (S.pop * t.blade.atk) / opp.blade.def, t, S.id);
         if (S.root) this.stun(opp, S.root);
+        if (S.sleep) opp.sleep = S.root;
         if (S.snareT) this.snare(opp, S.snareT);
         if (S.yank) this.pull(opp, t, S.yank);
         this.emit('strike', { top: opp, src: t, skill: S, x: opp.x, z: opp.z, dmg });
@@ -1895,6 +1918,18 @@ export class World {
           break;
         case 'feather':
           if (z.t >= z.T || this.result) z.dead = true;
+          break;
+        case 'bubbletrap':
+          if (z.t >= z.T || this.result) { this.endZone(z); break; }
+          if (z.t >= S.arm && live && d < z.r + opp.radius * 0.5 && opp.guard <= 0) {
+            const B = SKILLS.bubble;
+            this.endZone(z);
+            const dmg = this.hurt(opp, (B.dmg * t.blade.atk) / opp.blade.def, t, B.id);
+            this.slowBy(opp, B.slow, B.slowPct);
+            t.tether = { t: 0, T: B.dur, skill: B, acc: 0, tick: 0 };
+            this.emit('say', { top: opp, text: B.tie, tone: '' });
+            this.emit('strike', { top: opp, src: t, skill: B, x: opp.x, z: opp.z, dmg });
+          }
           break;
         case 'hshock':
           if (z.t < z.T) break;
@@ -2281,7 +2316,7 @@ export class World {
     if (S.frostMul && v.frost > 0) k = S.frostMul;
     // Finishers bite harder the less spin the target has left.
     if (S.exec) k *= 1 + S.exec * (1 - spinRatio(v));
-    if (S.far) k *= 1 + S.far * clamp((S.range - p.left) / S.range, 0, 1);
+    if (S.far) k *= 1 + S.far * clamp((S.range - p.left) / (S.farAt || S.range), 0, 1);
     if (p.back && S.backMul) k *= S.backMul;
     if (p.back && S.backTrue) k *= v.blade.def; // the way back ignores defence
     // Caught out: struck by this top's own attacks a moment ago.
@@ -2308,6 +2343,7 @@ export class World {
       this.emit('say', { top: v, text: S.tie, tone: '' });
     }
     if (S.refund) for (const k of KEYS) o.cd[k] = Math.max(0, o.cd[k] - S.refund);
+    if (S.refundSelf) { const k2 = this.keyOf(o, S.id); if (k2) o.cd[k2] *= 1 - S.refundSelf; }
     if (S.refundKey) for (const k in S.refundKey) o.cd[k] = Math.max(0, o.cd[k] - S.refundKey[k]);
     // An overcharge is kept going by landing shots.
     if (o.buff > 0 && o.blade.buff && o.blade.buff.extendTo) o.buff = o.blade.buff.extendTo;
@@ -2363,6 +2399,10 @@ export class World {
         else if (S.ret && !p.back) { p.back = true; p.crawl = false; p.hit = false; p.left = 60; p.speed = S.speed * 1.3; }
         else {
           p.dead = true;
+          // A star that met nothing waits where it stopped, to be sent on.
+          if (S.rest) { const k = this.keyOf(p.owner, S.id); this.zone(p.owner, SKILLS[S.rest], p.x, p.z, null, true); if (k) p.owner.re[k] = SKILLS[S.rest].dur; }
+          // A bubble that met nothing settles as a trap.
+          if (S.trap && Math.hypot(p.x, p.z) < ARENA.R) this.zone(p.owner, SKILLS[S.trap], p.x, p.z, null, true);
           if (S.feather && Math.hypot(p.x, p.z) < ARENA.R) this.zone(p.owner, SKILLS.feather, p.x, p.z, null, true);
           if (S.splash) this.burst(p.owner, S, p.x, p.z, S.splash, { dmg: S.splashDmg, as: {} });
           this.emit('projEnd', { proj: p, x: p.x, z: p.z });

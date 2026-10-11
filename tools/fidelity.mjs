@@ -1011,5 +1011,46 @@ console.log('SAND EMPEROR: which soldier');
   check(!!me.dash && me.dash.dx > 0.9, 'E: flies to the soldier nearest the cursor, not the nearest to itself');
 }
 
+console.log('TWILIGHT STAR (Zoe)');
+{
+  let { w, me, foe, run, saw } = setup('star', 20);
+  w.cast(me, 'Q', me.x + 9, me.z); run(0.4);
+  check(w.own(me, 'reststar').length === 1 && w.canCast(me, 'Q') && Math.abs(w.own(me, 'reststar')[0].x - 7.9) < 0.5, 'Q: meeting nothing, the star rests where it stopped');
+  const rest = w.own(me, 'reststar')[0];
+  w.cast(me, 'Q', foe.x, foe.z);
+  const p = w.projectiles[0];
+  check(!!p && Math.abs(p.x - rest.x) < 1.2 && p.dz < -0.5, 'Q again: it flies on from there, toward the point given');
+  run(1);
+  const far = foe.stats.taken;
+  ({ w, me, foe, run, saw } = setup('star', 5));
+  w.cast(me, 'Q', foe.x, foe.z); run(0.4);
+  check(foe.stats.taken > 0 && far / foe.stats.taken > 1.8, `Q: a star sent on a long way hits much harder (${foe.stats.taken.toFixed(0)} -> ${far.toFixed(0)})`);
+  check(!w.own(me, 'reststar').length && !w.canCast(me, 'Q'), 'Q: one that hits does not rest');
+  ({ w, me, foe, run, saw } = setup('star', 20));
+  w.cast(me, 'Q', me.x + 9, me.z); run(1.5);
+  check(!w.own(me, 'reststar').length && !w.canCast(me, 'Q'), 'Q: it waits one second, no more');
+  ({ w, me, foe, run, saw } = setup('star', 6));
+  w.cast(me, 'E', foe.x, foe.z); run(0.3);
+  check(foe.slowK === 0.3 && foe.stun === 0 && Math.abs(me.cd.E - 14 * 0.7) < 0.4, 'E: drowsy first (a 30% slow), and 30% of the cooldown back');
+  run(1.3);
+  check(foe.stun > 1 && foe.sleep > 1, 'E: asleep after 1.4 seconds');
+  const b0 = foe.stats.taken, dealt = w.hurt(foe, 20, me, 'x');
+  check(Math.abs(dealt - 40 * 1) < 14 && dealt > 30 && foe.stun === 0 && foe.sleep === 0, `E: the first blow on a sleeper lands twice over and wakes it (${dealt.toFixed(0)} for 20)`);
+  ({ w, me, foe, run, saw } = setup('star', 20));
+  w.cast(me, 'E', me.x + 9, me.z); run(0.5);
+  check(w.own(me, 'bubbletrap').length === 1, 'E: a bubble that misses settles as a trap');
+  const tr = w.own(me, 'bubbletrap')[0]; foe.x = tr.x; foe.z = tr.z; run(1);
+  check(!!me.tether && foe.slow > 0, 'E: stepping on it is the same as being hit');
+  ({ w, me, foe, run, saw } = setup('star', 8));
+  check(BLADES.star.kit.R === 'portal' && !SKILLS.portal.ult, 'R: an ordinary skill, no gauge');
+  me.ult = 0; const home = { x: me.x, z: me.z };
+  check(w.cast(me, 'R', me.x + 9, me.z), 'R: usable with an empty gauge');
+  setup.last.drift(0.4);
+  check(Math.abs(me.x - 5) < 0.6 && !w.issueMove(me, 0, 0) && w.canCast(me, 'Q'), 'R: there, unable to walk, but able to cast');
+  setup.last.drift(0.8);
+  check(Math.hypot(me.x - home.x, me.z - home.z) < 0.3, 'R: back by itself after a second');
+  check(me.cd.R > 3 && me.cd.R < 5, 'R: a 5-second cooldown');
+}
+
 console.log(bad ? `\n${bad} of ${n} checks failed` : `\nall ${n} checks passed`);
 process.exit(bad ? 1 : 0);
