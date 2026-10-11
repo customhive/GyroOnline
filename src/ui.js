@@ -217,17 +217,22 @@ export class UI {
     this.tags = [];
     $('#fl').innerHTML = ''; $('#fr').innerHTML = '';
     this.fighters = [];
-    const many = world.tops.length > 2;
+    const many = world.tops.length > 2, me0 = world.tops[side];
+    const teams = new Set(world.tops.map((t) => t.team)).size < world.tops.length;
     $('#hud').classList.toggle('many', many);
-    for (const t of world.tops) {
-      const mine = t.side === side, f = (this.fighters[t.side] = this.buildFighter(mine, many && !mine));
-      const label = labels[t.side] || (mine ? 'YOU' : 'RIVAL');
+    // Your own bar first, then team mates under it; everyone else on the other side.
+    const order = [...world.tops].sort((p, q) => (q.side === side) - (p.side === side));
+    for (const t of order) {
+      const mine = t.side === side, mate = teams && t.team === me0.team;
+      const f = (this.fighters[t.side] = this.buildFighter(mine || mate, many && !mine));
+      const label = (teams ? 'AB'[t.team] + '・' : '') + (labels[t.side] || (mine ? 'YOU' : 'RIVAL'));
+      f.root.classList.toggle('mate', mate && !mine);
       f.root.style.setProperty('--c', t.blade.css);
       f.tag.textContent = label;
       f.name.textContent = t.blade.name;
       f.type.textContent = t.blade.typeJa + (notes[t.side] ? ' ／ ' + notes[t.side] : '');
       f.ghostV = f.shown = 1;
-      const tag = el('div', 'tag ' + (mine ? 'me' : 'foe'), `<span>${label}</span><div><i></i></div>`);
+      const tag = el('div', 'tag ' + (mine ? 'me' : mate ? 'mate' : 'foe'), `<span>${label}</span><div><i></i></div>`);
       tag.style.setProperty('--c', t.blade.css);
       this.labels.appendChild(tag);
       this.tags[t.side] = { root: tag, fill: $('i', tag) };
@@ -317,7 +322,8 @@ export class UI {
     }[lb.status];
     const s = $('#lb-status');
     // Why the game cannot start yet is said here, not on the button.
-    s.textContent = host && STAGES[lb.stage].soon ? 'このステージはまだ準備中です。別のステージを選んでください' : status;
+    const lopsided = lb.teams && new Set(lb.slots.filter((p) => p.kind !== 'none').map((p) => p.team)).size < 2;
+    s.textContent = host && lopsided ? 'チーム戦は、AとBの両方に1人以上必要です。カードの下のボタンでチームを変えられます' : status;
     s.className = 'lb-status ' + lb.status;
     $('#lb-invite').classList.toggle('hidden', !host || !lb.url || !waiting);
     if (lb.url && $('#lb-url').value !== lb.url) $('#lb-url').value = lb.url;
@@ -345,6 +351,8 @@ export class UI {
             + (b ? `${this.bars[b.id]}<p class="pc-desc">${b.desc}</p><div class="pc-skills">${skills}</div>` : '<p class="pc-desc">対戦のたびにランダムなブレードが選ばれます。</p>')
             + `<div class="pc-foot">${can ? 'クリックでブレードを変える' : you && p.ready ? '準備完了' : ''}</div>`);
       card.onclick = () => this.h.edit(i);
+      card.classList.toggle('team-a', !!lb.teams && !empty && !off && !p.team);
+      card.classList.toggle('team-b', !!lb.teams && !empty && !off && !!p.team);
       if (b) card.querySelectorAll('.pc-skill').forEach((row) => {
         const k = Number(row.dataset.k);
         row.onmouseenter = () => this.tip(row, kitOf(b)[k], b, KEYS[k]);
@@ -352,8 +360,16 @@ export class UI {
       });
       seat.appendChild(card);
 
-      // What the host can make of each seat.
+      // Which team: the host can move anyone, everyone else only themselves.
       const ctl = el('div', 'lb-ctl');
+      if (lb.teams && !empty && !off) {
+        const tb = el('button', 'lb-team ' + (p.team ? 'b' : 'a'), `チーム ${p.team ? 'B' : 'A'}`);
+        tb.disabled = !(host || you) || (p.kind === 'human' && p.ready);
+        tb.title = 'クリックでチームを変える';
+        tb.onclick = () => this.h.team(i);
+        ctl.appendChild(tb);
+      }
+      // What the host can make of each seat.
       // A seat a guest is sitting in has nothing for the host to set.
       if (host && !(i !== mine && p.kind === 'human')) {
         const kinds = i === 0 ? [['human', '自分で操作'], ['cpu', 'CPU']] : [['open', '人間'], ['cpu', 'CPU'], ['none', 'なし']];
@@ -378,6 +394,20 @@ export class UI {
       seat.appendChild(ctl);
       cards.appendChild(seat);
     });
+
+    // The rules: everyone for themselves or two teams, and whether a team can hurt its own.
+    const seg = (root, items, on, fn) => {
+      root.innerHTML = '';
+      for (const [v, label] of items) {
+        const btn = el('button', on === v ? 'on' : '', label);
+        btn.disabled = !host;
+        btn.onclick = () => fn(v);
+        root.appendChild(btn);
+      }
+    };
+    seg($('#lb-mode'), [[false, 'バトルロイヤル'], [true, 'チーム戦']], !!lb.teams, (v) => this.h.mode(v));
+    seg($('#lb-ff'), [[false, '味方への攻撃 OFF'], [true, 'ON']], !!lb.ff, (v) => this.h.ff(v));
+    $('#lb-ff').classList.toggle('hidden', !lb.teams);
 
     const g = STAGES[lb.stage];
     $('#st-pic').innerHTML = this.stagePic(g);
@@ -408,7 +438,8 @@ export class UI {
     r.classList.toggle('armed', !!me.ready);
     go.classList.toggle('hidden', !host);
     if (host) {
-      const all = lb.slots.every((p) => p.kind === 'none' || p.kind === 'cpu' || (p.kind === 'human' && p.ready));
+      const all = lb.slots.every((p) => p.kind === 'none' || p.kind === 'cpu' || (p.kind === 'human' && p.ready))
+        && (!lb.teams || new Set(lb.slots.filter((p) => p.kind !== 'none').map((p) => p.team)).size === 2);
       go.disabled = waiting || !!g.soon || !all || lb.slots.filter((p) => p.kind !== 'none').length < 2;
       go.textContent = 'ゲーム開始';
     }

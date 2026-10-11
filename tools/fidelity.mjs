@@ -1236,5 +1236,37 @@ console.log('MORE THAN TWO TOPS');
   check(A.stats.taken > 0 && B.stats.taken > 0, 'Shadow Slash cuts everyone around it');
 }
 
+console.log('TEAMS');
+{
+  // me and a mate against two; seats 0 and 2 are team A
+  const team = (ff) => {
+    const w = new World(['azure', 'gaia', 'gaia', 'gaia'].map((b) => BLADES[b]), { seed: 7, teams: [0, 1, 0, 1], ff });
+    const [me, foeA, mate, foeB] = w.tops;
+    for (const t of w.tops) for (const k of 'QWER') t.cd[k] = t === me ? 0 : 99;
+    const put = (t, x, z) => { t.x = x; t.z = z; t.vx = t.vz = 0; t.cmd = null; t.tumble = 0; };
+    put(me, 0, 6); put(mate, 0, 3.5); put(foeA, 2.5, 6); put(foeB, -9, -6);
+    return { w, me, foeA, mate, foeB, put };
+  };
+  let { w, me, foeA, mate, foeB, put } = team(false);
+  check(w.other(me) === foeA && w.foes(me).length === 2, 'a top fights the other team only, though a mate is nearer');
+  w.burst(me, SKILLS.grenade, 0, 5, 4);
+  check(mate.stats.taken === 0 && foeA.stats.taken > 0, 'a blast spares team mates');
+  const p = w.fire(me, SKILLS.sonic, 0, -1, {}); for (let i = 0; i < 30; i++) w.step(DT);
+  check(mate.stats.taken === 0, 'a shot passes through a mate');
+  ({ w, me, foeA, mate, foeB, put } = team(false));
+  put(foeA, 9, -6); put(me, 0, 6); put(mate, 0, 4.2); for (let i = 0; i < Math.round(0.5 / DT); i++) { me.vx = 0; me.vz = -9; mate.vx = 0; mate.vz = 9; w.step(DT); }
+  check(mate.stats.taken === 0 && me.stats.clashes === 0 && me.z < mate.z, `mates roll through each other (${me.z.toFixed(1)} / ${mate.z.toFixed(1)}, ${me.stats.clashes} clashes)`);
+  foeA.spin = 0; for (let i = 0; i < 3; i++) w.step(DT);
+  check(foeA.gone && !w.result, 'one of the other team out: the round goes on');
+  foeB.spin = 0; for (let i = 0; i < 3; i++) w.step(DT);
+  check(!!w.result && w.result.winner.team === me.team && !mate.gone, 'the whole team out: the round is the other team\'s, with both of them still standing');
+  ({ w, me, foeA, mate, foeB, put } = team(true));
+  check(w.other(me) === foeA, 'friendly fire on: a top still goes for the other team');
+  w.burst(me, SKILLS.grenade, 0, 5, 4);
+  check(mate.stats.taken > 0 && foeA.stats.taken > 0, 'friendly fire on: a blast catches a mate too');
+  me.spin = 0; mate.spin = 0; for (let i = 0; i < 3; i++) w.step(DT);
+  check(!!w.result && w.result.winner.team === foeA.team, 'friendly fire on: a team that takes itself out loses');
+}
+
 console.log(bad ? `\n${bad} of ${n} checks failed` : `\nall ${n} checks passed`);
 process.exit(bad ? 1 : 0);

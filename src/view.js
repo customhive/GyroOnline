@@ -15,6 +15,7 @@ const toWall = (x, z, dx, dz) => {
   const b = x * dx + z * dz, c = x * x + z * z - ARENA.R * ARENA.R;
   return c >= 0 ? 0 : -b + Math.sqrt(b * b - c);
 };
+const MATE_COLOR = 0x7dffb0; // a team mate's skills: not a threat
 const v3 = new THREE.Vector3();
 // Zones that stand on the floor as an object, not only as a decal.
 const OBJECTS = { shadow: 'clone', arise: 'clone', turret: 'turret', sentry: 'turret', keg: 'keg', icewall: 'wall', windwall: 'wall', divide: 'wall' };
@@ -129,7 +130,12 @@ export class View {
   }
 
   colorOf(t) { return t.blade.color; }
-  dangerOf(t) { return t.side === this.playerSide ? AIM : ENEMY_COLOR; }
+  // What a top is about to do is drawn as a threat unless it is ours, or a team mate's that cannot hurt us.
+  dangerOf(t) {
+    if (t.side === this.playerSide) return AIM;
+    const me = this.world && this.world.tops[this.playerSide];
+    return me && me.team === t.team && !this.world.ff ? MATE_COLOR : ENEMY_COLOR;
+  }
 
   pick(cx, cy) {
     const st = this.stage;

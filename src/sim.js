@@ -273,10 +273,13 @@ export function wallOf(z) {
 
 export class World {
   // new World(bladeA, bladeB, seed, stage) for a duel, or
-  // new World([blades...], { seed, stage, teams }) for two to four tops.
+  // new World([blades...], { seed, stage, teams, ff }) for two to four tops.
   constructor(bladeA, bladeB, seed = 1, stage = 0) {
     let blades = [bladeA, bladeB], teams = null;
-    if (Array.isArray(bladeA)) { const o = bladeB || {}; blades = bladeA; seed = o.seed ?? 1; stage = o.stage ?? 0; teams = o.teams || null; }
+    let ff = false;
+    if (Array.isArray(bladeA)) { const o = bladeB || {}; blades = bladeA; seed = o.seed ?? 1; stage = o.stage ?? 0; teams = o.teams || null; ff = !!o.ff; }
+    // Friendly fire: with it on, a team's own attacks land on its own tops too.
+    this.ff = ff;
     this.stage = stage;
     setStage(stage);
     this.rng = mulberry32(seed);
@@ -291,8 +294,11 @@ export class World {
     this.resetRound();
   }
 
-  // Everyone still in the round that `t` fights against.
-  foes(t) { return this.tops.filter((o) => o !== t && o.team !== t.team && !o.gone); }
+  // Everyone still in the round that `t`'s attacks can land on: its enemies,
+  // and its own team too when friendly fire is on.
+  foes(t) { return this.tops.filter((o) => o !== t && !o.gone && (this.ff || o.team !== t.team)); }
+  // Only those it is actually fighting.
+  enemies(t) { return this.tops.filter((o) => o !== t && !o.gone && o.team !== t.team); }
   // The one `t` is fighting right now: the nearest enemy still in the round.
   // In a duel that is simply the other top, in or out.
   other(t) { return this.near(t, t.x, t.z); }
@@ -314,7 +320,7 @@ export class World {
     const reach = S.grab ?? S.range ?? Infinity;
     const ok = (o) => targetable(o) && (S.need !== 'up' || o.up > 0) && (!S.need || Math.hypot(o.x - t.x, o.z - t.z) <= reach);
     let best = null, bd = Infinity;
-    for (const o of this.foes(t)) {
+    for (const o of this.enemies(t)) {
       if (!ok(o)) continue;
       const d = Math.hypot(o.x - c.ax, o.z - c.az);
       if (d < bd) { bd = d; best = o; }
@@ -411,7 +417,7 @@ export class World {
   // short label for the player; null when nothing stands in the way.
   blocked(t, key) {
     const S = this.aimSkill(t, key);
-    const any = (f) => this.foes(t).some((o) => targetable(o) && f(o, Math.hypot(o.x - t.x, o.z - t.z)));
+    const any = (f) => this.enemies(t).some((o) => targetable(o) && f(o, Math.hypot(o.x - t.x, o.z - t.z)));
     if (S.need === 'range' && !any((o, d) => d <= (S.grab ?? S.range) && !((S.id === 'fling' || S.kind === 'throw') && o.egg > 0))) return '射程外';
     if (S.need === 'up' && !any((o, d) => o.up > 0 && d <= S.range)) return '打ち上げ中のみ';
     if (S.need === 'soldier' && !this.own(t, 'arise').length) return '砂兵がいない';
@@ -2352,8 +2358,8 @@ export class World {
 
   collide(a, b) {
     if (!targetable(a) || !targetable(b)) return;
-    // Team mates roll through each other.
-    if (a.team === b.team) return;
+    // Team mates roll through each other, unless friendly fire is on.
+    if (a.team === b.team && !this.ff) return;
     let nx = b.x - a.x, nz = b.z - a.z;
     const d = Math.hypot(nx, nz), min = a.radius + b.radius;
     if (d >= min) return;
@@ -2673,7 +2679,7 @@ export class World {
         p.dead = true;
         if (S.re) this.unre(p.owner, S.id);
         this.emit('projEnd', { proj: p, x: p.x, z: p.z });
-      } else if (!this.result && !(p.hit & (1 << v.side)) && !S.friendly && !v.gone && v.team !== p.owner.team && targetable(v) && Math.hypot(v.x - p.x, v.z - p.z) < p.r + v.radius) {
+      } else if (!this.result && !(p.hit & (1 << v.side)) && !S.friendly && !v.gone && (this.ff || v.team !== p.owner.team) && v !== p.owner && targetable(v) && Math.hypot(v.x - p.x, v.z - p.z) < p.r + v.radius) {
         if (v.guard > 0) {
           // Guard sends it straight back.
           p.owner = v; p.dx = -p.dx; p.dz = -p.dz; p.left = S.range; p.dmg *= 1.2;

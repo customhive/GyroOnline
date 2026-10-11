@@ -82,6 +82,9 @@ try {
   // Seats: host, a person, a person, a CPU.
   await host.eval(`(() => { const seat = (i) => [...document.querySelectorAll('.seat')][i]; seat(2).querySelectorAll('.lb-seg button')[0].click(); })()`);
   await host.eval(`(() => { const seat = (i) => [...document.querySelectorAll('.seat')][i]; seat(3).querySelectorAll('.lb-seg button')[1].click(); })()`);
+  // With "team" as the fourth argument the match is two against two.
+  const team = process.argv[5] === 'team';
+  if (team) await host.eval(`[...document.querySelectorAll('#lb-mode button')][1].click()`);
   console.log('host seats:', await host.eval(SEATS));
   const g1 = await openTab(base + '?room=' + code + '&auto&quick' + extra, 'guest1');
   const g2 = await openTab(base + '?room=' + code + '&auto&quick' + extra, 'guest2');
@@ -119,6 +122,12 @@ try {
     if (st.every((s) => s.state === 'result')) break;
   }
   console.log('sides:', await host.eval(`__gc.game.side`), await g1.eval(`__gc.game.side`), await g2.eval(`__gc.game.side`));
+  const TEAMS = `JSON.stringify([__gc.game.world.tops.map((t) => t.team), __gc.game.world.ff])`;
+  const tm = [await host.eval(TEAMS), await g1.eval(TEAMS), await g2.eval(TEAMS)];
+  console.log('teams:', tm.join(' | '));
+  if (new Set(tm).size !== 1) throw new Error('teams differ between the tabs');
+  if (team && tm[0] !== '[[0,1,0,1],false]') throw new Error('expected two teams of two');
+  if (team && !(st[0].score[0] === st[0].score[2] && st[0].score[1] === st[0].score[3])) throw new Error('team mates should share a score');
   for (const [i, s] of st.entries()) console.log(tabs[i].name, s.state, 'score', JSON.stringify(s.score), 'round', s.round, 'corrections', s.corrections, 'err', JSON.stringify(s.err));
   console.log(`position difference host vs guests: avg ${(sum / Math.max(1, n)).toFixed(2)}  max ${maxDiff.toFixed(2)}  (${n} samples)`);
   if (!st.every((s) => s.state === 'result')) throw new Error('the match did not finish everywhere');
