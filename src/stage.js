@@ -5,7 +5,7 @@ import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js';
 import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPass.js';
 import { OutputPass } from 'three/examples/jsm/postprocessing/OutputPass.js';
 import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js';
-import { ARENA, heightAt } from './config.js';
+import { STAGES, wallArcs, ARENA, heightAt } from './config.js';
 
 const EXTENT = ARENA.R + 2.2; // half-size of the square the floor textures cover
 
@@ -148,28 +148,69 @@ export function createStage(canvas) {
 
   // --- bowl -----------------------------------------------------------------
   const { R, H } = ARENA;
+  // The floor of the bowl, with a lip that drops away where there is no wall.
   const prof = [];
   for (let i = 0; i <= 48; i++) { const r = (R * i) / 48; prof.push(new THREE.Vector2(r, heightAt(r))); }
-  prof.push(new THREE.Vector2(R + 0.02, H + 0.15), new THREE.Vector2(R + 0.3, H + 1.0), new THREE.Vector2(R + 1.25, H + 1.0),
-    new THREE.Vector2(R + 1.7, H + 0.35), new THREE.Vector2(R + 2.1, -2.5));
-  const bowlGeo = new THREE.LatheGeometry(prof, 128);
-  const pos = bowlGeo.attributes.position, uv = bowlGeo.attributes.uv;
-  for (let i = 0; i < pos.count; i++) uv.setXY(i, pos.getX(i) / (EXTENT * 2) + 0.5, 0.5 - pos.getZ(i) / (EXTENT * 2));
+  prof.push(new THREE.Vector2(R + 0.12, H - 0.02), new THREE.Vector2(R + 0.3, H - 0.5), new THREE.Vector2(R + 0.45, -2.5));
+  const mapUv = (geo) => {
+    const pos = geo.attributes.position, uv = geo.attributes.uv;
+    for (let i = 0; i < pos.count; i++) uv.setXY(i, pos.getX(i) / (EXTENT * 2) + 0.5, 0.5 - pos.getZ(i) / (EXTENT * 2));
+    return geo;
+  };
   const floorMat = new THREE.MeshStandardMaterial({
     map: floorCanvas(2048, paintFloor), emissiveMap: floorCanvas(2048, paintGlow), emissive: 0xffffff, emissiveIntensity: 0.85,
     metalness: 0.82, roughness: 0.36, side: THREE.DoubleSide,
   });
-  const bowl = new THREE.Mesh(bowlGeo, floorMat);
+  const bowl = new THREE.Mesh(mapUv(new THREE.LatheGeometry(prof, 128)), floorMat);
   bowl.receiveShadow = true;
   scene.add(bowl);
 
+  // The rim wall is built for whichever stage is being played: all the way
+  // round, in stretches with gaps between them, or not at all.
+  const rimProf = [new THREE.Vector2(R, H), new THREE.Vector2(R + 0.02, H + 0.15), new THREE.Vector2(R + 0.3, H + 1.0), new THREE.Vector2(R + 1.25, H + 1.0),
+    new THREE.Vector2(R + 1.7, H + 0.35), new THREE.Vector2(R + 2.1, -2.5)];
   const rimMat = new THREE.MeshBasicMaterial({ color: 0x35c8ff });
-  const rim = new THREE.Mesh(new THREE.TorusGeometry(R + 0.34, 0.07, 10, 160), rimMat);
-  rim.rotation.x = Math.PI / 2; rim.position.y = H + 1.04;
-  scene.add(rim);
-  const rim2 = new THREE.Mesh(new THREE.TorusGeometry(R + 1.22, 0.05, 8, 160), new THREE.MeshBasicMaterial({ color: 0x2244aa }));
-  rim2.rotation.x = Math.PI / 2; rim2.position.y = H + 1.03;
-  scene.add(rim2);
+  const rim2Mat = new THREE.MeshBasicMaterial({ color: 0x2244aa });
+  const edgeMat = new THREE.MeshBasicMaterial({ color: 0xff5a2a });
+  const capMat = new THREE.MeshStandardMaterial({ color: 0x161d33, metalness: 0.8, roughness: 0.4, side: THREE.DoubleSide });
+  const walls = new THREE.Group();
+  scene.add(walls);
+  const buildWalls = (g) => {
+    for (const m of [...walls.children]) { walls.remove(m); m.geometry.dispose(); }
+    for (const [a0, a1] of wallArcs(g)) {
+      const len = a1 - a0, segs = Math.max(8, Math.round((128 * len) / (Math.PI * 2)));
+      // A lathe turns from +z toward +x; screen angle a sits at a + 90 degrees.
+      const wall = new THREE.Mesh(mapUv(new THREE.LatheGeometry(rimProf, segs, a0 + Math.PI / 2, len)), floorMat);
+      wall.receiveShadow = true;
+      walls.add(wall);
+      for (const [r, tube, mat, y] of [[R + 0.34, 0.07, rimMat, H + 1.04], [R + 1.22, 0.05, rim2Mat, H + 1.03]]) {
+        const line = new THREE.Mesh(new THREE.TorusGeometry(r, tube, 10, Math.max(12, segs), len), mat);
+        line.rotation.set(Math.PI / 2, 0, -a1); line.position.y = y;
+        walls.add(line);
+      }
+      if (len < Math.PI * 2 - 0.01) {
+        // Where the wall stops: a glowing post, so a gap reads as a gap.
+        for (const a of [a0, a1]) {
+          const cap = new THREE.Mesh(new THREE.BoxGeometry(1.5, 1.5, 0.16), capMat);
+          cap.position.set(Math.cos(a) * (R + 1.05), H + 0.3, -Math.sin(a) * (R + 1.05));
+          cap.rotation.y = a;
+          const post = new THREE.Mesh(new THREE.CylinderGeometry(0.11, 0.11, 1.5, 10), edgeMat);
+          post.position.set(Math.cos(a) * (R + 0.2), H + 0.6, -Math.sin(a) * (R + 0.2));
+          walls.add(cap, post);
+        }
+      }
+    }
+    // Where there is no wall, the edge itself is lit as a warning.
+    const open = g.wall ? g.gaps.map(([c, h]) => [c - h, c + h]) : [[0, Math.PI * 2]];
+    if (g.wall && !g.gaps.length) open.length = 0;
+    for (const [a0, a1] of open) {
+      const len = a1 - a0;
+      const lip = new THREE.Mesh(new THREE.TorusGeometry(R + 0.06, 0.06, 8, Math.max(12, Math.round((160 * len) / (Math.PI * 2))), len), edgeMat);
+      lip.rotation.set(Math.PI / 2, 0, -a1); lip.position.y = H + 0.03;
+      walls.add(lip);
+    }
+  };
+  buildWalls(STAGES[0]);
 
   // --- surroundings ---------------------------------------------------------
   const plat = new THREE.Mesh(new THREE.CylinderGeometry(R + 4.5, R + 6, 1.6, 64),
@@ -221,6 +262,9 @@ export function createStage(canvas) {
   const stage = {
     renderer, scene, camera, composer, bloom, floorMat, rimMat, beams, crowd, key,
     rimColor: new THREE.Color(0x35c8ff), rimPulse: 0, rimPulseColor: new THREE.Color(0xffffff),
+    stageId: STAGES[0].id,
+    // Rebuilds the rim for a stage (nothing to do if it is already that one).
+    setStage(g) { if (g.id !== stage.stageId) { stage.stageId = g.id; buildWalls(g); } },
     width: 1, height: 1,
     resize() {
       const w = window.innerWidth, h = window.innerHeight;

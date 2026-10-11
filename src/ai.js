@@ -3,7 +3,7 @@
 // kit its blade has, so every skill needs an entry in `offence`, `defence`
 // or `reflex`.
 import { ARENA, KEYS, SKILLS, skillOf } from './config.js';
-import { intercept, predictAt, targetable, spinRatio, rooted, wallOf } from './sim.js';
+import { intercept, predictAt, targetable, spinRatio, rooted, wallOf, rimOpen } from './sim.js';
 
 // Blades that fight from range back off when the other top gets this close.
 const KEEP_AWAY = { curtain: 7.5, gear: 6.5, frost: 5.5, sand: 5, prism: 7, canvas: 6.5, star: 7, lunar: 7.5, arcane: 7, hex: 6.5, cosmos: 5.5, pirate: 5, spark: 5.5, fox: 5 };
@@ -29,7 +29,15 @@ export class CpuBrain {
   has(id) { const k = this.keyOf[id]; return k && this.world.canCast(this.me, k); }
   // The skill's recast window is open (so `use` would fire its second stage).
   again(id) { const k = this.keyOf[id]; return !!k && this.me.re[k] > 0; }
-  use(id, x = this.me.x, z = this.me.z) { return this.world.cast(this.me, this.keyOf[id], x, z); }
+  use(id, x = this.me.x, z = this.me.z) { return this.safe(this.world.aimSkill(this.me, this.keyOf[id]), x, z) && this.world.cast(this.me, this.keyOf[id], x, z); }
+
+  // Would this skill carry the top out through a gap in the wall, or off an open edge?
+  safe(S, x, z) {
+    if (!S || !(S.aim === 'dash' || S.kind === 'dash')) return true;
+    const me = this.me, dx = x - me.x, dz = z - me.z, d = Math.hypot(dx, dz) || 1;
+    const far = (S.dist || S.range || 5) + 2.5, ex = me.x + (dx / d) * far, ez = me.z + (dz / d) * far;
+    return !(Math.hypot(ex, ez) > ARENA.R - 1 && rimOpen(ex, ez));
+  }
 
   // Fire a straight shot where the target will be.
   shoot(id, S = SKILLS[id], err = 1) {
@@ -276,7 +284,7 @@ export class CpuBrain {
       const base = skillOf(me, k);
       if (!base.icon || base.rapid || !w.canCast(me, k)) continue;
       const S = w.aimSkill(me, k), again = me.re[k] > 0, wind = me.windup[k];
-      const go = (x = me.x, z = me.z) => w.cast(me, k, x, z, S.wind ? S.wind.full : 0);
+      const go = (x = me.x, z = me.z) => this.safe(S, x, z) && w.cast(me, k, x, z, S.wind ? S.wind.full : 0);
       const at = (p) => go(p.x, p.z);
       if (guarded && S.kind !== 'buff' && S.kind !== 'field') continue;
       switch (S.pops ? 'pop' : S.ai || S.kind || S.id) {
@@ -418,6 +426,8 @@ export class CpuBrain {
     if (me.tumble > 0 || me.dash || me.cast) return;
     const rr = Math.hypot(me.x, me.z);
     if (me.launch > 0 && rr > ARENA.R - 4) { w.issueMove(me, me.x * 0.3, me.z * 0.3); return; }
+    // Near an edge with no wall behind it: come back in before anything else.
+    if (rr > ARENA.R - 3.4 && rimOpen(me.x, me.z)) { w.issueMove(me, me.x * 0.45, me.z * 0.45); return; }
     if (foe.guard > 0 && d < 6) { w.issueMove(me, me.x - (dx / d) * 5, me.z - (dz / d) * 5); return; }
     // Stay on the healing ground while it lasts, unless the fight is elsewhere.
     const own = w.zones.find((z) => z.owner === me && z.kind === 'sanctuary');

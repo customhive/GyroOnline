@@ -1,6 +1,6 @@
 // Battle simulation. No rendering in here: the world steps the two tops and
 // pushes events that the renderer, audio and HUD react to.
-import { ARENA, SKILLS, KEYS, BLEED, skillOf } from './config.js';
+import { STAGES, ARENA, SKILLS, KEYS, BLEED, skillOf } from './config.js';
 
 export function mulberry32(a) {
   return function () {
@@ -159,12 +159,34 @@ export function moveTop(t, dt, opp) {
   t.x += t.vx * dt; t.z += t.vz * dt;
 }
 
+// The stage being played. There is one match at a time, so this is module
+// state: the free functions that predict movement need it too.
+let STAGE = STAGES[0];
+export const setStage = (i) => { STAGE = STAGES[i] || STAGES[0]; };
+export const stageNow = () => STAGE;
+// Is the rim open at this point's bearing (a gap, or no wall at all)?
+// `fit` narrows a gap by the room a top of that radius needs to pass.
+export function rimOpen(x, z, fit = 0) {
+  if (!STAGE.wall) return true;
+  if (!STAGE.gaps.length) return false;
+  const a = Math.atan2(-z, x), pad = fit / ARENA.R;
+  for (const [c, h] of STAGE.gaps) {
+    const d = Math.abs(Math.atan2(Math.sin(a - c), Math.cos(a - c)));
+    if (d < h - pad) return true;
+  }
+  return false;
+}
+
 // Pushes the top back inside the wall. Returns the contact if it was touching.
+// Where there is no wall the top is left where it is and the contact says so.
 export function wallContact(t) {
   const lim = ARENA.R - t.radius;
   const r = Math.hypot(t.x, t.z);
   if (r <= lim) return null;
   const nx = t.x / r, nz = t.z / r;
+  if (rimOpen(t.x, t.z, t.radius * 0.8)) return { nx, nz, vn: t.vx * nx + t.vz * nz, open: true, r };
+  // Past the wall line beside a gap: it went through, and stays out.
+  if (r > ARENA.R + 0.2 && STAGE.gaps.length && rimOpen(t.x, t.z)) return { nx, nz, vn: t.vx * nx + t.vz * nz, open: true, r };
   t.x = nx * lim; t.z = nz * lim;
   return { nx, nz, vn: t.vx * nx + t.vz * nz };
 }
@@ -203,7 +225,7 @@ export function predictPath(t, opp, T, n) {
       g.up = Math.max(0, g.up - h);
       g.stun = Math.max(0, g.stun - h);
       const c = wallContact(g);
-      if (c && c.vn > 0) { bounce(g, c); g.dash = null; }
+      if (c && !c.open && c.vn > 0) { bounce(g, c); g.dash = null; }
     }
     pts.push({ x: g.x, z: g.z });
   }
@@ -245,7 +267,9 @@ export function wallOf(z) {
 }
 
 export class World {
-  constructor(bladeA, bladeB, seed = 1) {
+  constructor(bladeA, bladeB, seed = 1, stage = 0) {
+    this.stage = stage;
+    setStage(stage);
     this.rng = mulberry32(seed);
     this.tops = [makeTop(0, bladeA), makeTop(1, bladeB)];
     this.projectiles = [];
@@ -2403,6 +2427,19 @@ export class World {
   walls(t) {
     if (t.air || t.out) return;
     const c = wallContact(t);
+    if (c && c.open) {
+      // No wall here. A warp stops at the edge; anything else that crosses it is out.
+      if (t.blink) { const lim = ARENA.R - t.radius; t.x = c.nx * lim; t.z = c.nz * lim; t.blink.t = 0; return; }
+      if (c.r > ARENA.R + 0.15 && !this.result && !(t.egg > 0)) {
+        if (t.tether) this.emit('tetherEnd', { top: t, broke: true });
+        if (t.orbs) this.emit('orbsEnd', { top: t });
+        t.out = { t: 0, y: 0, vy: 2 + Math.max(0, c.vn) * 0.25 };
+        t.cmd = t.dash = t.cast = t.charge = t.tether = t.orbs = t.chan = null; t.guard = 0; t.toggle = false;
+        this.emit('ringout', { top: t, x: t.x, z: t.z, nx: c.nx, nz: c.nz, power: Math.max(6, c.vn) });
+        this.finish(this.other(t), t, 'over');
+      } else if (t.egg > 0 && c.r > ARENA.R - t.radius) { const lim = ARENA.R - t.radius; t.x = c.nx * lim; t.z = c.nz * lim; }
+      return;
+    }
     if (!c || c.vn <= 0) return;
     if (t.blink) { t.blink.t = 0; return; }
     if (!this.result && t.launch > 0 && c.vn > ARENA.ringOutSpeed && !(t.egg > 0)) {

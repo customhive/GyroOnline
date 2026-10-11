@@ -106,6 +106,7 @@ function beginMatch(world, side, foeLabel, foeNote) {
   game.world = world; game.side = side;
   game.score = [0, 0]; game.round = 0; game.finishes = [];
   game.paused = false;
+  view.stage.setStage(STAGES[world.stage]);
   view.setMatch(world, side);
   view.orbiting = false;
   showScreen('hud');
@@ -120,7 +121,7 @@ function startCpuMatch(bladeId, levelIdx) {
   const level = DIFFICULTY[levelIdx];
   const others = Object.keys(BLADES).filter((b) => b !== bladeId);
   const foe = params.get('foe') || others[(Math.random() * others.length) | 0];
-  const w = new World(BLADES[bladeId], BLADES[foe], (Date.now() & 0xffffff) + 1);
+  const w = new World(BLADES[bladeId], BLADES[foe], (Date.now() & 0xffffff) + 1, Number(params.get('stage') || 0));
   beginMatch(w, 0, 'CPU', level.name);
   const c = rival();
   // The CPU winds up before firing so its skills can be read and dodged.
@@ -140,7 +141,7 @@ function startLocalMatch() {
   game.mode = 'cpu';
   game.spectate = lb.slots[0].kind === 'cpu';
   ui.meLabel = game.spectate ? 'CPU 1' : '';
-  const w = new World(BLADES[b0], BLADES[b1], (Date.now() & 0xffffff) + 1);
+  const w = new World(BLADES[b0], BLADES[b1], (Date.now() & 0xffffff) + 1, lb.stage);
   const lv = lb.slots.map((p) => DIFFICULTY[p.level]);
   beginMatch(w, 0, game.spectate ? 'CPU 2' : 'CPU', lv[1].name);
   // CPUs wind up before firing so their skills can be read and dodged.
@@ -151,9 +152,9 @@ function startLocalMatch() {
 }
 
 // Host and guest both build the same world: side 0 is the host's top.
-function startOnlineMatch(blades) {
+function startOnlineMatch(blades, stage = 0) {
   game.spectate = false; ui.meLabel = '';
-  const w = new World(BLADES[blades[0]], BLADES[blades[1]], 1);
+  const w = new World(BLADES[blades[0]], BLADES[blades[1]], 1, stage);
   beginMatch(w, game.mode === 'host' ? 0 : 1, 'RIVAL', '');
   game.brain = null;
   game.outbox.length = 0; game.pending.length = 0;
@@ -286,9 +287,9 @@ function lobbyChanged() {
   lobbyRefresh();
 }
 
-// Redraws the room.
+// Redraws the room. The arena turning behind it is the stage chosen.
 function lobbyRefresh() {
-  if (game.state === 'lobby') ui.showLobby(game.lobby);
+  if (game.state === 'lobby') { ui.showLobby(game.lobby); view.stage.setStage(STAGES[game.lobby.stage]); }
 }
 
 // The host starts an online match once the guest has readied up.
@@ -301,8 +302,8 @@ function startOnline() {
   // "Random" is settled here, so both sides are told the same blades.
   for (const i of [0, 1]) if (blades[i] === 'random') { const l = Object.keys(BLADES).filter((b) => b !== blades[1 - i]); blades[i] = l[(Math.random() * l.length) | 0]; }
   game.mode = 'host';
-  game.net.send({ t: 'start', blades });
-  startOnlineMatch(blades);
+  game.net.send({ t: 'start', blades, stage: lb.stage });
+  startOnlineMatch(blades, lb.stage);
   if (cpu0 >= 0) {
     const w = game.world, t = w.tops[0], level = DIFFICULTY[cpu0];
     for (const k of KEYS) t.windup[k] = (skillOf(t, k).tele || 0) * level.windup;
@@ -484,7 +485,8 @@ function netMessage(m) {
     case 'start':
       if (lb.role !== 'guest' || !Array.isArray(m.blades) || !BLADES[m.blades[0]] || !BLADES[m.blades[1]]) return;
       game.mode = 'guest';
-      startOnlineMatch(m.blades);
+      lb.stage = Math.max(0, Math.min(STAGES.length - 1, m.stage | 0));
+      startOnlineMatch(m.blades, lb.stage);
       break;
     case 'round':
       if (game.mode !== 'guest' || !w) return;

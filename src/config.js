@@ -1319,13 +1319,22 @@ for (const b of Object.values(BLADES)) b.emp = kitOf(b).find((S) => S.bonus) || 
 for (const b of Object.values(BLADES)) b.hasUlt = kitOf(b).some((S) => S.ult);
 
 // Where the match is fought. `gaps` are the openings in the rim wall, as
-// [centre angle, half width] in radians; `wall: false` has no wall at all.
-// Only the first is built so far.
+// [centre angle, half width] in radians, the angle measured on screen: 0 is
+// to the right, a quarter turn is the far side. `wall: false` has no wall.
+// The tops start near and far, so the gaps are placed the same for both.
+const GATE = 0.3;
 export const STAGES = [
   { id: 'classic', name: 'スタンダード', en: 'STANDARD', ja: '壁に囲まれた基本のアリーナ。強く吹き飛ばして壁に叩きつけると場外。', wall: true, gaps: [] },
-  { id: 'gates', name: 'スリーゲート', en: 'THREE GATES', ja: '壁の3か所に穴が開いている。穴から転がり出ると場外。', wall: true, gaps: [[Math.PI / 2, 0.38], [Math.PI / 2 + (Math.PI * 2) / 3, 0.38], [Math.PI / 2 + (Math.PI * 4) / 3, 0.38]], soon: true },
-  { id: 'open', name: 'オープン', en: 'OPEN RING', ja: '壁が無い。端から出るとそのまま場外。', wall: false, gaps: [], soon: true },
+  { id: 'gates', name: 'スリーゲート', en: 'THREE GATES', ja: '壁の3か所に穴が開いている。穴から転がり出ると場外。', wall: true, gaps: [[0, GATE], [(Math.PI * 2) / 3, GATE], [(Math.PI * 4) / 3, GATE]] },
+  { id: 'open', name: 'オープン', en: 'OPEN RING', ja: '壁が無い。端から出るとそのまま場外。', wall: false, gaps: [] },
 ];
+// The stretches of wall a stage has, as [from, to] angles (to > from).
+export const wallArcs = (g) => {
+  if (!g.wall) return [];
+  if (!g.gaps.length) return [[0, Math.PI * 2]];
+  const gs = [...g.gaps].sort((p, q) => p[0] - q[0]);
+  return gs.map((p, i) => { const q = gs[(i + 1) % gs.length]; return [p[0] + p[1], q[0] - q[1] + (i === gs.length - 1 ? Math.PI * 2 : 0)]; });
+};
 
 export const DIFFICULTY = [
   { id: 'easy', name: 'EASY', ja: 'やさしい', think: 0.95, aimErr: 3.2, dodge: 0.15, cast: 0.3, chase: 0.3, windup: 1.35 },
