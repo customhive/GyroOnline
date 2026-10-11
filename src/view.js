@@ -9,6 +9,7 @@ import { Particles, Shockwaves, Flashes, Trail, Ground, glowTexture, groundY } f
 
 const AIM = 0x9fe8ff, LOCK = 0xffd84a, HOT = 0xfff1c0, HEAL = 0x8dffb0;
 const PITCH = (54 * Math.PI) / 180;
+const WHEEL_MIN = 0.45, WHEEL_MAX = 1.2; // how far the mouse wheel may zoom in and out
 const clamp = (v, a, b) => (v < a ? a : v > b ? b : v);
 // Distance from (x, z) along (dx, dz) to the arena wall.
 const toWall = (x, z, dx, dz) => {
@@ -45,6 +46,8 @@ export class View {
     this.orbiting = true;
     this.look = new THREE.Vector3(0, 0.6, 0.8);
     this.zoom = 1.12;
+    this.wheel = 1;          // the player's own zoom, set with the mouse wheel
+    this.wheelNow = 1;
     this.focus = null;
     this.raycaster = new THREE.Raycaster();
 
@@ -1289,10 +1292,13 @@ export class View {
     }
   }
 
+  // One step of the mouse wheel: positive pulls back, negative moves in.
+  zoomBy(delta) { this.wheel = clamp(this.wheel * Math.exp(delta * 0.0012), WHEEL_MIN, WHEEL_MAX); }
+
   updateCamera(rdt) {
     const cam = this.camera, st = this.stage, w = this.world;
     const k = 1 - Math.exp(-rdt * 3.5);
-    let tx = 0, tz = 0.3, zoom = 1;
+    let tx = 0, tz = 0.3, zoom = 1, wheel = 1;
     if (this.orbiting) {
       this.orbit += rdt * 0.12; zoom = 1.12;
     } else {
@@ -1307,16 +1313,23 @@ export class View {
         tx = (ax + bx) * 0.08; tz += (az + bz) * 0.08;
         const f = this.focus;
         if (f) { tx += (f.top.x - tx) * f.w; tz += (clamp(f.top.z, -ARENA.R, ARENA.R) - tz) * f.w; zoom = f.zoom; }
+        else {
+          // Zoomed in, the whole arena no longer fits: stay on the player's own top.
+          wheel = this.wheel;
+          const me = w.tops[this.playerSide], near = clamp((1 - wheel) / (1 - WHEEL_MIN), 0, 1);
+          if (me && !me.out) { tx += (me.x - tx) * near; tz += (clamp(me.z, -ARENA.R, ARENA.R) - tz) * near; }
+        }
       }
     }
     this.look.x += (tx - this.look.x) * k; this.look.z += (tz - this.look.z) * k;
     this.zoom += (zoom - this.zoom) * k;
+    this.wheelNow += (wheel - this.wheelNow) * (1 - Math.exp(-rdt * 12));
     this.punch = Math.max(0, this.punch - rdt * 3.2);
     this.shake *= Math.exp(-rdt * 7.5);
 
     const half = Math.tan((cam.fov * Math.PI) / 360), r = ARENA.R + 2.2;
     const fit = Math.max((r * Math.sin(PITCH) * 1.26) / half, (r * 1.04) / (half * cam.aspect));
-    const dist = fit * this.zoom * (1 - this.punch * 0.035);
+    const dist = fit * this.zoom * this.wheelNow * (1 - this.punch * 0.035);
     const oy = Math.sin(PITCH) * dist, oz = Math.cos(PITCH) * dist;
     const s = this.shake * 0.55;
     cam.position.set(

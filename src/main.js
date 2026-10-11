@@ -782,6 +782,11 @@ canvas.addEventListener('mousedown', (e) => {
   orderMove(false);
 });
 window.addEventListener('mouseup', () => { game.mouseDown = false; });
+canvas.addEventListener('wheel', (e) => {
+  e.preventDefault();
+  if (!['countdown', 'fight', 'finish'].includes(game.state) || game.paused) return;
+  view.zoomBy(e.deltaY * (e.deltaMode === 1 ? 33 : 1));
+}, { passive: false });
 window.addEventListener('contextmenu', (e) => e.preventDefault());
 
 window.addEventListener('keydown', (e) => {
