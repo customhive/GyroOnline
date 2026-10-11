@@ -2728,7 +2728,9 @@ export class World {
       // Some skills empower more than one hit.
       if (s.empN > 1) s.empN--; else { s.empower = 0; s.empN = 0; }
       s.stats.skillHits++;
-      bonus(s, v, E.bonus + (E.missing || 0) * (1 - spinRatio(v)) + (E.selfMiss || 0) * Math.min(1, (1 - spinRatio(s)) / 0.7), 1);
+      // Some blows land harder on a target that is already held (stunned or in the air).
+      const held = E.heldMul && (v.stun > 0 || v.up > 0) ? E.heldMul : 1;
+      bonus(s, v, E.bonus * held + (E.missing || 0) * (1 - spinRatio(v)) + (E.selfMiss || 0) * Math.min(1, (1 - spinRatio(s)) / 0.7), 1);
       this.affect(s, v, E, 0, 0, false);
       if (E.hitHeal) this.mend(s, E.hitHeal * s.spinMax);
       // Landing it opens the follow-up on the same key.

@@ -1376,6 +1376,11 @@ console.log('STEAM GOLEM (Blitzcrank)');
   ({ w, me, foe, run, saw } = setup('golem', 2.6));
   w.cast(me, 'E', me.x, me.z); me.vz = -8; for (let i = 0; i < 30; i++) w.step(DT);
   check(foe.up > 0 || foe.stats.taken > 40, 'E: the next body hit is a heavy one that knocks up');
+  {
+    const punch = (stunned) => { const s0 = setup('golem', 2.6); s0.w.cast(s0.me, 'E', s0.me.x, s0.me.z); if (stunned) s0.w.stun(s0.foe, 1); s0.me.vz = -8; for (let i = 0; i < 30; i++) s0.w.step(DT); return s0.foe.stats.taken; };
+    const plain = punch(false), held = punch(true), add = SKILLS.powerfist.bonus * BLADES.golem.atk / BLADES.gaia.def;
+    check(Math.abs(held - plain - add) < 6, `E: on a stunned target the bonus is doubled (${plain.toFixed(0)} -> ${held.toFixed(0)})`);
+  }
   ({ w, me, foe, run, saw } = setup('golem', 4));
   foe.shield = 80; foe.shieldT = 3; foe.guard = 1;
   w.cast(me, 'R', me.x, me.z);

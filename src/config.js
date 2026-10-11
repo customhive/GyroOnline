@@ -1443,8 +1443,8 @@ export const SKILLS = {
   },
   powerfist: {
     name: 'パワーフィスト', en: 'POWER FIST', aim: 'self', kind: 'buff', icon: 'burst', cd: 5,
-    empower: 5, bonus: 44, up: 1, kb: 3,
-    desc: '5秒以内の次の体当たりが2倍の重さになり、相手を1秒打ち上げる。',
+    empower: 5, bonus: 44, heldMul: 2, up: 1, kb: 3,
+    desc: '5秒以内の次の体当たりが2倍の重さになり、相手を1秒打ち上げる。スタン中や打ち上げ中の相手に当てると、追加ダメージがさらに2倍になる。',
   },
   staticfield: {
     name: 'イナズマフィールド', en: 'STATIC FIELD', aim: 'self', icon: 'burst', cd: 2, ult: true, ai: 'burst',
