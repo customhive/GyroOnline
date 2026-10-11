@@ -1141,7 +1141,13 @@ export class View {
     if (z.kind === 'undertowz') { G.ring(z.x, z.z, 0.9, 1.05, c, 0.7); G.ring(z.x, z.z, 0, 0.9 * k, c, 0.25); if (dt > 0 && Math.random() < 0.5) speck(c, 2, -2); return true; }
     if (z.kind === 'hshock') { G.lane(z.x, z.z, z.dx, z.dz, S.range + 1.2, S.radius, col, 0.1 + 0.08 * Math.sin(this.time * 20), 0.85); G.rect(z.x, z.z, z.dx, z.dz, (S.range + 1.2) * k, S.radius, col, 0.25); return true; }
     if (z.kind === 'feather') { G.ring(z.x, z.z, 0, 0.3, c, 0.95 * fade, 0.12); G.ring(z.x, z.z, 0.5, 0.6, c, 0.45 * fade); return true; }
-    if (z.kind === 'keg') { G.ring(z.x, z.z, S.aoe - 0.06, S.aoe, col, mine ? 0.35 : 0.2); G.ring(z.x, z.z, 1.3, 1.45, col, 0.7); return true; }
+    if (z.kind === 'keg') {
+      G.ring(z.x, z.z, S.aoe - 0.06, S.aoe, col, mine ? 0.35 : 0.2);
+      G.ring(z.x, z.z, 1.3, 1.45, col, 0.7);
+      // What it can still take: one bright arc for each blow.
+      for (let i = 0; i < z.c; i++) { const a0 = -Math.PI / 2 + (i - z.c / 2) * 0.75 + 0.08; G.ring(z.x, z.z, 1.6, 1.85, 0xffffff, 0.9, 0.1, a0, a0 + 0.59); }
+      return true;
+    }
     if (z.kind === 'purgatory') {
       G.ring(z.x, z.z, 0, z.r, 0xffffff, 0.05 * fade); G.ring(z.x, z.z, z.r - 0.14, z.r, col, 0.85 * fade);
       for (const [dx, dz] of [[1, 0], [0, 1]]) G.rect(z.x - dx * 1.2, z.z - dz * 1.2, dx, dz, 2.4, 0.16, 0xffffff, 0.9 * fade, 0.12);

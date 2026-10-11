@@ -183,7 +183,7 @@ export class CpuBrain {
       if (this.again('distort')) { if (want(-0.2)) return this.use('distort'); }
       else if (d > 3 && d < SKILLS.distort.dist + 1 && want()) { const p = ahead(0.2); return this.use('distort', p.x, p.z); }
     }
-    if (this.has('shift') && d > 4 && w.own(me, 'arise').some((q) => Math.hypot(q.x - foe.x, q.z - foe.z) < 4.5) && want(-0.1)) return this.use('shift');
+    if (this.has('shift') && d > 4 && w.own(me, 'arise').some((q) => Math.hypot(q.x - foe.x, q.z - foe.z) < 4.5) && want(-0.1)) return this.use('shift', foe.x, foe.z);
 
     // Straight shots.
     for (const id of ['sonic', 'shuriken', 'fourshot', 'sigil', 'frostbite', 'flashfrost', 'flourish', 'ethereal', 'anchor', 'galeq']) {

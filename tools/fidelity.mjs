@@ -960,5 +960,56 @@ console.log('TURRET ENGINEER (Heimerdinger)');
   check(w.projectiles.length === 20, 'R then W: four volleys, twenty rockets');
 }
 
+console.log('POWDER CAPTAIN (Gangplank)');
+{
+  let { w, me, foe, run, saw } = setup('pirate', 20);
+  let n = 0; for (let i = 0; i < 4; i++) { if (w.cast(me, 'E', me.x + (i - 1.5) * 4, me.z - 6)) n++; run(0.55); }
+  check(n === 3 && me.stk === 0, 'E: three kegs in store');
+  run(6);
+  check(me.stk === 1, 'E: one comes back after 8 seconds');
+  ({ w, me, foe, run, saw } = setup('pirate', 20));
+  w.cast(me, 'E', me.x, me.z - 5); const k = w.own(me, 'keg')[0];
+  check(k.c === 3, 'E: a keg can take three blows');
+  run(0.55); const c1 = k.c; run(0.5); const c2 = k.c; run(3);
+  check(c1 === 2 && c2 === 1 && k.c === 1 && !k.dead, 'E: it weakens by itself, down to one, and no further');
+  w.cast(me, 'Q', k.x, k.z); run(0.3);
+  check(k.dead && saw('blast', (e) => e.skill.id === 'keg' && e.r > 3), 'Q: the last blow from its owner sets it off');
+  ({ w, me, foe, run, saw } = setup('pirate', 20));
+  w.cast(me, 'E', me.x, me.z - 5); const k2 = w.own(me, 'keg')[0];
+  w.cast(me, 'Q', k2.x, k2.z); run(0.2);
+  check(!k2.dead && k2.c === 2, 'Q on a fresh keg: one blow off, no explosion yet');
+  ({ w, me, foe, run, saw } = setup('pirate', 9, 'curtain'));
+  w.cast(me, 'E', 0, 0); run(1.2);
+  foe.cd.Q = 0; w.cast(foe, 'Q', 0, 0); run(0.3);
+  check(!w.own(me, 'keg').length && foe.stats.taken === 0 && !saw('blast', (e) => e.skill.id === 'keg' && e.r > 3), 'the other top lands the last blow with a shot: the keg is broken, nothing goes off');
+  ({ w, me, foe, run, saw } = setup('pirate', 9));
+  w.cast(me, 'E', 0, 0); run(1.2);
+  foe.x = 0; foe.z = -1.5; foe.vz = 6; setup.last.drift(0.3, 0, -1.2);
+  check(!w.own(me, 'keg').length && foe.stats.taken === 0, 'the other top runs into it: the same');
+  ({ w, me, foe, run, saw } = setup('pirate', 9, 'gaia'));
+  w.cast(me, 'E', 0, 0); run(1.2);
+  w.burst(foe, SKILLS.keg === null ? null : SKILLS.grenade, 0, 0, 3);
+  check(!w.own(me, 'keg').length, 'any area attack counts as a blow too');
+  ({ w, me, foe, run, saw } = setup('pirate', 16));
+  w.cast(me, 'E', me.x, me.z - 4); run(0.55); w.cast(me, 'E', me.x, me.z - 9); run(1.2);
+  foe.x = 0; foe.z = me.z - 11;
+  w.cast(me, 'Q', me.x, me.z - 4); run(0.3);
+  check(!w.own(me, 'keg').length && foe.stats.taken > 0 && foe.slowK === 0.8 && me.haste > 0, 'one keg sets off the next: the far one catches the target, slows it 80%, and the captain speeds up');
+  ({ w, me, foe, run, saw } = setup('pirate', 20));
+  w.cast(me, 'R', foe.x, foe.z); run(0.5);
+  const one = foe.stats.taken; run(7.4);
+  check(one > 0 && Math.abs(foe.stats.taken / one - 4) < 0.1 && w.own(me, 'barrage').length === 1, 'R: anywhere in the arena, four waves two seconds apart');
+  check(foe.slowK === 0.3, 'R: a 30% slow inside');
+  run(0.3); check(!w.own(me, 'barrage').length, 'R: eight seconds');
+}
+
+console.log('SAND EMPEROR: which soldier');
+{
+  const { w, me, foe } = setup('sand', 20);
+  w.zone(me, SKILLS.arise, me.x - 2, me.z, { b: 0.4 }); w.zone(me, SKILLS.arise, me.x + 6, me.z, { b: 0.4 });
+  me.cd.E = 0; w.cast(me, 'E', me.x + 7, me.z);
+  check(!!me.dash && me.dash.dx > 0.9, 'E: flies to the soldier nearest the cursor, not the nearest to itself');
+}
+
 console.log(bad ? `\n${bad} of ${n} checks failed` : `\nall ${n} checks passed`);
 process.exit(bad ? 1 : 0);

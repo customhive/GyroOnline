@@ -534,6 +534,7 @@ export class World {
       }
     }
     this.emit('blast', { top: t, skill: S, x, z, r, hit, target: hit ? opp : null });
+    this.hitKegs(t, S, (q) => Math.hypot(q.x - x, q.z - z) < r + 0.6);
     return hit;
   }
 
@@ -642,7 +643,9 @@ export class World {
       }
       case 'shift': {
         let best = null, bd = 1e9;
-        for (const q of this.own(t, 'arise')) { const d = Math.hypot(q.x - t.x, q.z - t.z); if (d < bd) { bd = d; best = q; } }
+        // To the soldier nearest the point given (the cursor), not the nearest to itself.
+        for (const q of this.own(t, 'arise')) { const d = Math.hypot(q.x - c.ax, q.z - c.az); if (d < bd) { bd = d; best = q; } }
+        bd = best ? Math.hypot(best.x - t.x, best.z - t.z) : 0;
         if (best && bd > 0.5) { this.startDash(t, S, (best.x - t.x) / bd, (best.z - t.z) / bd, bd); t.dash.to = best.id; }
         break;
       }
@@ -879,7 +882,10 @@ export class World {
         if (q) q.T = q.t; // goes off now, with whatever it has ripened to
         break;
       }
-      case 'keg': case 'parallel':
+      case 'keg':
+        this.zone(t, S, c.ax, c.az, { c: S.hp });
+        break;
+      case 'parallel':
         this.zone(t, S, c.ax, c.az);
         break;
       case 'hshock':
@@ -1063,6 +1069,7 @@ export class World {
       t.stats.skillHits++;
     }
     this.emit('beam', { top: t, skill: S, x, z, dx, dz, hit, target: hit ? opp : null });
+    this.hitKegs(t, S, (q) => { const ax = q.x - x, az = q.z - z, al = ax * dx + az * dz; return al > -1 && al < S.range + 1 && Math.abs(az * dx - ax * dz) < S.radius + 0.7; });
     return hit;
   }
 
@@ -1088,6 +1095,7 @@ export class World {
     // Banked damage goes out with the punch and comes back as a shield.
     if (S.storeHit) { t.shield = t.store; t.shieldT = S.hold; t.store = 0; }
     this.emit('cone', { top: t, skill: S, dx, dz, hit, target: hit ? opp : null });
+    this.hitKegs(t, S, (q) => this.inCone(t, { x: q.x, z: q.z, radius: 1 }, dx, dz, S));
     return hit;
   }
 
@@ -1876,9 +1884,14 @@ export class World {
         }
         case 'keg':
           if (z.t >= z.T || this.result) { this.endZone(z); break; }
-          // The other top can roll over one to defuse it; its owner sets it off by ramming it.
-          if (live && d < z.r * 0.3 + opp.radius) { this.endZone(z); break; }
-          if (z.t > 0.5 && targetable(t) && Math.hypot(t.x - z.x, t.z - z.z) < 0.9 + t.radius) this.blowKeg(z);
+          // c: hits it can still take, a: time since it last weakened by itself, b: pause before a body can strike it again
+          z.a += dt;
+          if (z.c > 1 && z.a >= S.decay) { z.a = 0; z.c--; }
+          z.b = Math.max(0, z.b - dt);
+          // Either top can strike it by running into it. Whoever lands the last blow decides what happens.
+          if (z.b <= 0) for (const s of this.tops) {
+            if (targetable(s) && s.spin > 0 && Math.hypot(s.x - z.x, s.z - z.z) < 0.9 + s.radius) { z.b = S.touch; this.hitKeg(z, s); break; }
+          }
           break;
         case 'feather':
           if (z.t >= z.T || this.result) z.dead = true;
@@ -1976,6 +1989,14 @@ export class World {
       if (!z.c && z.t > S.arm && live && Math.abs(d - z.r) < 0.5) { z.c = 1; this.stun(opp, S.cage); this.hurt(opp, (S.dmg * t.blade.atk) / opp.blade.def, t, S.id); }
       return;
     }
+    // CANNON BARRAGE comes down in waves.
+    if (S.wave && z.t >= S.wave.first + z.c * S.wave.every) {
+      z.c++;
+      let hit = 0;
+      if (inside) { hit = this.hurt(opp, (S.wave.dmg * (opp.guard > 0 ? 0.3 : 1) * t.blade.atk) / opp.blade.def, t, S.id); t.stats.skillHits++; }
+      this.emit('blast', { top: t, skill: S, x: z.x, z: z.z, r: z.r, hit, target: hit ? opp : null });
+      this.hitKegs(t, S, (q) => Math.hypot(q.x - z.x, q.z - z.z) < z.r);
+    }
     if (inside) {
       if (S.slowIn) this.slowBy(opp, 0.3, S.slowPct);
       if (S.dps) this.dot(opp, (S.dps * dt * t.blade.atk) / opp.blade.def, t);
@@ -2006,11 +2027,28 @@ export class World {
     this.emit('blast', { top: t, skill: S, x: z.x, z: z.z, r: z.r, hit: 0, target: null });
   }
 
+  // Anything that does damage takes one point off a keg. Its owner's last blow
+  // sets it off; anyone else's just breaks it.
+  hitKeg(z, by) {
+    if (z.dead) return;
+    z.c--;
+    if (z.c > 0) { this.emit('bump', { top: by, x: z.x, z: z.z, nx: 0, nz: 1, power: 6 }); return; }
+    if (by === z.owner) { this.blowKeg(z); return; }
+    this.endZone(z);
+    this.emit('blast', { top: by, skill: z.skill, x: z.x, z: z.z, r: 1.4, hit: 0, target: null });
+  }
+  // Every keg an area of effect reaches.
+  hitKegs(by, S, inside) {
+    if (S.id === 'keg') return;
+    for (const q of this.zones) if (q.kind === 'keg' && !q.dead && inside(q)) this.hitKeg(q, by);
+  }
+
   // A powder keg going off, and setting off its neighbours.
   blowKeg(z) {
     if (z.dead) return;
     const t = z.owner, S = z.skill;
     this.endZone(z);
+    t.haste = Math.max(t.haste, S.blowHaste);
     this.burst(t, S, z.x, z.z, S.aoe);
     for (const q of this.own(t, 'keg')) if (Math.hypot(q.x - z.x, q.z - z.z) < S.aoe + 2) this.blowKeg(q);
   }
@@ -2299,8 +2337,13 @@ export class World {
       p.x += p.dx * st; p.z += p.dz * st; p.left -= st;
       const v = this.other(p.owner);
       if (p.crawl && targetable(v) && Math.hypot(v.x - p.x, v.z - p.z) < S.field) this.slowBy(v, 0.3, S.fieldPct);
-      const keg = this.own(p.owner, 'keg').find((q) => Math.hypot(q.x - p.x, q.z - p.z) < 1.2 + p.r);
-      if (keg) { p.dead = true; this.blowKeg(keg); continue; }
+      // A shot strikes any keg it passes; the captain's own pistol shot stops there.
+      const keg = this.zones.find((q) => q.kind === 'keg' && !q.dead && q.id !== p.keg && Math.hypot(q.x - p.x, q.z - p.z) < 1.2 + p.r);
+      if (keg) {
+        p.keg = keg.id;
+        this.hitKeg(keg, p.owner);
+        if (S.id === 'parrrley') { p.dead = true; continue; }
+      }
       if (this.stopped(p)) {
         p.dead = true;
         if (S.re) this.unre(p.owner, S.id);

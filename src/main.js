@@ -563,6 +563,8 @@ window.addEventListener('keydown', (e) => {
   // Held-to-fire: it needs no aiming indicator (the stream itself shows where
   // it goes) and leaves the other keys free.
   if (base.rapid) { game.rapidKey = k; return; }
+  // Some need no aiming but still care where the cursor is (which soldier to fly to).
+  if (S.aim === 'self' && S.cursor) { refreshCursor(); tryCast(k, game.cursor.x, game.cursor.z); return; }
   if (S.aim === 'self') { tryCast(k, me.x, me.z); return; }
   // Aiming is allowed while briefly unable to act; only a real cooldown refuses.
   if (!game.world.ready(me, k, 0.25) || me.air || me.out) { audio.denied(); ui.denied(k); return; }

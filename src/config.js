@@ -204,7 +204,7 @@ export const BLADES = {
     id: 'pirate', kit: { Q: 'parrrley', W: 'orange', E: 'keg', R: 'barrage' },
     name: 'パウダー・キャプテン', en: 'POWDER CAPTAIN', type: 'ATTACK', typeJa: 'アタック',
     color: 0xd96a1e, css: '#d96a1e', teeth: 5,
-    atk: 1.3, def: 1.02, mass: 1.0, speed: 13.5, decay: 6.0, spinMax: 1000, cdMul: 1.0, guardMul: 1.0,
+    atk: 1.4, def: 1.08, mass: 1.0, speed: 13.5, decay: 5.9, spinMax: 1000, cdMul: 1.0, guardMul: 1.0,
     bars: { atk: 4, def: 3, sta: 3, spd: 3 },
     desc: '火薬樽を並べ、撃って誘爆させる。必殺技はアリーナのどこにでも砲撃を降らせる。',
   },
@@ -660,7 +660,8 @@ export const SKILLS = {
   shift: {
     name: '流砂', en: 'SHIFTING SANDS', aim: 'self', cd: 9, need: 'soldier',
     speed: 36, dmg: 30, keep: 0.5, kb: 3, liftUp: 0.7, shield: 60, hold: 2, fly: true,
-    desc: '一番近い砂兵へ突進する。途中で相手に当たると打ち上げ、バリアを得る。突進中にQで砂兵を動かすと、その砂兵を追いかけて飛び続ける。',
+    cursor: true,
+    desc: 'カーソルに一番近い砂兵へ突進する。途中で相手に当たると打ち上げ、バリアを得る。突進中にQで砂兵を動かすと、その砂兵を追いかけて飛び続ける。',
   },
   divide: {
     name: '皇帝の分砂嶺', en: "EMPEROR'S DIVIDE", aim: 'line', cd: 2, ult: true, tele: 0.3,
@@ -873,9 +874,9 @@ export const SKILLS = {
   },
   // ---- POWDER CAPTAIN: kegs first, then the match ----------------------------
   parrrley: {
-    name: '早撃ち', en: 'PARRRLEY', aim: 'line', kind: 'shot', icon: 'shot', cd: 3,
-    tele: 0.35, range: 12, speed: 40, radius: 0.7, dmg: 42, kb: 3, tumble: 0.1,
-    desc: '弾を撃つ。自分の火薬樽に当てると爆発させられる。',
+    name: '早撃ち', en: 'PARRRLEY', aim: 'line', kind: 'shot', icon: 'shot', cd: 4.5,
+    tele: 0.35, range: 6, speed: 40, radius: 0.7, dmg: 50, kb: 3, tumble: 0.1,
+    desc: '短い射程の弾を撃つ。火薬樽に当てると耐久を1削り、とどめなら爆発させる。',
   },
   orange: {
     name: '壊血病治療', en: 'REMOVE SCURVY', aim: 'self', kind: 'buff', icon: 'heal', cd: 14,
@@ -883,14 +884,14 @@ export const SKILLS = {
     desc: '回転を回復し、スロウ・毒・出血などをすべて消す。',
   },
   keg: {
-    name: '火薬樽', en: 'POWDER KEG', aim: 'ground', icon: 'trap', cd: 6,
-    ai: 'ground', range: 8, aoe: 3.6, dur: 18, max: 3, dmg: 72, slow: 1.5, kb: 5,
-    desc: '火薬樽を置く（最大3個）。自分の弾か体当たりで爆発し、近くの樽も誘爆する。相手に踏まれると不発。',
+    name: '火薬樽', en: 'POWDER KEG', aim: 'ground', icon: 'trap', cd: 0.5, stock: { max: 3, every: 8 },
+    ai: 'ground', range: 8, aoe: 3.6, dur: 25, max: 5, hp: 3, decay: 0.5, touch: 0.5, dmg: 72, slow: 2, slowPct: 0.8, kb: 5, blowHaste: 2,
+    desc: '火薬樽を置く。3個ぶん溜めておける（8秒で1個ぶん戻る）。樽の耐久は3で、時間とともに1まで減る。誰のどんな攻撃や体当たりでも1ずつ削れ、自分がとどめを刺せば爆発して近くの樽も誘爆し、80%のスロウ。相手にとどめを刺されると不発。',
   },
   barrage: {
     name: '一斉砲撃', en: 'CANNON BARRAGE', aim: 'ground', kind: 'field', icon: 'field', cd: 2, ult: true,
-    range: 30, aoe: 6, dur: 5, dps: 44, slowIn: true,
-    desc: '【必殺技】アリーナのどこへでも5秒間の砲撃を降らせる。中の相手はスロウになり削られ続ける。',
+    range: 30, aoe: 6, dur: 8, slowIn: true, slowPct: 0.3, wave: { first: 0.4, every: 2, dmg: 60 },
+    desc: '【必殺技】アリーナのどこへでも8秒間の砲撃を降らせる。2秒ごとに4回着弾し、中の相手は30%のスロウになる。',
   },
   // ---- ASHEN EXORCIST: nail them down, then seal them away -------------------
   nails: {
