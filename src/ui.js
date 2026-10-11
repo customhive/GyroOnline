@@ -325,7 +325,9 @@ export class UI {
     const lopsided = lb.teams && new Set(lb.slots.filter((p) => p.kind !== 'none').map((p) => p.team)).size < 2;
     s.textContent = host && lopsided ? 'チーム戦は、AとBの両方に1人以上必要です。カードの下のボタンでチームを変えられます' : status;
     s.className = 'lb-status ' + lb.status;
-    $('#lb-invite').classList.toggle('hidden', !host || !lb.url || !waiting);
+    // Hidden, the invitation keeps its place, so the panel does not jump.
+    $('#lb-invite').classList.remove('hidden');
+    $('#lb-invite').classList.toggle('ghost', !host || !lb.url || !waiting);
     if (lb.url && $('#lb-url').value !== lb.url) $('#lb-url').value = lb.url;
 
     // One tall card for each seat.
@@ -360,17 +362,21 @@ export class UI {
       });
       seat.appendChild(card);
 
-      // Which team: the host can move anyone, everyone else only themselves.
+      // Under each card: its team, what the seat is, and a CPU's level. Every
+      // seat keeps all its rows, empty ones included, so nothing moves about
+      // as the choices change.
       const ctl = el('div', 'lb-ctl');
-      if (lb.teams && !empty && !off) {
-        const tb = el('button', 'lb-team ' + (p.team ? 'b' : 'a'), `チーム ${p.team ? 'B' : 'A'}`);
-        tb.disabled = !(host || you) || (p.kind === 'human' && p.ready);
-        tb.title = 'クリックでチームを変える';
-        tb.onclick = () => this.h.team(i);
-        ctl.appendChild(tb);
+      const blank = (cls) => ctl.appendChild(el('div', cls + ' ghost'));
+      {
+        if (lb.teams && !empty && !off) {
+          const tb = el('button', 'lb-team ' + (p.team ? 'b' : 'a'), `チーム ${p.team ? 'B' : 'A'}`);
+          tb.disabled = !(host || you) || (p.kind === 'human' && p.ready);
+          tb.title = 'クリックでチームを変える';
+          tb.onclick = () => this.h.team(i);
+          ctl.appendChild(tb);
+        } else blank('lb-team');
       }
-      // What the host can make of each seat.
-      // A seat a guest is sitting in has nothing for the host to set.
+      // What the host can make of each seat. One a guest is sitting in has nothing to set.
       if (host && !(i !== mine && p.kind === 'human')) {
         const kinds = i === 0 ? [['human', '自分で操作'], ['cpu', 'CPU']] : [['open', '人間'], ['cpu', 'CPU'], ['none', 'なし']];
         const row = el('div', 'lb-seg');
@@ -380,17 +386,17 @@ export class UI {
           row.appendChild(btn);
         }
         ctl.appendChild(row);
-        if (p.kind === 'cpu') {
-          const lv = el('div', 'lb-seg small');
-          DIFFICULTY.forEach((d, n) => {
-            const btn = el('button', p.level === n ? 'on' : '', d.name);
-            btn.title = d.ja;
-            btn.onclick = () => this.h.slotLevel(i, n);
-            lv.appendChild(btn);
-          });
-          ctl.appendChild(lv);
-        }
-      }
+      } else if (host) blank('lb-seg');
+      if (host && p.kind === 'cpu') {
+        const lv = el('div', 'lb-seg small');
+        DIFFICULTY.forEach((d, n) => {
+          const btn = el('button', p.level === n ? 'on' : '', d.name);
+          btn.title = d.ja;
+          btn.onclick = () => this.h.slotLevel(i, n);
+          lv.appendChild(btn);
+        });
+        ctl.appendChild(lv);
+      } else if (host) blank('lb-seg small');
       seat.appendChild(ctl);
       cards.appendChild(seat);
     });
@@ -407,7 +413,7 @@ export class UI {
     };
     seg($('#lb-mode'), [[false, 'バトルロイヤル'], [true, 'チーム戦']], !!lb.teams, (v) => this.h.mode(v));
     seg($('#lb-ff'), [[false, '味方への攻撃 OFF'], [true, 'ON']], !!lb.ff, (v) => this.h.ff(v));
-    $('#lb-ff').classList.toggle('hidden', !lb.teams);
+    $('#lb-ff').classList.toggle('ghost', !lb.teams);
 
     const g = STAGES[lb.stage];
     $('#st-pic').innerHTML = this.stagePic(g);
