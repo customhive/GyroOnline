@@ -1650,5 +1650,87 @@ console.log('MAD DOCTOR (Dr. Mundo)');
   check(me.spin > 300 + 280 && me.buff === 0, `R: over 8 seconds about 35% of its spin comes back (${(me.spin - 300).toFixed(0)})`);
 }
 
+console.log('WITH MORE THAN TWO');
+{
+  // Two against two: `a` and its mate `m` on one side, `x` and `y` on the other. Everyone parked where it is put.
+  const quad = (blade, others = ['gaia', 'gaia', 'gaia'], teams = [0, 0, 1, 1]) => {
+    const w = new World([blade, ...others].map((b) => BLADES[b]), { seed: 7, teams });
+    const [a, m, x, y] = w.tops;
+    for (const t of w.tops) for (const k of 'QWER') t.cd[k] = t === a ? 0 : 99;
+    a.ult = 100;
+    const spot = new Map();
+    const put = (t, px, pz) => { spot.set(t, [px, pz]); t.x = px; t.z = pz; t.vx = t.vz = 0; t.cmd = null; };
+    put(a, 0, 6); put(m, 9, 9); put(x, 0, -6); put(y, -9, -9);
+    const seen = [];
+    const run = (sec, free = []) => { for (let i = 0; i < Math.round(sec / DT); i++) { w.step(DT); seen.push(...w.events.splice(0)); for (const [t, [px, pz]] of spot) if (!free.includes(t) && !t.dash && !t.air && t.tumble <= 0 && t.up <= 0) { t.x = px; t.z = pz; t.vx = t.vz = 0; } } };
+    return { w, a, m, x, y, put, run, seen };
+  };
+
+  let q = quad('prism');
+  q.put(q.m, 0, 2);
+  q.w.cast(q.a, 'W', 0, -9); q.run(0.4);
+  check(q.m.shield === 50 && q.a.shield === 50, 'PRISMATIC BARRIER: a team mate the wand passes is shielded too');
+  q.run(1.4);
+  check(q.m.shield === 100, 'and again on its way back');
+  q = quad('prism'); q.put(q.x, 0, 2);
+  q.w.cast(q.a, 'W', 0, -9); q.run(0.4);
+  check(q.x.shield === 0, 'an enemy in its way gets nothing');
+
+  q = quad('dragon');
+  q.put(q.m, 5, 6);
+  q.w.cast(q.a, 'W', q.m.x, q.m.z); q.run(0.1, [q.a]);
+  check(q.a.shield === 70 && q.m.shield === 70 && Math.hypot(q.a.x - q.m.x, q.a.z - q.m.z) < 3, 'SAFEGUARD with the cursor on a team mate: it flies to them and both are shielded');
+  q = quad('dragon');
+  q.put(q.m, 5, 6);
+  q.w.cast(q.a, 'W', q.a.x, q.a.z); q.run(0.1);
+  check(q.a.shield === 70 && q.m.shield === 0 && Math.abs(q.a.x) < 0.01, 'with the cursor on itself: only its own, where it stands');
+
+  q = quad('canvas');
+  q.put(q.m, 0, 3);
+  q.w.zone(q.a, SKILLS.hpool, 0, 3); q.w.zone(q.a, SKILLS.currentpool, 0, 3); q.put(q.x, 0, 3.5);
+  q.run(0.5);
+  check(q.m.shield > 45 && q.m.haste > 0 && q.x.shield === 0 && q.x.haste === 0, 'the pool and the current: a team mate standing in them is shielded and quickened, an enemy is not');
+
+  q = quad('curtain', ['azure', 'gaia', 'gaia']);
+  q.put(q.x, 0, -4);
+  q.w.hurt(q.x, 10, q.m, 'x');
+  q.w.cast(q.a, 'W', q.x.x, q.x.z); q.run(0.4);
+  check(q.x.snare > 1.5, 'DEADLY FLOURISH: a target a team mate struck a moment ago is rooted');
+  q = quad('curtain', ['azure', 'gaia', 'gaia']);
+  q.put(q.x, 0, -4);
+  q.w.hurt(q.x, 10, q.y, 'x');
+  q.w.cast(q.a, 'W', q.x.x, q.x.z); q.run(0.4);
+  check(q.x.snare === 0, 'one its own side struck is not');
+
+  q = quad('gale');
+  q.put(q.x, 0, 0); q.put(q.y, 3, 0);
+  q.w.lift(q.x, 1); q.w.lift(q.y, 1);
+  q.w.cast(q.a, 'R', q.x.x, q.x.z);
+  check(q.x.stats.taken > 100 && q.y.stats.taken > 100 && q.x.up === 0 && q.y.up === 0, 'LAST BREATH: everyone hanging in the air close to the target is cut down with it');
+  q = quad('gale');
+  q.put(q.x, 0, 0); q.put(q.y, 3, 0);
+  q.w.lift(q.x, 1);
+  q.w.cast(q.a, 'R', q.x.x, q.x.z);
+  check(q.x.stats.taken > 100 && q.y.stats.taken === 0, 'someone beside it who is on the ground is not');
+
+  q = quad('dragon');
+  q.put(q.a, 0, 4); q.put(q.x, 0, 0.5); q.put(q.y, 0, -4.5);
+  q.w.cast(q.a, 'R', q.x.x, q.x.z); q.run(0.5, [q.x]);
+  check(q.y.stats.taken > 40 && q.seen.some((e) => e.type === 'say' && e.top === q.y && e.text === 'KNOCK UP'), `DRAGON'S RAGE: the one kicked bowls over the enemy behind it (${q.y.stats.taken.toFixed(0)})`);
+  q = quad('dragon');
+  q.put(q.a, 0, 4); q.put(q.x, 0, 0.5); q.put(q.m, 0, -4.5);
+  q.w.cast(q.a, 'R', q.x.x, q.x.z); q.run(0.5, [q.x]);
+  check(q.m.up === 0 && !q.seen.some((e) => e.type === 'strike' && e.top === q.m), 'a team mate of the kicker in its way is not bowled over');
+
+  q = quad('boss');
+  q.put(q.a, 0, 6); q.put(q.x, 0, 2.5); q.put(q.y, 0, -4.2);
+  q.w.cast(q.a, 'R', q.x.x, q.x.z); q.run(0.9, [q.a, q.x]);
+  check(q.x.stats.taken > 60 && q.y.stats.taken > 40 && q.y.slowK === 0.99, `THE SHOW STOPPER: whoever stands where it comes down is caught too (${q.y.stats.taken.toFixed(0)})`);
+  q = quad('boss');
+  q.put(q.a, 0, 6); q.put(q.x, 0, 2.5); q.put(q.m, 0, -4.2);
+  q.w.cast(q.a, 'R', q.x.x, q.x.z); q.run(0.9, [q.a, q.x]);
+  check(q.m.stats.taken === 0, 'but not a team mate');
+}
+
 console.log(bad ? `\n${bad} of ${n} checks failed` : `\nall ${n} checks passed`);
 process.exit(bad ? 1 : 0);

@@ -525,8 +525,8 @@ export const SKILLS = {
   },
   lastbreath: {
     name: '終の息吹', en: 'LAST BREATH', aim: 'self', cd: 2, ult: true, need: 'up',
-    range: 15, dmg: 170, kb: 12, gap: 2.6,
-    desc: '【必殺技】打ち上げ中の相手にだけ使える。瞬時に飛びつき、連撃して外側へ叩き落とす。',
+    range: 15, dmg: 170, kb: 12, gap: 2.6, also: 4.5,
+    desc: '【必殺技】打ち上げ中の相手にだけ使える。瞬時に飛びつき、連撃して外側へ叩き落とす。近くで打ち上がっている相手も全員まとめて斬る。',
   },
   // ---- NOX SHADE: strike from two places at once ------------------------------
   shuriken: {
@@ -564,7 +564,7 @@ export const SKILLS = {
   flourish: {
     name: '致命の一閃', en: 'DEADLY FLOURISH', aim: 'line', cd: 12, tele: 0.45,
     range: 24, speed: 60, radius: 0.6, dmg: 44, root: 2.25, markT: 4,
-    desc: 'アリーナの端まで届く細い弾を撃つ。直前4秒に自分の攻撃が当たっていれば、相手を2.25秒その場に縛る（スキルは使われる）。',
+    desc: 'アリーナの端まで届く細い弾を撃つ。直前4秒に自分か味方の攻撃が当たっていれば、相手を2.25秒その場に縛る（スキルは使われる）。',
   },
   lotus: {
     name: '蓮の罠', en: 'LOTUS TRAP', aim: 'ground', cd: 2, stock: { max: 2, every: 14 },
@@ -921,9 +921,9 @@ export const SKILLS = {
     tp: true, dmg: 40, exec: 1.0,
   },
   safeguard: {
-    name: '守りの型', en: 'SAFEGUARD', aim: 'self', kind: 'buff', icon: 'shield', cd: 7, re: 'ironwill',
-    shield: 70, hold: 2, window: 3,
-    desc: '2秒間バリアを張る。3秒以内にもう一度押すと、4秒間、与えたダメージの26%を回転として取り戻す。',
+    name: '守りの型', en: 'SAFEGUARD', aim: 'self', kind: 'buff', icon: 'shield', cd: 7, re: 'ironwill', cursor: true,
+    shield: 70, hold: 2, window: 3, reach: 7, speed: 38, through: true, halt: true,
+    desc: '2秒間バリアを張る。カーソルを味方に合わせて使うと、その味方へ飛びついて2人ともバリアを得る。3秒以内にもう一度押すと、4秒間、与えたダメージの26%を回転として取り戻す。',
   },
   tempest: {
     name: '破風', en: 'TEMPEST', aim: 'self', kind: 'burst', icon: 'burst', cd: 8, re: 'cripplekick',
@@ -932,8 +932,8 @@ export const SKILLS = {
   },
   dragonrage: {
     name: '龍の怒り', en: "DRAGON'S RAGE", aim: 'self', kind: 'kick', icon: 'beam', cd: 2, ult: true,
-    need: 'range', grab: 5, dmg: 85, kb: 24, launch: 2.2,
-    desc: '【必殺技】密着した相手を、自分から見て向こう側へ場外まで蹴り飛ばす。どこへ飛ばすかは自分の立ち位置で決まる。',
+    need: 'range', grab: 5, dmg: 85, kb: 24, launch: 2.2, pass: 60, passUp: 1, passT: 0.9,
+    desc: '【必殺技】密着した相手を、自分から見て向こう側へ場外まで蹴り飛ばす。どこへ飛ばすかは自分の立ち位置で決まる。蹴られた相手が別の敵にぶつかると、その敵もダメージを受けて1秒打ち上がる。',
   },
   ironwill: { name: '鉄の意志', en: 'IRON WILL', aim: 'self', kind: 'buff', hidden: true, dur: 4 },
   cripplekick: { name: '縛脚', en: 'CRIPPLE', aim: 'self', kind: 'strike', hidden: true, need: 'range', grab: 6.3, dmg: 0, slow: 4, slowPct: 0.75 },
@@ -955,8 +955,8 @@ export const SKILLS = {
   },
   showstopper: {
     name: 'ショーストッパー', en: 'THE SHOW STOPPER', aim: 'self', kind: 'throw', icon: 'leap', cd: 2, ult: true,
-    need: 'range', grab: 5.25, carry: 4, air: 0.7, height: 5, aoe: 3.6, dmg: 100, massMul: 0.6, slow: 1, slowPct: 0.99,
-    desc: '【必殺技】密着した相手を掴み、そのまま向こう側へ運んで叩きつける。重い相手ほどダメージが大きい。叩きつけられた相手は1秒間ほとんど動けない。',
+    need: 'range', grab: 5.25, carry: 4, air: 0.7, height: 5, aoe: 3.6, dmg: 100, massMul: 0.6, slow: 1, slowPct: 0.99, around: 0.75,
+    desc: '【必殺技】密着した相手を掴み、そのまま向こう側へ運んで叩きつける。重い相手ほどダメージが大きい。叩きつけた場所の近くにいる別の敵も巻き込む。叩きつけられた相手は1秒間ほとんど動けない。',
   },
   // ---- POWDER CAPTAIN: kegs first, then the match ----------------------------
   parrrley: {
@@ -1014,7 +1014,7 @@ export const SKILLS = {
   barrier: {
     name: 'プリズムバリア', en: 'PRISMATIC BARRIER', aim: 'line', kind: 'shot', icon: 'shield', cd: 10,
     range: 9, speed: 16, radius: 0.7, dmg: 0, friendly: true, ret: true, shieldAdd: 50, shieldMax: 100, hold: 2.5,
-    desc: '杖を投げる。投げたときと、戻ってきた杖を受け取ったときの2回、バリアが重なる。',
+    desc: '杖を投げる。投げたときと、戻ってきた杖を受け取ったときの2回、バリアが重なる。杖が通り過ぎた味方にも、行きと帰りで1回ずつバリアが付く。',
   },
   singularity: {
     name: 'シンギュラリティ', en: 'LUCENT SINGULARITY', aim: 'ground', kind: 'field', icon: 'field', cd: 8, re: 'lightpop',
@@ -1037,7 +1037,7 @@ export const SKILLS = {
   subjserenity: {
     name: '題材：静謐', en: 'SUBJECT: SERENITY', aim: 'self', icon: 'heal', cd: 16, ai: 'subject',
     spells: { Q: 'hcurrent', W: 'hpool', E: 'hlights' },
-    desc: '題材を選ぶ。Q＝水流（上にいる間加速）／W＝泉（上にいる間バリアが増えていく）／E＝次の3回の攻撃に追加ダメージ。Rで取り消し。',
+    desc: '題材を選ぶ。Q＝水流（上にいる間加速）／W＝泉（上にいる間バリアが増えていく）／E＝次の3回の攻撃に追加ダメージ。水流と泉は味方にも効く。Rで取り消し。',
   },
   subjtorment: {
     name: '題材：苦悩', en: 'SUBJECT: TORMENT', aim: 'self', icon: 'heart', cd: 10, ai: 'subject',

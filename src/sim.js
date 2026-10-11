@@ -64,6 +64,7 @@ export function makeTop(side, blade) {
     spray: null,           // a burst of shots being fired one after another: { skill, n, every, acc, dx, dz }
     rayA: null,            // the bearing of a beam that turns to follow the cursor
     dbl: 0,                // the next body hit lands twice
+    kickT: 0, kickBy: -1, kickHit: 0, // kicked away by DRAGON'S RAGE: time left in flight, by whom, and whom it has already bowled over
     once: false,           // the one-per-round shield has been used
     odT: 0,                // OVERDRIVE winding down
     deN: 0, deT: 0,        // deconstruction: skill hits taken lately
@@ -344,6 +345,8 @@ export class World {
   // Everyone still in the round that `t`'s attacks can land on: its enemies,
   // and its own team too when friendly fire is on.
   foes(t) { return this.tops.filter((o) => o !== t && !o.gone && o.realm === t.realm && (this.ff || o.team !== t.team)); }
+  // Those on its own side still in the round (and in the same world as it).
+  mates(t) { return this.tops.filter((o) => o !== t && !o.gone && !o.out && o.realm === t.realm && o.team === t.team); }
   // Only those it is actually fighting.
   enemies(t) { return this.tops.filter((o) => o !== t && !o.gone && o.realm === t.realm && o.team !== t.team); }
   // The one `t` is fighting right now: the nearest enemy still in the round.
@@ -398,7 +401,7 @@ export class World {
       if (Math.abs(t.x) < 1e-9) t.x = 0;
       if (Math.abs(t.vz) < 1e-9) t.vz = 0;
       t.gone = null; t.prey = t.dmarkTo = -1; t.quills = t.quillT = 0; t.realm = 0;
-      t.silence = t.dbl = t.odT = t.deN = t.deT = t.ardent = t.shrugCd = t.rockT = 0; t.shredK = 1; t.bleedBy = t.ardentBy = -1; t.spray = null; t.rayA = null; t.once = false;
+      t.silence = t.dbl = t.odT = t.deN = t.deT = t.ardent = t.shrugCd = t.rockT = t.kickT = t.kickHit = 0; t.shredK = 1; t.bleedBy = t.ardentBy = -1; t.spray = null; t.rayA = null; t.once = false;
       t.spin = t.spinMax;
       t.cmd = t.cast = t.dash = t.air = t.out = t.blink = t.charge = t.orbs = t.tether = t.chan = t.ret = t.hold = null;
       t.tumble = t.launch = t.guard = t.slow = t.hitCd = t.empower = 0;
@@ -795,6 +798,22 @@ export class World {
         t.cmd = null;
         this.emit('charge', { top: t, T: S.charge, skill: S });
         break;
+      case 'safeguard': {
+        // With a team mate near the cursor (nearer it than this top is): fly to them, and both are shielded.
+        const d0 = Math.hypot(c.ax - t.x, c.az - t.z);
+        let to = null, bd = d0;
+        for (const o of this.mates(t)) { const d = Math.hypot(c.ax - o.x, c.az - o.z); if (d < bd && Math.hypot(o.x - t.x, o.z - t.z) <= S.reach) { bd = d; to = o; } }
+        t.shield = S.shield; t.shieldT = S.hold;
+        t.re[c.key] = S.window;
+        if (to) {
+          to.shield = Math.max(to.shield, S.shield); to.shieldT = Math.max(to.shieldT, S.hold);
+          const dx = to.x - t.x, dz = to.z - t.z, d = Math.hypot(dx, dz);
+          if (d > 2.8) this.startDash(t, S, dx / d, dz / d, d - 2.4);
+          this.emit('buff', { top: to, skill: S });
+        }
+        this.emit('buff', { top: t, skill: S });
+        break;
+      }
       case 'singularity': {
         // Thrown, not placed: the orb flies to the spot and only then opens, so a wall in its way stops it.
         const dx = c.ax - t.x, dz = c.az - t.z, d = Math.hypot(dx, dz);
@@ -1151,10 +1170,19 @@ export class World {
         nx /= n; nz /= n;
         const fx = t.x, fz = t.z;
         t.x = opp.x - nx * S.gap; t.z = opp.z - nz * S.gap; t.vx = t.vz = 0; t.cmd = null;
+        // Everyone else hanging in the air close by is cut down with it.
+        const also = this.foes(t).filter((o) => o !== opp && o.up > 0 && targetable(o) && Math.hypot(o.x - opp.x, o.z - opp.z) < S.also);
         opp.up = 0;
-        const hit = this.hurt(opp, (S.dmg * t.blade.atk) / opp.blade.def, t, 'lastbreath');
+        let hit = this.hurt(opp, (S.dmg * t.blade.atk) / opp.blade.def, t, 'lastbreath');
         this.knock(opp, nx, nz, S.kb, 0.6, 2);
         t.stats.skillHits++;
+        for (const o of also) {
+          o.up = 0;
+          hit += this.hurt(o, (S.dmg * t.blade.atk) / o.blade.def, t, 'lastbreath');
+          const ox = o.x - t.x, oz = o.z - t.z, od = Math.hypot(ox, oz) || 1;
+          this.knock(o, ox / od, oz / od, S.kb, 0.6, 2);
+          t.stats.skillHits++;
+        }
         this.emit('warp', { top: t, fx, fz });
         this.emit('blast', { top: t, skill: S, x: opp.x, z: opp.z, r: 4, hit, target: opp });
         break;
@@ -1434,6 +1462,8 @@ export class World {
         const kx = opp.x - t.x, kz = opp.z - t.z, kd = Math.hypot(kx, kz) || 1;
         const dmg = this.hurt(opp, (S.dmg * (opp.guard > 0 ? 0.4 : 1) * t.blade.atk) / opp.blade.def, t, S.id);
         this.knock(opp, kx / kd, kz / kd, S.kb, 0.7, S.launch);
+        // In flight it bowls over whoever else of the kicker's enemies it runs into.
+        if (S.pass) { opp.kickT = S.passT; opp.kickBy = t.side; opp.kickHit = 0; }
         t.stats.skillHits++;
         this.emit('strike', { top: opp, src: t, skill: S, x: opp.x, z: opp.z, dmg, big: true });
         break;
@@ -1772,6 +1802,7 @@ export class World {
     for (const t of T) { SCOPE = t.realm; this.updateTop(t, dt, this.other(t)); }
     SCOPE = -1;
     for (let i = 0; i < T.length; i++) for (let j = i + 1; j < T.length; j++) this.collide(T[i], T[j]);
+    for (const t of T) if (t.kickT > 0) this.bowl(t, dt);
     for (const t of T) this.barriers(t);
     for (const t of T) this.walls(t);
     for (const t of T) this.confine(t);
@@ -2079,7 +2110,15 @@ export class World {
       if (S.id === 'fling') { if (this.own(by, 'glue').some((q) => Math.hypot(q.x - x, q.z - z) < q.r)) this.snare(t, S.snare); } else if (S.stun) this.stun(t, S.stun);
       if (S.slow) this.slowBy(t, S.slow, S.slowPct);
       by.stats.skillHits++;
-      this.emit('blast', { top: by, skill: S, x, z, r: S.aoe || 2.2, hit, target: t });
+      // THE SHOW STOPPER: whoever else of the thrower's enemies stands where it comes down is caught too.
+      let more = 0;
+      if (S.around) for (const o of this.foes(by)) {
+        if (o === t || !targetable(o) || o.realm !== t.realm || Math.hypot(o.x - x, o.z - z) > S.aoe + o.radius * 0.5) continue;
+        more += this.hurt(o, (S.dmg * S.around * (o.guard > 0 ? 0.3 : 1) * by.blade.atk) / o.blade.def, by, S.id);
+        if (o.guard <= 0 && S.slow) this.slowBy(o, S.slow, S.slowPct);
+        by.stats.skillHits++;
+      }
+      this.emit('blast', { top: by, skill: S, x, z, r: S.aoe || 2.2, hit: hit + more, target: t });
       return;
     }
     if (S.id !== 'meteor') {
@@ -2666,9 +2705,13 @@ export class World {
     }
     if (!t.out && !t.air && t.spin > 0 && Math.hypot(t.x - z.x, t.z - z.z) < z.r) {
       if (S.regen) { const h = Math.min(S.regen * dt, t.spinMax - t.spin); t.spin += h; z.a += h; z.b += dt; if (z.b >= 1) { if (z.a >= 1) this.emit('heal', { top: t, amount: z.a }); z.a = 0; z.b = 0; } }
-      if (S.hasteIn) t.haste = Math.max(t.haste, 0.3);
+    }
+    // The current and the pool are for its whole side, not only whoever painted them.
+    if (S.hasteIn || S.shieldIn) for (const o of [t, ...this.mates(t)]) {
+      if (o.out || o.air || o.spin <= 0 || Math.hypot(o.x - z.x, o.z - z.z) >= z.r) continue;
+      if (S.hasteIn) o.haste = Math.max(o.haste, 0.3);
       // POOL OF REFLECTION: a shield that builds while standing in it.
-      if (S.shieldIn) { t.shield = Math.min(S.shieldIn.max, Math.max(t.shield, S.shieldIn.first) + S.shieldIn.per * dt); t.shieldT = 0.5; }
+      if (S.shieldIn) { o.shield = Math.min(S.shieldIn.max, Math.max(o.shield, S.shieldIn.first) + S.shieldIn.per * dt); o.shieldT = 0.5; }
     }
   }
 
@@ -2984,6 +3027,23 @@ export class World {
     this.emit('say', { top: v, text: S.en, tone: 'red' });
   }
 
+  // DRAGON'S RAGE: the top that was kicked hits everything in its way. Team
+  // mates pass through each other in the ordinary way, so this is checked apart
+  // from collisions; the one it strikes is hurt and thrown into the air.
+  bowl(t, dt) {
+    t.kickT -= dt;
+    const by = this.tops[t.kickBy], S = SKILLS.dragonrage;
+    if (!by || this.result || t.out || t.gone || t.tumble <= 0) { t.kickT = 0; return; }
+    for (const o of this.foes(by)) {
+      if (o === t || t.kickHit & (1 << o.side) || !targetable(o) || o.realm !== t.realm || Math.hypot(o.x - t.x, o.z - t.z) > t.radius + o.radius) continue;
+      t.kickHit |= 1 << o.side;
+      const dmg = this.hurt(o, (S.pass * (o.guard > 0 ? 0.4 : 1) * by.blade.atk) / o.blade.def, by, S.id);
+      if (o.guard <= 0) this.lift(o, S.passUp);
+      by.stats.skillHits++;
+      this.emit('strike', { top: o, src: by, skill: S, x: o.x, z: o.z, dmg });
+    }
+  }
+
   // The ring of a realm holds the two inside it.
   confine(t) {
     if (!t.realm || t.out) return;
@@ -3095,7 +3155,9 @@ export class World {
       o.stack++; o.stackT = 1.5;
       for (const q of this.own(o, 'turret')) q.dz = Math.min(1, q.dz + S.charge);
     }
-    const marked = !!v.lastHit && v.lastHit.by === o.side && this.time - v.lastHit.time < (S.markT || 0);
+    // (Its own side's attacks count: a team mate's blow sets the target up as well.)
+    const hb = v.lastHit && this.tops[v.lastHit.by];
+    const marked = !!hb && hb.team === o.team && this.time - v.lastHit.time < (S.markT || 0);
     // Each quill after the first cuts a little less.
     if (S.id === 'quill') k *= Math.max(0.1, 1 - S.fall * (v.quillT > 0 ? v.quills : 0));
     const dmg = this.hurt(v, (p.dmg * k) / v.blade.def, o, S.id);
@@ -3167,6 +3229,12 @@ export class World {
         p.dx = hx / hd; p.dz = hz / hd;
       }
       p.x += p.dx * st; p.z += p.dz * st; p.left -= st;
+      // PRISMATIC BARRIER: team mates the wand passes are shielded too, once on the way out and once on the way back.
+      if (S.shieldAdd) for (const q of this.mates(p.owner)) {
+        if (p.hit & (1 << q.side) || !targetable(q) || Math.hypot(q.x - p.x, q.z - p.z) > p.r + q.radius) continue;
+        p.hit |= 1 << q.side;
+        this.shieldUp(q, S);
+      }
       if (p.crawl) for (const q of this.foes(p.owner)) if (targetable(q) && Math.hypot(q.x - p.x, q.z - p.z) < S.field) this.slowBy(q, 0.3, S.fieldPct);
       // Whichever enemy it is touching and has not yet gone through.
       const v = this.foes(p.owner).find((q) => targetable(q) && !(p.hit & (1 << q.side)) && Math.hypot(q.x - p.x, q.z - p.z) < p.r + q.radius) || this.other(p.owner);
