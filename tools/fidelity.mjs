@@ -390,8 +390,16 @@ console.log('PRISM RADIANCE (Lux)');
   run(1.6);
   check(me.shield === 100 && !w.projectiles.length && setup.last.untouched(), 'W: a second layer when the wand comes back; it harms nobody');
   ({ w, me, foe, run, saw } = setup('prism', 7));
-  w.cast(me, 'E', foe.x, foe.z); run(0.3);
-  check(foe.slowK === 0.45 && me.re.E > 4, 'E: a 45% slow inside, and it waits');
+  w.cast(me, 'E', foe.x, foe.z); run(0.1);
+  check(w.projectiles.length === 1 && !w.own(me, 'singularity').length && me.re.E === 0 && foe.slow === 0, 'E: an orb flies to the spot first; nothing is there yet');
+  run(0.2);
+  check(w.own(me, 'singularity').length === 1 && foe.slowK === 0.45 && me.re.E > 4, 'E: it opens where it lands: a 45% slow inside, and it waits');
+  {
+    const s0 = setup('prism', 9, 'gale');
+    s0.foe.cd.W = 0; s0.w.cast(s0.foe, 'W', s0.me.x, s0.me.z); s0.run(0.1);
+    s0.w.cast(s0.me, 'E', s0.foe.x, s0.foe.z); s0.run(0.6);
+    check(!s0.w.own(s0.me, 'singularity').length && !s0.w.projectiles.length && s0.me.re.E === 0 && s0.me.cd.E > 5, 'E: a wind wall in its way stops the orb, and nothing opens');
+  }
   const f0 = foe.spin; w.cast(me, 'E', me.x, me.z); run(0.05);
   check(f0 - foe.spin > 40 && !w.zones.length, 'E again: it goes off at once');
   const beam = (lit) => { const s = setup('prism', 9); if (lit) s.w.hurt(s.foe, 1, s.me, 'x'); const f = s.foe.spin; s.w.cast(s.me, 'R', s.foe.x, s.foe.z); s.run(1.05); return f - s.foe.spin; };

@@ -737,6 +737,13 @@ export class World {
         t.cmd = null;
         this.emit('charge', { top: t, T: S.charge, skill: S });
         break;
+      case 'singularity': {
+        // Thrown, not placed: the orb flies to the spot and only then opens, so a wall in its way stops it.
+        const dx = c.ax - t.x, dz = c.az - t.z, d = Math.hypot(dx, dz);
+        if (d < 1) { this.open({ skill: SKILLS.lightorb, owner: t, x: c.ax, z: c.az }); break; }
+        this.fire(t, SKILLS.lightorb, dx / d, dz / d, { left: d - 0.9 });
+        break;
+      }
       case 'chillingscream': {
         // Let go early it is only a shout; drawn in full it throws its targets back.
         const pow = clamp(c.held / S.wind.full, 0, 1), full = pow >= 0.99;
@@ -2887,6 +2894,13 @@ export class World {
     if (c.vn > 2) this.emit('wall', { top: t, x: t.x + c.nx, z: t.z + c.nz, nx: c.nx, nz: c.nz, power: c.vn, dmg, slam: t.launch > 0 });
   }
 
+  // A thrown orb arriving: the field it carries opens there, and its key can now set it off.
+  open(p) {
+    const Z = SKILLS[p.skill.opens], o = p.owner, k = this.keyOf(o, Z.id);
+    this.zone(o, Z, p.x, p.z);
+    if (k && Z.re) o.re[k] = Z.dur;
+  }
+
   // FLASH FROST going off: on the recast, or by itself at the end of its path.
   shatter(p) {
     p.dead = true;
@@ -3030,6 +3044,7 @@ export class World {
           // A bubble that met nothing settles as a trap.
           if (S.trap && Math.hypot(p.x, p.z) < ARENA.R) this.zone(p.owner, SKILLS[S.trap], p.x, p.z, null, true);
           if (S.feather && Math.hypot(p.x, p.z) < ARENA.R) this.zone(p.owner, SKILLS.feather, p.x, p.z, null, true);
+          if (S.opens) this.open(p);
           if (S.splash) this.burst(p.owner, S, p.x, p.z, S.splash, { dmg: S.splashDmg, as: {} });
           this.emit('projEnd', { proj: p, x: p.x, z: p.z });
         }

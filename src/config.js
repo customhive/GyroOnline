@@ -1007,13 +1007,14 @@ export const SKILLS = {
   singularity: {
     name: 'シンギュラリティ', en: 'LUCENT SINGULARITY', aim: 'ground', kind: 'field', icon: 'field', cd: 8, re: 'lightpop',
     tele: 0.1, range: 11, aoe: 3.4, dur: 5, slowIn: true, slowPct: 0.45, endDmg: 66, endSlow: 1, endSlowPct: 0.45,
-    desc: '光の球を5秒置く。中の相手は45%のスロウ。もう一度押すか、時間が来ると炸裂する。',
+    desc: '光の球を投げ、着いた場所に5秒置く（飛んでいる途中で風の壁や氷の壁に当たると消える）。中の相手は45%のスロウ。もう一度押すか、時間が来ると炸裂する。',
   },
   finalspark: {
     name: 'ファイナルスパーク', en: 'FINAL SPARK', aim: 'line', kind: 'beam', icon: 'beam', cd: 2, ult: true,
     tele: 0.1, charge: 1, root: true, range: 33, radius: 1.4, dmg: 170, litBonus: 0.25,
     desc: '【必殺技】1秒構えて、アリーナを端から端まで貫く光線を放つ。直前にスキルを当てていた相手には威力が上がる。',
   },
+  lightorb: { name: 'シンギュラリティ', en: 'LUCENT SINGULARITY', aim: 'line', hidden: true, range: 11, speed: 30, radius: 0.7, dmg: 0, friendly: true, opens: 'singularity' },
   lightpop: { name: '起爆', en: 'DETONATE', aim: 'self', hidden: true, pops: 'singularity' },
   // ---- VISION PAINTER: fire, a spring, and dread -----------------------------
   subjdisaster: {
