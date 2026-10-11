@@ -32,6 +32,7 @@ const game = {
   side: 0,             // which top this player controls
   paused: false,
   world: null, brain: null, autoBrain: null,
+  brains: [],          // the CPUs in a match set up in the room
   score: [0, 0], round: 0, timeLeft: ROUND_TIME,
   finishes: [],
   acc: 0, hitstop: 0, slow: { s: 1, t: 0 },
@@ -57,11 +58,11 @@ const game = {
 
 const online = () => game.mode !== 'cpu';
 const player = () => game.world.tops[game.side];
-const rival = () => game.world.tops[1 - game.side];
+const rival = () => game.world.other(player());
 
 const ui = new UI({
   // "again" repeats the same match: against a CPU at once, against a person by readying up in the room.
-  again: () => { audio.ui(); if (online()) backToLobby(true); else if (game.lobby.role === 'host' && game.lobby.slots[1].kind === 'cpu') startLocalMatch(); else backToLobby(false); },
+  again: () => { audio.ui(); if (online()) backToLobby(true); else if (game.lobby.role === 'host' && game.lobby.slots[1].kind === 'cpu' && !seats().some((p) => p.kind === 'open')) startLocalMatch(); else backToLobby(false); },
   lobby: () => { audio.ui(); backToLobby(false); },
   back: () => { audio.ui(); if (online() && game.mode === 'guest') { leaveOnline(); toTitle(); } else backToLobby(false); },
   quit: () => { audio.ui(); leaveOnline(); toTitle(); },
@@ -102,16 +103,18 @@ function toTitle() {
 }
 
 // ------------------------------------------------------------------ match --
-function beginMatch(world, side, foeLabel, foeNote) {
+// labels / notes: what each top is called on screen and a word about it, by side.
+function beginMatch(world, side, labels, notes) {
   game.world = world; game.side = side;
-  game.score = [0, 0]; game.round = 0; game.finishes = [];
+  game.score = world.tops.map(() => 0); game.round = 0; game.finishes = [];
   game.paused = false;
+  game.brains = [];
   view.stage.setStage(STAGES[world.stage]);
   view.setMatch(world, side);
   view.orbiting = false;
   showScreen('hud');
   ui.setMenuMode(online());
-  ui.startMatch(world, side, foeLabel, foeNote);
+  ui.startMatch(world, side, labels, notes);
   audio.startMusic();
 }
 
@@ -122,7 +125,7 @@ function startCpuMatch(bladeId, levelIdx) {
   const others = Object.keys(BLADES).filter((b) => b !== bladeId);
   const foe = params.get('foe') || others[(Math.random() * others.length) | 0];
   const w = new World(BLADES[bladeId], BLADES[foe], (Date.now() & 0xffffff) + 1, Number(params.get('stage') || 0));
-  beginMatch(w, 0, 'CPU', level.name);
+  beginMatch(w, 0, ['YOU', 'CPU'], ['', level.name]);
   const c = rival();
   // The CPU winds up before firing so its skills can be read and dodged.
   for (const k of KEYS) c.windup[k] = (skillOf(c, k).tele || 0) * level.windup;
@@ -131,31 +134,50 @@ function startCpuMatch(bladeId, levelIdx) {
   startRound(1);
 }
 
-// A match set up in the room with a CPU on the other side, or on both.
+// Seats in play, in order: a seat set to "none" is left out.
+const seats = () => game.lobby.slots.filter((p) => p.kind !== 'none');
+// The blades for a match, with every "random" settled (no two alike while there are enough).
+function drawBlades(list) {
+  const out = list.slice(), ids = Object.keys(BLADES);
+  out.forEach((b, i) => {
+    if (b !== 'random') return;
+    const free = ids.filter((id) => !out.includes(id));
+    out[i] = (free.length ? free : ids)[(Math.random() * (free.length || ids.length)) | 0];
+  });
+  return out;
+}
+// CPUs wind up before firing so their skills can be read and dodged.
+function cpuFor(w, t, level) {
+  for (const k of KEYS) t.windup[k] = (skillOf(t, k).tele || 0) * level.windup;
+  return new CpuBrain(w, t, level);
+}
+
+// A match set up in the room with nobody else connected: the host and CPUs, or CPUs alone.
 function startLocalMatch() {
-  const lb = game.lobby, ids = Object.keys(BLADES);
-  const any = (not) => { const l = ids.filter((b) => b !== not); return l[(Math.random() * l.length) | 0]; };
-  const b0 = lb.slots[0].blade === 'random' ? any(lb.slots[1].blade) : lb.slots[0].blade;
-  const b1 = lb.slots[1].blade === 'random' ? any(b0) : lb.slots[1].blade;
+  const lb = game.lobby, S = seats();
+  const blades = drawBlades(S.map((p) => p.blade));
   for (const p of lb.slots) p.ready = false;
   game.mode = 'cpu';
-  game.spectate = lb.slots[0].kind === 'cpu';
-  ui.meLabel = game.spectate ? 'CPU 1' : '';
-  const w = new World(BLADES[b0], BLADES[b1], (Date.now() & 0xffffff) + 1, lb.stage);
-  const lv = lb.slots.map((p) => DIFFICULTY[p.level]);
-  beginMatch(w, 0, game.spectate ? 'CPU 2' : 'CPU', lv[1].name);
-  // CPUs wind up before firing so their skills can be read and dodged.
-  const cpu = (t, level) => { for (const k of KEYS) t.windup[k] = (skillOf(t, k).tele || 0) * level.windup; return new CpuBrain(w, t, level); };
-  game.brain = cpu(w.tops[1], lv[1]);
-  game.autoBrain = game.spectate ? cpu(w.tops[0], lv[0]) : null;
+  game.spectate = S[0].kind === 'cpu';
+  const w = new World(blades.map((b) => BLADES[b]), { seed: (Date.now() & 0xffffff) + 1, stage: lb.stage });
+  let n = 0;
+  const labels = S.map((p, i) => (p.kind === 'cpu' ? (S.filter((q) => q.kind === 'cpu').length > 1 ? 'CPU ' + ++n : 'CPU') : i === 0 ? 'YOU' : 'RIVAL'));
+  ui.meLabel = '';
+  beginMatch(w, 0, labels, S.map((p) => (p.kind === 'cpu' ? DIFFICULTY[p.level].name : '')));
+  game.brain = game.autoBrain = null;
+  game.brains = S.map((p, i) => (p.kind === 'cpu' ? cpuFor(w, w.tops[i], DIFFICULTY[p.level]) : null)).filter(Boolean);
   startRound(1);
 }
 
 // Host and guest both build the same world: side 0 is the host's top.
-function startOnlineMatch(blades, stage = 0) {
+// `kinds` says which tops are CPUs (the host plays those).
+function startOnlineMatch(blades, stage = 0, kinds = []) {
   game.spectate = false; ui.meLabel = '';
-  const w = new World(BLADES[blades[0]], BLADES[blades[1]], 1, stage);
-  beginMatch(w, game.mode === 'host' ? 0 : 1, 'RIVAL', '');
+  const w = new World(blades.map((b) => BLADES[b]), { seed: 1, stage });
+  const mine = game.mode === 'host' ? 0 : 1;
+  let n = 0;
+  const cpus = kinds.filter((k) => k === 'cpu').length;
+  beginMatch(w, mine, blades.map((_, i) => (kinds[i] === 'cpu' ? (cpus > 1 ? 'CPU ' + ++n : 'CPU') : i === mine ? 'YOU' : 'RIVAL')), []);
   game.brain = null;
   game.outbox.length = 0; game.pending.length = 0;
   game.inSeq = 0; game.ack = 0; game.snapSeq = 0; game.lastSnap = -1; game.corrections = 0; game.errSum = game.errMax = 0; game.inbox = null;
@@ -177,13 +199,13 @@ function startRound(n) {
   ui.setRound(n);
   ui.setScore(game.score);
   if (game.mode === 'host') game.net.send({ t: 'round', n, score: game.score });
-  const final = game.score[0] === ROUNDS_TO_WIN - 1 && game.score[1] === ROUNDS_TO_WIN - 1;
+  const final = game.score.filter((n) => n === ROUNDS_TO_WIN - 1).length > 1 && !game.score.some((n) => n < ROUNDS_TO_WIN - 1 && w.tops.length === 2);
   const quick = params.has('quick');
   const t0 = quick ? 0.1 : 1.5, gap = quick ? 0.05 : 0.62;
   const release = () => { for (const v of view.tops) { v.hold = false; v.dropV = 0; } };
   game.seqT = 0;
   game.seq = [
-    { at: 0.05, run: () => ui.announce(final ? 'FINAL ROUND' : 'ROUND ' + n, `${player().blade.en}　vs　${rival().blade.en}`, 'round', 1.4) },
+    { at: 0.05, run: () => ui.announce(final ? 'FINAL ROUND' : 'ROUND ' + n, w.tops.length > 2 ? `${w.tops.length} BLADES　BATTLE ROYAL` : `${player().blade.en}　vs　${rival().blade.en}`, 'round', 1.4) },
     { at: t0, run: () => { ui.announce('3', '', 'count', 0.6); audio.beep(); } },
     { at: t0 + gap, run: () => { ui.announce('2', '', 'count', 0.6); audio.beep(); } },
     { at: t0 + gap * 2, run: () => { ui.announce('1', '', 'count', 0.6); audio.beep(); } },
@@ -218,7 +240,7 @@ function endRound(e) {
   game.seqT = 0;
   // The guest waits for the host to announce what comes next.
   if (game.mode === 'guest') { game.seq = null; return; }
-  const done = game.score[0] >= ROUNDS_TO_WIN || game.score[1] >= ROUNDS_TO_WIN;
+  const done = game.score.some((n) => n >= ROUNDS_TO_WIN);
   game.seq = [{ at: 3.3, run: () => {
     if (!done) return startRound(game.round + 1);
     if (game.mode === 'host') game.net.send({ t: 'result', score: game.score, stats: game.world.tops.map((t) => t.stats) });
@@ -232,8 +254,9 @@ function showResult() {
   audio.stopMusic();
   ui.announceEl.className = '';
   ui.labels.innerHTML = '';
-  const lead = game.score[game.side] > game.score[1 - game.side];
-  ui.showResult(lead, game.score, game.world, game.finishes, game.spectate ? `${game.world.tops[lead ? game.side : 1 - game.side].blade.name} の勝ち` : '');
+  const best = Math.max(...game.score), champ = game.world.tops[game.score.indexOf(best)];
+  const lead = game.score[game.side] === best;
+  ui.showResult(lead, game.score, game.world, game.finishes, game.spectate ? `${champ.blade.name} の勝ち` : '');
   showScreen('result');
 }
 
@@ -254,9 +277,11 @@ function enterLobby(role) {
   const lb = game.lobby;
   lb.role = role; lb.status = 'opening'; lb.url = ''; lb.error = '';
   const blade = BLADES[ui.blade] || ui.blade === 'random' ? ui.blade : 'azure';
+  // Four seats. The third and fourth start empty; the host can put CPUs in them.
+  const none = () => ({ kind: 'none', blade: 'random', level: 1, ready: false });
   lb.slots = role === 'host'
-    ? [{ kind: 'human', blade, level: 1, ready: false }, { kind: 'open', blade: 'random', level: 1, ready: false }]
-    : [{ kind: 'human', blade: 'azure', level: 1, ready: false }, { kind: 'human', blade, level: 1, ready: false }];
+    ? [{ kind: 'human', blade, level: 1, ready: false }, { kind: 'open', blade: 'random', level: 1, ready: false }, none(), none()]
+    : [{ kind: 'human', blade: 'azure', level: 1, ready: false }, { kind: 'human', blade, level: 1, ready: false }, none(), none()];
   lb.edit = role === 'host' ? 0 : 1;
   lb.picking = false;
   lb.stage = 0;
@@ -292,25 +317,23 @@ function lobbyRefresh() {
   if (game.state === 'lobby') { ui.showLobby(game.lobby); view.stage.setStage(STAGES[game.lobby.stage]); }
 }
 
-// The host starts an online match once the guest has readied up.
+// Every seat is filled and every person in the room is ready.
+const roomReady = () => { const S = seats(); return S.length >= 2 && S.every((p) => p.kind === 'cpu' || (p.kind === 'human' && p.ready)); };
+
+// The host starts an online match once everyone has readied up. Any CPU
+// seats are played by the host's machine.
 function startOnline() {
-  const lb = game.lobby;
-  if (lb.role !== 'host' || game.state !== 'lobby' || lb.slots[1].kind !== 'human' || !lb.slots[1].ready || !(game.net && game.net.connected)) return;
-  const blades = [lb.slots[0].blade, lb.slots[1].blade];
-  // The host may hand its own top to a CPU and watch.
-  const cpu0 = lb.slots[0].kind === 'cpu' ? lb.slots[0].level : -1;
+  const lb = game.lobby, S = seats();
+  if (lb.role !== 'host' || game.state !== 'lobby' || lb.slots[1].kind !== 'human' || !roomReady() || !(game.net && game.net.connected)) return;
   // "Random" is settled here, so both sides are told the same blades.
-  for (const i of [0, 1]) if (blades[i] === 'random') { const l = Object.keys(BLADES).filter((b) => b !== blades[1 - i]); blades[i] = l[(Math.random() * l.length) | 0]; }
+  const blades = drawBlades(S.map((p) => p.blade)), kinds = S.map((p) => p.kind);
   game.mode = 'host';
-  game.net.send({ t: 'start', blades, stage: lb.stage });
-  startOnlineMatch(blades, lb.stage);
-  if (cpu0 >= 0) {
-    const w = game.world, t = w.tops[0], level = DIFFICULTY[cpu0];
-    for (const k of KEYS) t.windup[k] = (skillOf(t, k).tele || 0) * level.windup;
-    game.autoBrain = new CpuBrain(w, t, level);
-    game.spectate = true; ui.meLabel = 'CPU';
-    ui.startMatch(w, 0, 'RIVAL', '');
-  }
+  game.net.send({ t: 'start', blades, stage: lb.stage, kinds });
+  startOnlineMatch(blades, lb.stage, kinds);
+  const w = game.world;
+  game.brains = S.map((p, i) => (p.kind === 'cpu' ? cpuFor(w, w.tops[i], DIFFICULTY[p.level]) : null)).filter(Boolean);
+  // The host may hand its own top to a CPU and watch.
+  if (S[0].kind === 'cpu') game.spectate = true;
   startRound(1);
 }
 
@@ -328,8 +351,8 @@ function pressStart() {
   const lb = game.lobby;
   lb.picking = false;
   if (lb.role !== 'host' || game.state !== 'lobby' || STAGES[lb.stage].soon) return;
-  if (!lb.slots.every((p) => p.kind === 'cpu' || (p.kind === 'human' && p.ready))) return;
-  if (lb.slots[1].kind === 'cpu') startLocalMatch(); else startOnline();
+  if (!roomReady()) return;
+  if (lb.slots[1].kind === 'human') startOnline(); else startLocalMatch();
 }
 
 // A blade for whichever slot is being edited: your own, or (for the host) a CPU's.
@@ -349,11 +372,13 @@ function pickBlade(id) {
 function setSlotKind(i, kind) {
   const lb = game.lobby, p = lb.slots[i];
   if (lb.role !== 'host' || (i === 1 && p.kind === 'human')) return;
+  // The first two seats are always in play; the others may be left empty or hold a CPU.
+  if (i < 2 ? kind === 'none' : kind !== 'none' && kind !== 'cpu') return;
   p.kind = kind; p.ready = false;
   if (kind === 'human') p.blade = BLADES[ui.blade] || ui.blade === 'random' ? ui.blade : 'azure';
-  else if (kind === 'cpu' && i === 1 && !BLADES[p.blade]) p.blade = 'random';
+  else if (kind === 'cpu' && !BLADES[p.blade]) p.blade = 'random';
   lb.slots[0].ready = false;
-  lb.edit = kind === 'open' ? 0 : i;
+  lb.edit = kind === 'open' || kind === 'none' ? 0 : i;
   lb.picking = false;
   lobbyChanged();
 }
@@ -429,6 +454,7 @@ function netClosed(reason) {
     const was = lb.slots[1].kind === 'human';
     lb.status = 'waiting';
     if (was) lb.slots[1] = { kind: 'open', blade: 'random', level: 1, ready: false };
+    game.brains = online() ? [] : game.brains;
     lb.slots[0].ready = false;
     if (lb.edit === 1 && was) lb.edit = 0;
     // A match against a CPU just carries on.
@@ -469,10 +495,13 @@ function netMessage(m) {
     }
     case 'room': {
       // The host's room as it stands. Our own slot stays ours.
-      if (lb.role !== 'guest' || !Array.isArray(m.slots) || m.slots.length !== 2) return;
+      if (lb.role !== 'guest' || !Array.isArray(m.slots) || m.slots.length !== 4) return;
       const h = m.slots[0];
       if (!h || !(BLADES[h.blade] || h.blade === 'random')) return;
-      lb.slots[0] = { kind: h.kind === 'cpu' ? 'cpu' : 'human', blade: h.blade, level: Math.max(0, Math.min(DIFFICULTY.length - 1, h.level | 0)), ready: !!h.ready };
+      const seat = (q, kinds) => ({ kind: kinds.includes(q && q.kind) ? q.kind : kinds[0], blade: q && (BLADES[q.blade] || q.blade === 'random') ? q.blade : 'random', level: Math.max(0, Math.min(DIFFICULTY.length - 1, (q && q.level) | 0)), ready: !!(q && q.ready) });
+      lb.slots[0] = seat(h, ['human', 'cpu']);
+      lb.slots[2] = seat(m.slots[2], ['none', 'cpu']);
+      lb.slots[3] = seat(m.slots[3], ['none', 'cpu']);
       lb.stage = Math.max(0, Math.min(STAGES.length - 1, m.stage | 0));
       if (game.state === 'result') ui.toast(h.ready ? '相手が再戦を待っています' : '相手がルームに戻りました');
       lobbyRefresh();
@@ -483,14 +512,14 @@ function netMessage(m) {
 
     // ---- host -> guest ----
     case 'start':
-      if (lb.role !== 'guest' || !Array.isArray(m.blades) || !BLADES[m.blades[0]] || !BLADES[m.blades[1]]) return;
+      if (lb.role !== 'guest' || !Array.isArray(m.blades) || m.blades.length < 2 || m.blades.length > 4 || !m.blades.every((b) => BLADES[b])) return;
       game.mode = 'guest';
       lb.stage = Math.max(0, Math.min(STAGES.length - 1, m.stage | 0));
-      startOnlineMatch(m.blades, lb.stage);
+      startOnlineMatch(m.blades, lb.stage, Array.isArray(m.kinds) ? m.kinds : []);
       break;
     case 'round':
       if (game.mode !== 'guest' || !w) return;
-      game.score = [m.score[0] | 0, m.score[1] | 0];
+      game.score = w.tops.map((_, i) => m.score[i] | 0);
       startRound(m.n | 0);
       break;
     case 'go':
@@ -502,7 +531,7 @@ function netMessage(m) {
       break;
     case 'result':
       if (game.mode !== 'guest' || !w) return;
-      game.score = [m.score[0] | 0, m.score[1] | 0];
+      game.score = w.tops.map((_, i) => m.score[i] | 0);
       m.stats.forEach((s, i) => Object.assign(w.tops[i].stats, s));
       showResult();
       break;
@@ -881,6 +910,12 @@ function onEvent(e) {
     case 'ringout':
       audio.ringout();
       break;
+    case 'ko':
+      // One top is out; the round goes on for the rest.
+      ui.toast(`${e.top.blade.name} 脱落（${{ over: 'オーバー', burst: 'バースト', spin: 'スピン', time: '判定' }[e.kind]}）`);
+      ui.flash('#fff', 0.25);
+      audio.clash(22);
+      break;
     case 'finish':
       endRound(e);
       break;
@@ -946,6 +981,7 @@ function frame(rdt, draw = true) {
         game.acc -= STEP;
         if (game.state === 'fight') {
           if (game.brain) game.brain.update(STEP);
+          for (const b of game.brains) if (!b.me.gone) b.update(STEP);
           if (game.autoBrain) game.autoBrain.update(STEP);
           game.timeLeft -= STEP;
           if (game.mode !== 'guest' && game.timeLeft <= 0 && !w.result) w.timeUp();
@@ -982,7 +1018,7 @@ function frame(rdt, draw = true) {
   view.update(dt, frozen() ? 0 : rdt, aim);
   if (w && ['countdown', 'fight', 'finish'].includes(game.state)) {
     ui.update(w, view, game.timeLeft, game.aimKey || game.rapidKey, rdt);
-    audio.intensity = 1 - Math.min(spinRatio(player()), spinRatio(rival()));
+    audio.intensity = 1 - Math.min(...w.tops.filter((t) => !t.gone).map(spinRatio), 1);
   }
   if (net && net.connected && net.rttKnown) {
     const ms = Math.round(net.rtt * 1000);

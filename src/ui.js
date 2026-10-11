@@ -110,7 +110,7 @@ export class UI {
     this.flashEl = $('#flash');
     this.blade = 'azure';
     this.side = 0;        // which top is "you" (1 when playing as the guest online)
-    this.fighters = [this.buildFighter(0), this.buildFighter(1)];
+    this.fighters = [];   // one bar for each top, by its side
     this.skills = {};
     this.buildTitle();
     // One floating tooltip for the skills on the room's cards. It lives on the
@@ -140,19 +140,21 @@ export class UI {
     document.querySelectorAll('button').forEach((b) => b.addEventListener('mouseenter', () => this.h.hover()));
   }
 
-  buildFighter(side) {
-    const root = $('#f' + side);
+  // A spin bar. The player's own is on the left; everyone else is on the right,
+  // full size in a duel and compact when there are more.
+  buildFighter(left, mini) {
+    const root = el('div', 'fighter ' + (left ? 'left' : 'right') + (mini ? ' mini' : ''));
     root.innerHTML = `
       <div class="f-head"><span class="f-tag"></span><span class="f-name"></span><span class="f-type"></span></div>
       <div class="gauge"><div class="g-ghost"></div><div class="g-fill"></div><div class="g-grey"></div><div class="g-ticks"></div><span class="g-num"></span></div>
       <div class="f-foot"><div class="pips"></div><div class="f-ult"><i></i><span>ULT</span></div></div>`;
+    $(left ? '#fl' : '#fr').appendChild(root);
     return {
-      root, tag: $('.f-tag', root), name: $('.f-name', root), type: $('.f-type', root), fill: $('.g-fill', root), grey: $('.g-grey', root), ghost: $('.g-ghost', root),
+      root, left, tag: $('.f-tag', root), name: $('.f-name', root), type: $('.f-type', root), fill: $('.g-fill', root), grey: $('.g-grey', root), ghost: $('.g-ghost', root),
       num: $('.g-num', root), pips: $('.pips', root), ult: $('.f-ult i', root), ultBox: $('.f-ult', root), ghostV: 1, shown: 1,
     };
   }
 
-  // The bar is rebuilt for each match: every blade has its own four skills.
   buildSkills(blade) {
     const bar = $('#skillbar');
     bar.innerHTML = '';
@@ -208,18 +210,24 @@ export class UI {
   // The left bar is always "you", whichever side of the simulation that is.
   slot(top) { return top.side === this.side ? 0 : 1; }
 
-  startMatch(world, side, foeLabel, foeNote) {
+  // labels / notes: what to call each top ('YOU', 'CPU', 'RIVAL'...) and a word about it, by side.
+  startMatch(world, side, labels, notes = []) {
     this.side = side;
     this.labels.innerHTML = '';
     this.tags = [];
+    $('#fl').innerHTML = ''; $('#fr').innerHTML = '';
+    this.fighters = [];
+    const many = world.tops.length > 2;
+    $('#hud').classList.toggle('many', many);
     for (const t of world.tops) {
-      const mine = t.side === side, f = this.fighters[this.slot(t)];
+      const mine = t.side === side, f = (this.fighters[t.side] = this.buildFighter(mine, many && !mine));
+      const label = labels[t.side] || (mine ? 'YOU' : 'RIVAL');
       f.root.style.setProperty('--c', t.blade.css);
-      f.tag.textContent = mine ? this.meLabel || 'YOU' : foeLabel;
+      f.tag.textContent = label;
       f.name.textContent = t.blade.name;
-      f.type.textContent = t.blade.typeJa + (!mine && foeNote ? ' ／ ' + foeNote : '');
+      f.type.textContent = t.blade.typeJa + (notes[t.side] ? ' ／ ' + notes[t.side] : '');
       f.ghostV = f.shown = 1;
-      const tag = el('div', 'tag ' + (mine ? 'me' : 'foe'), `<span>${mine ? this.meLabel || 'YOU' : foeLabel}</span><div><i></i></div>`);
+      const tag = el('div', 'tag ' + (mine ? 'me' : 'foe'), `<span>${label}</span><div><i></i></div>`);
       tag.style.setProperty('--c', t.blade.css);
       this.labels.appendChild(tag);
       this.tags[t.side] = { root: tag, fill: $('i', tag) };
@@ -227,19 +235,17 @@ export class UI {
     const me = world.tops[side];
     this.buildSkills(me.blade);
     $('#skillbar').style.setProperty('--c', me.blade.css);
-    this.setScore([0, 0]);
+    this.setScore(world.tops.map(() => 0));
   }
 
-  // `score` is indexed by simulation side.
   setScore(score) {
-    this.fighters.forEach((f, slot) => {
-      const n = score[slot === 0 ? this.side : 1 - this.side];
+    this.fighters.forEach((f, side) => {
+      const n = score[side] || 0;
       f.pips.innerHTML = '';
       for (let k = 0; k < ROUNDS_TO_WIN; k++) f.pips.appendChild(el('i', k < n ? 'on' : ''));
     });
   }
 
-  // Connection read-out in the corner; empty string hides it.
   setNet(text, bad) {
     const n = $('#netstat');
     if (n.textContent !== text) n.textContent = text;
@@ -305,7 +311,7 @@ export class UI {
       opening: 'ルームを準備しています…',
       waiting: lb.slots[1].kind === 'cpu' ? 'CPUと対戦できます。招待URLから友だちが入ることもできます' : '招待URLを送って相手を待つか、2Pの枠をCPUにしてください',
       connecting: 'ルームに接続しています…',
-      connected: host ? (lb.slots.every((p) => p.kind === 'cpu' || p.ready) ? '全員の準備ができました。ゲーム開始を押してください' : '相手が参加しました。全員が準備完了を押すと開始できます') : (me.ready ? '準備完了。ホストの開始を待っています' : 'ルームに入りました。ブレードを選んで準備完了を押してください'),
+      connected: host ? (lb.slots.every((p) => p.kind === 'none' || p.kind === 'cpu' || p.ready) ? '全員の準備ができました。ゲーム開始を押してください' : '相手が参加しました。全員が準備完了を押すと開始できます') : (me.ready ? '準備完了。ホストの開始を待っています' : 'ルームに入りました。ブレードを選んで準備完了を押してください'),
       failed: host ? 'オンラインにつながりません（CPUとの対戦はできます）' : lb.error || '接続できませんでした',
     }[lb.status];
     const s = $('#lb-status');
@@ -321,16 +327,18 @@ export class UI {
     cards.innerHTML = '';
     this.tip(null);
     lb.slots.forEach((p, i) => {
-      const b = BLADES[p.blade], you = i === mine, empty = p.kind === 'open';
-      const can = !empty && (editable(i) || (host && p.kind === 'cpu'));
-      const who = p.kind === 'cpu' ? 'CPU' : empty ? 'OPEN' : (you ? 'YOU' : 'RIVAL') + (i === 0 ? ' ／ HOST' : '');
+      const b = BLADES[p.blade], you = i === mine, empty = p.kind === 'open', off = p.kind === 'none';
+      const can = !empty && !off && (editable(i) || (host && p.kind === 'cpu'));
+      const who = p.kind === 'cpu' ? 'CPU' : empty ? 'OPEN' : off ? '' : (you ? 'YOU' : 'RIVAL') + (i === 0 ? ' ／ HOST' : '');
       const seat = el('div', 'seat');
-      const card = el('button', 'pcard' + (empty ? ' empty' : '') + (!empty && (p.kind === 'cpu' || p.ready) ? ' ready' : '') + (you ? ' mine' : ''));
-      card.style.setProperty('--c', empty ? '#3a4566' : b ? b.css : '#8fa0c8');
+      const card = el('button', 'pcard' + (empty || off ? ' empty' : '') + (off ? ' off' : '') + (!empty && !off && (p.kind === 'cpu' || p.ready) ? ' ready' : '') + (you ? ' mine' : ''));
+      card.style.setProperty('--c', empty || off ? '#3a4566' : b ? b.css : '#8fa0c8');
       card.disabled = !can;
       const skills = b ? kitOf(b).map((S, k) => `<div class="pc-skill" data-k="${k}"><kbd>${KEYS[k]}</kbd><div class="how-icon">${iconOf(S)}</div><span>${S.name}</span></div>`).join('') : '';
-      card.innerHTML = `<div class="pc-top"><span class="pc-no">${i + 1}P</span><span class="pc-who">${who}${p.kind === 'cpu' ? ' ／ ' + DIFFICULTY[p.level].name : ''}</span><em>${empty ? '' : p.kind === 'cpu' || p.ready ? 'READY' : '準備中'}</em></div>`
-        + (empty
+      card.innerHTML = `<div class="pc-top"><span class="pc-no">${i + 1}P</span><span class="pc-who">${who}${p.kind === 'cpu' ? ' ／ ' + DIFFICULTY[p.level].name : ''}</span><em>${empty || off ? '' : p.kind === 'cpu' || p.ready ? 'READY' : '準備中'}</em></div>`
+        + (off
+          ? `<div class="pc-wait"><b>なし</b><span>この席は使いません。<br>下のボタンでCPUを入れられます。</span></div>`
+          : empty
           ? `<div class="pc-wait"><div class="pc-plus">＋</div><b>参加待ち</b><span>招待URLを開いた相手がここに入ります。<br>下のボタンでCPUに変えられます。</span></div>`
           : `<div class="pc-disc"><i></i></div><div class="pc-type">${b ? b.type : '？？？'}</div><div class="pc-en">${b ? b.en : 'RANDOM'}</div><div class="pc-name">${b ? b.name : 'おまかせ'}</div>`
             + (b ? `${this.bars[b.id]}<p class="pc-desc">${b.desc}</p><div class="pc-skills">${skills}</div>` : '<p class="pc-desc">対戦のたびにランダムなブレードが選ばれます。</p>')
@@ -346,7 +354,7 @@ export class UI {
       // What the host can make of each seat.
       const ctl = el('div', 'lb-ctl');
       if (host && !(i === 1 && p.kind === 'human')) {
-        const kinds = i === 0 ? [['human', '自分で操作'], ['cpu', 'CPU']] : [['open', '人間'], ['cpu', 'CPU']];
+        const kinds = i === 0 ? [['human', '自分で操作'], ['cpu', 'CPU']] : i === 1 ? [['open', '人間'], ['cpu', 'CPU']] : [['none', 'なし'], ['cpu', 'CPU']];
         const row = el('div', 'lb-seg');
         for (const [k, label] of kinds) {
           const btn = el('button', p.kind === k ? 'on' : '', label);
@@ -378,7 +386,7 @@ export class UI {
     $('#st-next').classList.toggle('hidden', !host);
 
     // The blade picker, laid over the room, edits one seat.
-    const open = !!lb.picking && lb.slots[lb.edit].kind !== 'open';
+    const open = !!lb.picking && lb.slots[lb.edit].kind !== 'open' && lb.slots[lb.edit].kind !== 'none';
     $('#picker').classList.toggle('hidden', !open);
     if (open) {
       const ed = lb.slots[lb.edit];
@@ -398,7 +406,7 @@ export class UI {
     r.classList.toggle('armed', !!me.ready);
     go.classList.toggle('hidden', !host);
     if (host) {
-      const all = lb.slots.every((p) => p.kind === 'cpu' || (p.kind === 'human' && p.ready));
+      const all = lb.slots.every((p) => p.kind === 'none' || p.kind === 'cpu' || (p.kind === 'human' && p.ready));
       go.disabled = rival.kind === 'open' || !!g.soon || !all;
       go.textContent = 'ゲーム開始';
     }
@@ -458,8 +466,10 @@ export class UI {
 
   update(world, view, timeLeft, aimKey, rdt) {
     world.tops.forEach((t, i) => {
-      const f = this.fighters[this.slot(t)];
+      const f = this.fighters[t.side];
+      if (!f) return;
       const r = Math.max(0, t.spin / t.spinMax);
+      f.root.classList.toggle('gone', !!t.gone);
       // The pale bar behind lingers, then drains, so a big hit stays readable.
       if (f.ghostV < r) f.ghostV = r;
       f.ghostV += (r - f.ghostV) * Math.min(1, rdt * 2.2);
@@ -468,7 +478,7 @@ export class UI {
       // Grey spin: lost, but not gone. It sits just past the end of the bar.
       const grey = t.blade.grey || t.blade.ignite ? Math.min(1 - r, t.store / t.spinMax) : 0;
       f.grey.style.width = grey * 100 + '%';
-      f.grey.style[this.slot(t) === 0 ? 'left' : 'right'] = r * 100 + '%';
+      f.grey.style[f.left ? 'left' : 'right'] = r * 100 + '%';
       f.num.textContent = Math.ceil(Math.max(0, t.spin) * 3.6) + ' rpm';
       f.root.classList.toggle('low', r < 0.25);
       f.ult.style.transform = `scaleX(${t.ult / 100})`;
@@ -478,7 +488,7 @@ export class UI {
       f.ultBox.style.visibility = hasUlt ? '' : 'hidden';
 
       const tag = this.tags[i];
-      const hide = t.out || world.result;
+      const hide = t.out || t.gone || world.result;
       tag.root.style.opacity = hide ? 0 : 1;
       if (!hide) {
         const v = view.tops[i].group.position;
@@ -561,19 +571,21 @@ export class UI {
   }
 
   showResult(won, score, world, stats, watching) {
-    const p = world.tops[this.side], c = world.tops[1 - this.side];
-    score = [score[this.side], score[1 - this.side]];
+    // Your own top first, then the rest in order.
+    const tops = [world.tops[this.side], ...world.tops.filter((t) => t.side !== this.side)];
     $('#result').classList.toggle('lose', !won);
+    $('#result').classList.toggle('many', tops.length > 2);
     $('#res-title').textContent = watching ? 'FINISH' : won ? 'VICTORY' : 'DEFEAT';
     $('#res-sub').textContent = watching || (won ? '見事な勝利！' : 'あと一歩…もう一度挑戦しよう');
-    $('#res-score').innerHTML = `<b style="color:${p.blade.css}">${score[0]}</b><span>-</span><b style="color:${c.blade.css}">${score[1]}</b>`;
-    const row = (label, a, b) => `<tr><td>${a}</td><th>${label}</th><td>${b}</td></tr>`;
-    $('#res-stats').innerHTML = `<tr class="head"><td style="color:${p.blade.css}">${p.blade.name}</td><th></th><td style="color:${c.blade.css}">${c.blade.name}</td></tr>`
-      + row('与えたダメージ', Math.round(p.stats.dealt), Math.round(c.stats.dealt))
-      + row('最大ヒット', Math.round(p.stats.maxHit), Math.round(c.stats.maxHit))
-      + row('スキル命中', p.stats.skillHits, c.stats.skillHits)
-      + row('パリィ / 反射', p.stats.parries, c.stats.parries)
-      + row('激突回数', p.stats.clashes, c.stats.clashes);
+    $('#res-score').innerHTML = tops.map((t) => `<b style="color:${t.blade.css}">${score[t.side] || 0}</b>`).join('<span>-</span>');
+    const cells = (f) => tops.map(f);
+    const row = (label, f) => { const c = cells(f); return `<tr><td>${c[0]}</td><th>${label}</th>${c.slice(1).map((v) => `<td>${v}</td>`).join('')}</tr>`; };
+    $('#res-stats').innerHTML = `<tr class="head"><td style="color:${tops[0].blade.css}">${tops[0].blade.name}</td><th></th>${tops.slice(1).map((t) => `<td style="color:${t.blade.css}">${t.blade.name}</td>`).join('')}</tr>`
+      + row('与えたダメージ', (t) => Math.round(t.stats.dealt))
+      + row('最大ヒット', (t) => Math.round(t.stats.maxHit))
+      + row('スキル命中', (t) => t.stats.skillHits)
+      + row('パリィ / 反射', (t) => t.stats.parries)
+      + row('激突回数', (t) => t.stats.clashes);
     $('#res-finish').textContent = stats.join('　/　');
     this.show('result', true);
   }

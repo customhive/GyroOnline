@@ -431,3 +431,33 @@ kbd { flex: none; width: 28px; height: 28px; display: grid; place-items: center;
   background:
     linear-gradient(135deg, transparent calc(var(--cut) * 0.7071 - 0.2px), var(--edge) calc(var(--cut) * 0.7071 - 0.2px), var(--edge) calc(var(--cut) * 0.7071 + 1.3px), transparent calc(var(--cut) * 0.7071 + 1.3px)) top left / calc(var(--cut) + 4px) calc(var(--cut) + 4px) no-repeat,
     linear-gradient(225deg, transparent calc(var(--cut) * 0.7071 - 0.2px), var(--edge) calc(var(--cut) * 0.7071 - 0.2px), var(--edge) calc(var(--cut) * 0.7071 + 1.3px), transparent calc(var(--cut) * 0.7071 + 1.3px)) top right / calc(var(--cut) + 4px) calc(var(--cut) + 4px) no-repeat; }
+
+/* ---- more than two tops ---- */
+.fcol { display: grid; gap: 8px; align-content: start; min-width: 0; }
+.fighter.mini .f-name { font-size: 14px; }
+.fighter.mini .f-type { display: none; }
+.fighter.mini .f-head { margin-bottom: 3px; gap: 7px; }
+.fighter.mini .f-tag { font-size: 10px; padding: 1px 6px 0; }
+.fighter.mini .gauge { height: 13px; }
+.fighter.mini .g-num { font-size: 10px; }
+.fighter.mini .f-foot { margin-top: 4px; gap: 8px; }
+.fighter.mini .pips i { width: 9px; height: 9px; border-width: 1px; }
+.fighter.mini .f-ult { width: 90px; height: 4px; }
+.fighter.mini .f-ult span { display: none; }
+.fighter.gone { opacity: 0.38; filter: grayscale(0.8); }
+.fighter.gone .f-name::after { content: '　OUT'; color: var(--red); font-size: 0.8em; letter-spacing: 0.1em; }
+/* four seats in the room: the cards are narrower, so they say a little less */
+.pcard.off { opacity: 0.55; }
+.room-cards:has(.seat:nth-child(4)) .pcard { padding: 0 11px 10px; }
+.room-cards:has(.seat:nth-child(4)) .pc-top { margin: 0 -11px 8px; padding: 6px 9px 5px 12px; }
+.room-cards:has(.seat:nth-child(4)) .pc-en { font-size: 17px; }
+.room-cards:has(.seat:nth-child(4)) .pc-disc { height: 84px; }
+.room-cards:has(.seat:nth-child(4)) .pc-disc i { width: 74px; height: 74px; }
+.room-cards:has(.seat:nth-child(4)) .pc-disc i::after { inset: 23px; }
+.room-cards:has(.seat:nth-child(4)) .b-stats { grid-template-columns: 1fr; }
+.room-cards:has(.seat:nth-child(4)) .pc-desc { font-size: 11px; }
+.room-cards:has(.seat:nth-child(4)) .lb-seg button { font-size: 12px; padding: 7px 2px; }
+#result.many .res { width: min(860px, 94vw); }
+#res-stats th { white-space: nowrap; padding: 0 12px; }
+#result.many #res-stats td { font-size: 15px; }
+#result.many #res-stats .head td { font-size: 13px; }
