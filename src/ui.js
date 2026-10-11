@@ -346,7 +346,7 @@ export class UI {
       // What the host can make of each seat.
       const ctl = el('div', 'lb-ctl');
       if (host && !(i === 1 && p.kind === 'human')) {
-        const kinds = i === 0 ? [['human', '自分で操作'], ['cpu', 'CPU（観戦）']] : [['open', '人間'], ['cpu', 'CPU']];
+        const kinds = i === 0 ? [['human', '自分で操作'], ['cpu', 'CPU']] : [['open', '人間'], ['cpu', 'CPU']];
         const row = el('div', 'lb-seg');
         for (const [k, label] of kinds) {
           const btn = el('button', p.kind === k ? 'on' : '', label);
