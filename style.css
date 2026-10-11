@@ -71,6 +71,9 @@ button { font-family: inherit; color: inherit; cursor: pointer; }
 .s-key { position: absolute; left: -7px; top: -9px; min-width: 22px; height: 22px; padding: 0 5px; display: grid; place-items: center; font-size: 13px; font-weight: 700; color: #04101c; background: #fff; transform: skewX(-10deg); box-shadow: 0 2px 6px rgba(0, 0, 0, 0.6); }
 .skill.wait { border-color: #3a4566; }
 .skill.wait .s-icon { opacity: 0.35; filter: grayscale(0.7); }
+/* A key whose colour says which weapon it is keeps that colour while it waits. */
+.skill.tinted.wait { border-color: color-mix(in srgb, var(--c) 75%, #000); }
+.skill.tinted.wait .s-icon { opacity: 0.6; filter: none; }
 .skill.ult:not(.wait) { animation: ultglow 0.8s ease-in-out infinite alternate; }
 @keyframes ultglow { from { box-shadow: 0 0 10px var(--gold); } to { box-shadow: 0 0 30px var(--gold), 0 0 60px rgba(255, 216, 74, 0.5); } }
 .skill.aim { transform: translateY(-5px) scale(1.06); box-shadow: 0 0 22px currentColor; border-color: #fff; }

@@ -579,7 +579,7 @@ export class UI {
       const wi = S.weapons ? me.wm : S.id === 'phase' ? me.wo : S.id === 'nextweapon' ? me.wq[0] : -1;
       if (wi >= 0) {
         const tint = '#' + kitOf(me.blade).find((q) => q.weapons).tints[wi].toString(16).padStart(6, '0');
-        if (tint !== s.tint) { s.tint = tint; s.root.style.setProperty('--c', tint); }
+        if (tint !== s.tint) { s.tint = tint; s.root.style.setProperty('--c', tint); s.root.classList.add('tinted'); }
       }
       const note = this.note(world, me, S, k);
       if (note !== s.note) { s.note = note; s.badge.textContent = note; s.badge.classList.toggle('on', note !== ''); }
