@@ -18,7 +18,7 @@ const toWall = (x, z, dx, dz) => {
 const MATE_COLOR = 0x7dffb0; // a team mate's skills: not a threat
 const v3 = new THREE.Vector3();
 // Zones that stand on the floor as an object, not only as a decal.
-const OBJECTS = { shadow: 'clone', arise: 'clone', turret: 'turret', sentry: 'turret', keg: 'keg', icewall: 'wall', windwall: 'wall', divide: 'wall' };
+const OBJECTS = { shadow: 'clone', arise: 'clone', turret: 'turret', sentry: 'turret', keg: 'keg', icewall: 'wall', windwall: 'wall', divide: 'wall', weaverz: 'wall' };
 const TOXIC = 0x9dff3a, BLOOD = 0xff3040, ICE = 0xcfefff;
 
 export class View {
@@ -632,7 +632,7 @@ export class View {
       } else {
         const S = z.skill;
         o.group.rotation.y = Math.atan2(w.nx, w.nz);
-        o.group.scale.set(S.wall * 2, z.kind === 'windwall' ? 3.2 : 2.3, z.kind === 'windwall' ? 0.25 : 0.7);
+        o.group.scale.set((z.half ?? S.wall) * 2, z.kind === 'windwall' ? 3.2 : 2.3, z.kind === 'windwall' ? 0.25 : 0.7);
         o.mat.color.set(z.kind === 'icewall' ? ICE : c);
         o.mat.opacity = (z.kind === 'windwall' ? 0.14 : 0.26) * Math.min(1, z.t / 0.15) * (0.85 + 0.15 * Math.sin(this.time * 9));
       }
@@ -1117,9 +1117,10 @@ export class View {
         G.ring(z.x, z.z, 1.3, 1.45, c, 0.5 * fade);
         if (dt > 0 && Math.random() < 0.4) speck(0x30304a, 2, -2);
         return true;
-      case 'icewall': case 'windwall': case 'divide': {
+      case 'icewall': case 'windwall': case 'divide': case 'weaverz': {
         const w = wallOf(z);
-        G.rect(w.x + w.nz * S.wall, w.z - w.nx * S.wall, -w.nz, w.nx, S.wall * 2, z.kind === 'windwall' ? 0.15 : 0.4, z.kind === 'icewall' ? ICE : c, 0.5 * fade, 0.1);
+        const WH = z.half ?? S.wall;
+        G.rect(w.x + w.nz * WH, w.z - w.nx * WH, -w.nz, w.nx, WH * 2, z.kind === 'windwall' ? 0.15 : 0.4, z.kind === 'icewall' ? ICE : c, 0.5 * fade, 0.1);
         if (w.moving) G.lane(w.x, w.z, w.nx, w.nz, S.travel - Math.min(z.t * S.speed, S.travel), S.wall, col, 0.08, 0.7);
         return true;
       }
@@ -1152,6 +1153,18 @@ export class View {
       return true;
     }
     if (z.kind === 'undertowz') { G.ring(z.x, z.z, 0.9, 1.05, c, 0.7); G.ring(z.x, z.z, 0, 0.9 * k, c, 0.25); if (dt > 0 && Math.random() < 0.5) speck(c, 2, -2); return true; }
+    if (z.kind === 'riftz') { G.lane(z.x, z.z, z.dx, z.dz, S.range + 1.2, S.radius, col, 0.12 + 0.1 * Math.sin(this.time * 30), 0.9); return true; }
+    if (z.kind === 'boulders') {
+      // Scattered stones over a fan: slow to cross, and they go off under anything thrown across.
+      G.sector(z.x, z.z, z.dx, z.dz, S.range, S.half, c, 0.1 * fade, 0.7 * fade);
+      const a0 = Math.atan2(z.dz, z.dx);
+      for (let i = 0; i < 14; i++) { const r = 1.6 + ((i * 37) % 60) / 60 * (S.range - 2.2), a = a0 + (((i * 53) % 100) / 100 - 0.5) * 2 * S.half * 0.85; G.ring(z.x + Math.cos(a) * r, z.z + Math.sin(a) * r, 0, 0.32, 0xd9b48a, 0.8 * fade); }
+      timer();
+      return true;
+    }
+    if (z.kind === 'canister') { const p2 = 0.5 + 0.5 * Math.sin(this.time * 8); G.ring(z.x, z.z, 0, 0.55, 0x9be04a, 0.5 + 0.4 * p2); G.ring(z.x, z.z, 0.75 + 0.15 * p2, 0.9 + 0.15 * p2, 0xffffff, 0.8); return true; }
+    if (z.kind === 'workedground') { G.ring(z.x, z.z, 0, z.r, 0xc98a4a, 0.07 * fade); G.ring(z.x, z.z, z.r - 0.1, z.r, 0xc98a4a, 0.5 * fade, 0.1); return true; }
+    if (z.kind === 'shovez') { G.ring(z.x, z.z, 0, z.r * k, col, 0.22); G.ring(z.x, z.z, z.r - 0.12, z.r, col, 0.95); G.rect(z.x, z.z, z.dx, z.dz, z.r + 4, 0.2, col, 0.8); return true; }
     if (z.kind === 'hshock') { G.lane(z.x, z.z, z.dx, z.dz, S.range + 1.2, S.radius, col, 0.1 + 0.08 * Math.sin(this.time * 20), 0.85); G.rect(z.x, z.z, z.dx, z.dz, (S.range + 1.2) * k, S.radius, col, 0.25); return true; }
     if (z.kind === 'feather') { G.ring(z.x, z.z, 0, 0.3, c, 0.95 * fade, 0.12); G.ring(z.x, z.z, 0.5, 0.6, c, 0.45 * fade); return true; }
     if (z.kind === 'keg') {
@@ -1254,6 +1267,17 @@ export class View {
       if (!line) G.ring(me.x + dx * len, me.z + dz * len, 1.2, 1.33, col, 0.8);
       if (!line && S.aoe) G.ring(me.x + dx * len, me.z + dz * len, S.aoe - 0.1, S.aoe, col, 0.5);
       if (S.id === 'shuriken') for (const q of w.own(me, 'shadow')) this.chain(q.x, q.z, aim.x, aim.z, col, 0.5);
+    } else if (S.drag && aim.from) {
+      // Two points: where it will come up, and which way it will throw.
+      const tg = w.groundTarget(me, S, aim.from.x, aim.from.z);
+      let dx = aim.x - tg.x, dz = aim.z - tg.z;
+      const d = Math.hypot(dx, dz);
+      if (d < 0.3) { dx = tg.x - me.x; dz = tg.z - me.z; const m = Math.hypot(dx, dz) || 1; dx /= m; dz /= m; } else { dx /= d; dz /= d; }
+      G.ring(me.x, me.z, S.range - 0.06, S.range, AIM, 0.35);
+      G.ring(tg.x, tg.z, 0, S.aoe, col, ok ? 0.14 : 0.06);
+      G.ring(tg.x, tg.z, S.aoe - 0.12, S.aoe, col, 0.95);
+      G.rect(tg.x, tg.z, dx, dz, S.aoe + S.push, 0.22, col, 0.85);
+      G.ring(tg.x + dx * (S.aoe + S.push), tg.z + dz * (S.aoe + S.push), 0, 0.45, col, 0.9);
     } else if (S.aim === 'leap' || S.aim === 'ground') {
       const tg = w.groundTarget(me, S, aim.x, aim.z);
       G.ring(me.x, me.z, S.range - 0.06, S.range, AIM, 0.35);

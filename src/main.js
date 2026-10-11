@@ -39,6 +39,7 @@ const game = {
   seq: null,           // countdown script: [{ at, run }]
   seqT: 0,
   aimKey: null, buffer: null,
+  dragPt: null,        // the first point of a skill aimed with two
   rapidKey: null,      // a held-to-fire key; it keeps firing while other skills are aimed and cast
   cursor: { sx: innerWidth / 2, sy: innerHeight / 2, x: 0, z: 0 },
   mouseDown: false, moveRepeat: 0,
@@ -618,7 +619,7 @@ function netMessage(m, id) {
       if (!t) return;
       if (m.k === 'm') w.issueMove(t, num(m.x), num(m.z));
       else if (m.k === 'h' && KEYS.includes(m.key)) w.hold(t, m.key);
-      else if (m.k === 'c' && KEYS.includes(m.key)) w.cast(t, m.key, num(m.x), num(m.z));
+      else if (m.k === 'c' && KEYS.includes(m.key)) w.cast(t, m.key, num(m.x), num(m.z), 0, m.bx === undefined ? undefined : num(m.bx), m.bz === undefined ? undefined : num(m.bz));
       peer.ack = m.s | 0;
       break;
     }
@@ -667,7 +668,7 @@ function reconcile() {
   game.pending = game.pending.filter((p) => { const d = (p.s - ack) & 0xffff; return d !== 0 && d < 0x8000; });
   const me = player();
   for (const p of game.pending) {
-    if (p.k === 'm') w.issueMove(me, p.x, p.z); else if (p.k === 'h') w.hold(me, p.key); else w.cast(me, p.key, p.x, p.z);
+    if (p.k === 'm') w.issueMove(me, p.x, p.z); else if (p.k === 'h') w.hold(me, p.key); else w.cast(me, p.key, p.x, p.z, 0, p.bx, p.bz);
   }
   // The snapshot left the host half a round trip ago and has waited here
   // since it arrived.
@@ -709,11 +710,12 @@ function doMove(x, z) {
   return true;
 }
 
-function doCast(key, x, z) {
+// (bx, bz): a second point, for a skill aimed with two.
+function doCast(key, x, z, bx, bz) {
   if (game.spectate) return false;
   const w = game.world;
-  if (!w.cast(player(), key, x, z)) return false;
-  if (game.mode === 'guest') { w.events.length = 0; sendInput({ k: 'c', key, x, z }); }
+  if (!w.cast(player(), key, x, z, 0, bx, bz)) return false;
+  if (game.mode === 'guest') { w.events.length = 0; sendInput(bx === undefined ? { k: 'c', key, x, z } : { k: 'c', key, x, z, bx: Math.round(bx * 100) / 100, bz: Math.round(bz * 100) / 100 }); }
   return true;
 }
 
@@ -747,10 +749,10 @@ function orderMove(silent) {
   }
 }
 
-function tryCast(key, x, z, buffered) {
+function tryCast(key, x, z, buffered, bx, bz) {
   if (game.state !== 'fight' || game.paused || game.spectate) return false;
   const me = player();
-  if (!doCast(key, x, z)) {
+  if (!doCast(key, x, z, bx, bz)) {
     // Pressed a moment too early (still reeling or mid-dash): hold the input
     // briefly and fire as soon as the top can act.
     const w = game.world;
@@ -798,6 +800,9 @@ window.addEventListener('keydown', (e) => {
   // Aiming is allowed while briefly unable to act; only a real cooldown refuses.
   if (!game.world.ready(me, k, 0.25) || me.air || me.out) { audio.denied(); ui.denied(k); return; }
   game.aimKey = k;
+  // A skill aimed with two points: where the key went down is the first.
+  refreshCursor();
+  game.dragPt = S.drag ? { x: game.cursor.x, z: game.cursor.z } : null;
   // Some skills wind up for as long as the key stays down.
   if (S.wind) doHold(k);
 });
@@ -807,7 +812,11 @@ window.addEventListener('keyup', (e) => {
   if (k !== game.aimKey) return;
   game.aimKey = null;
   refreshCursor();
-  tryCast(k, game.cursor.x, game.cursor.z);
+  const dp = game.dragPt;
+  game.dragPt = null;
+  // Where it went down, then which way it was let go.
+  if (dp) tryCast(k, dp.x, dp.z, false, game.cursor.x, game.cursor.z);
+  else tryCast(k, game.cursor.x, game.cursor.z);
 });
 window.addEventListener('blur', () => {
   game.aimKey = null; game.rapidKey = null; game.mouseDown = false;
@@ -853,7 +862,7 @@ function onEvent(e) {
       } else if (e.kind === 'dash' || e.kind === 'empower') {
         audio.projHit();
         game.hitstop = 0.14;
-        popAt(e.src === e.a ? e.b : e.a, e.kind === 'dash' ? 'DASH HIT!' : e.src.blade.emp.id === 'phantom' ? 'PHANTOM STRIKE!' : e.src.blade.emp.en + '!', 'word');
+        popAt(e.src === e.a ? e.b : e.a, e.kind === 'dash' ? 'DASH HIT!' : !e.src.blade.emp ? 'POWER HIT!' : e.src.blade.emp.id === 'phantom' ? 'PHANTOM STRIKE!' : e.src.blade.emp.en + '!', 'word');
         ui.flash(e.src.blade.css, 0.22);
       } else if (e.power > 9) {
         game.hitstop = Math.max(game.hitstop, Math.min(0.1, 0.015 + e.power * 0.0035));
@@ -1089,7 +1098,7 @@ function frame(rdt, draw = true) {
   let aim = null;
   if (w && game.state === 'fight' && !game.paused) {
     refreshCursor();
-    if (game.aimKey) aim = { key: game.aimKey, x: game.cursor.x, z: game.cursor.z };
+    if (game.aimKey) aim = { key: game.aimKey, x: game.cursor.x, z: game.cursor.z, from: game.dragPt };
   }
   view.update(dt, frozen() ? 0 : rdt, aim);
   if (w && ['countdown', 'fight', 'finish'].includes(game.state)) {

@@ -332,6 +332,73 @@ export const BLADES = {
     bars: { atk: 5, def: 1, sta: 2, spd: 4 },
     desc: 'Qを当てるほど他のスキルが早く戻ってくる。当て続けることが強さになる射撃型。',
   },
+  magus: {
+    id: 'magus', kit: { Q: 'arcanopulse', W: 'eyeofdestruction', E: 'shockorb', R: 'arcanerite' },
+    name: 'メイガス・アセンダント', en: 'MAGUS ASCENDANT', type: 'ATTACK', typeJa: 'アタック',
+    color: 0x5aa8ff, css: '#5aa8ff', teeth: 5,
+    atk: 1.34, def: 1.0, mass: 0.94, speed: 13, decay: 6.0, spinMax: 1000, cdMul: 1.0, guardMul: 1.0,
+    bars: { atk: 5, def: 1, sta: 3, spd: 2 },
+    desc: '溜めて伸ばす光線、中心が痛い落雷、遠いほど長く止める弾。必殺技はその場に構えて、アリーナのどこへでも砲撃を落とす。',
+  },
+  hunger: {
+    id: 'hunger', kit: { Q: 'headrush', W: 'bloodfrenzy', E: 'chillingscream', R: 'certaindeath' },
+    name: 'クリムゾン・ハンガー', en: 'CRIMSON HUNGER', type: 'ATTACK', typeJa: 'アタック',
+    color: 0xd4264a, css: '#d4264a', teeth: 3,
+    atk: 0.66, def: 0.88, mass: 1.0, speed: 14.5, decay: 7.4, spinMax: 1000, cdMul: 1.0, guardMul: 1.0,
+    bars: { atk: 5, def: 2, sta: 3, spd: 4 },
+    costPct: 0.05, bleedAll: 1, bleedLeech: 0.25,
+    buff: { speed: 1.4, frenzy: 3, hunt: true, leech: 0.1 },
+    pin: { dmg: 70, stun: 0.9 },
+    desc: 'スキルのたびに回転を払い、噛んだ相手の出血で取り戻す。Wの間は自分では止まれず、一番近い相手へ勝手に突っ込み続ける。止める手段はEだけ。',
+  },
+  golem: {
+    id: 'golem', kit: { Q: 'rocketgrab', W: 'overdrive', E: 'powerfist', R: 'staticfield' },
+    name: 'スチーム・ゴーレム', en: 'STEAM GOLEM', type: 'DEFENSE', typeJa: 'ディフェンス',
+    color: 0xf2b23a, css: '#f2b23a', teeth: 4,
+    atk: 1.0, def: 1.12, mass: 1.3, speed: 12.5, decay: 5.7, spinMax: 1000, cdMul: 1.0, guardMul: 1.0,
+    bars: { atk: 3, def: 4, sta: 4, spd: 2 },
+    lowShield: { at: 0.3, amount: 150, hold: 5 },
+    desc: '腕を伸ばして手元まで引きずり込み、殴って打ち上げる。必殺技の放電は相手のバリアを消し、少しの間スキルを封じる。',
+  },
+  voideye: {
+    id: 'voideye', kit: { Q: 'plasmafission', W: 'voidrift', E: 'tectonic', R: 'liferay' },
+    name: 'ヴォイド・アイ', en: 'VOID EYE', type: 'ATTACK', typeJa: 'アタック',
+    color: 0xb04cff, css: '#b04cff', teeth: 6,
+    atk: 1.42, def: 1.04, mass: 0.94, speed: 13, decay: 6.0, spinMax: 1000, cdMul: 1.0, guardMul: 1.0,
+    bars: { atk: 5, def: 1, sta: 3, spd: 2 },
+    decon: { n: 3, keep: 7, dmg: 42 },
+    desc: '同じ相手にスキルを3回当てると、防御を無視して分解する。左右に分かれる弾、二度裂ける直線、カーソルを追う必殺の光線。',
+  },
+  purifier: {
+    id: 'purifier', kit: { Q: 'piercinglight', W: 'ardentblaze', E: 'lightslide', R: 'culling' },
+    name: 'ツイン・ピュリファイア', en: 'TWIN PURIFIER', type: 'ATTACK', typeJa: 'アタック',
+    color: 0xf4f0d8, css: '#f4f0d8', teeth: 4,
+    atk: 1.62, def: 1.12, mass: 0.96, speed: 15, decay: 6.0, spinMax: 1000, cdMul: 1.0, guardMul: 1.0,
+    bars: { atk: 5, def: 2, sta: 2, spd: 5 },
+    dbl: { window: 3.5, mul: 0.6, cuts: 'lightslide', cut: 2 },
+    desc: 'スキルのあとの体当たりは2回当たり、そのたびにEが早く戻る。撃って、ぶつかって、滑ってを繰り返す。',
+  },
+  weaver: {
+    id: 'weaver', kit: { Q: 'threadedvolley', W: 'seismicshove', E: 'unraveled', R: 'weaverwall' },
+    name: 'ストーン・ウィーバー', en: 'STONE WEAVER', type: 'STAMINA', typeJa: 'スタミナ',
+    color: 0xc98a4a, css: '#c98a4a', teeth: 5,
+    atk: 1.42, def: 1.02, mass: 0.96, speed: 13.5, decay: 6.0, spinMax: 1000, cdMul: 1.0, guardMul: 1.0,
+    bars: { atk: 4, def: 2, sta: 3, spd: 3 },
+    surf: 1.25,
+    desc: '岩をまいた床へ、地面ごと相手を放り込む。攻撃を受けていなければ壁際で速くなり、必殺技の壁でアリーナを区切る。',
+  },
+  doctor: {
+    id: 'doctor', kit: { Q: 'bonesaw', W: 'heartzapper', E: 'blunttrauma', R: 'maxdose' },
+    name: 'マッド・ドクター', en: 'MAD DOCTOR', type: 'DEFENSE', typeJa: 'ディフェンス',
+    color: 0x9be04a, css: '#9be04a', teeth: 4,
+    atk: 0.66, def: 0.9, mass: 1.25, speed: 13, decay: 6.2, spinMax: 1000, cdMul: 1.0, guardMul: 1.0,
+    bars: { atk: 3, def: 4, sta: 5, spd: 2 },
+    shrug: { cd: 15, pay: 0.04, far: 3 },
+    store: { taken: 0.5, dealt: 0, max: 220, fade: 0, whileBuff: true },
+    grey: { rate: 0 },
+    buff: { regen: 44, speed: 1.2 },
+    desc: '15秒に一度、スタンや打ち上げを踏み倒す。受けたダメージを溜め込んで取り戻し、必殺技の間は回転がどんどん戻る。',
+  },
 };
 
 export const ENEMY_COLOR = 0xff3b4e;
@@ -489,11 +556,11 @@ export const SKILLS = {
     desc: '見えにくい罠を置く。踏まれると35%スロウの領域になり、2秒後に爆発する。2個ぶん溜めておける（14秒で1個ぶん戻る）。',
   },
   curtaincall: {
-    name: '終幕', en: 'CURTAIN CALL', aim: 'self', cd: 2, ult: true, re: 'curtainfire',
+    name: '終幕', en: 'CURTAIN CALL', aim: 'self', cd: 2, ult: true, re: 'curtainfire', stance: true,
     range: 26, half: Math.PI, shots: 4, first: 0.5, every: 0.7, window: 10,
     desc: '【必殺技】その場で構える。そのあとRを押すたびに、どの方向へでも狙った向きに超長射程弾を1発（最大4発、10秒以内）。当たると80%のスロウ。相手の回転が減っているほど重く、最後の一発は2倍。',
   },
-  curtainfire: { name: '終幕', en: 'CURTAIN CALL', aim: 'line', hidden: true, range: 26, radius: 1.0 },
+  curtainfire: { name: '終幕', en: 'CURTAIN CALL', aim: 'line', hidden: true, fire: true, range: 26, radius: 1.0 },
   curtainshot: {
     name: '終幕', en: 'CURTAIN CALL', aim: 'line', hidden: true,
     range: 30, speed: 46, radius: 1.0, dmg: 34, kb: 7, slow: 0.5, slowPct: 0.8, exec: 3,
@@ -1307,6 +1374,176 @@ export const SKILLS = {
     name: 'トゥルーショットバラージ', en: 'TRUESHOT BARRAGE', aim: 'line', kind: 'shot', icon: 'beam', cd: 2, ult: true,
     tele: 0.1, charge: 1, root: true, range: 40, speed: 40, radius: 2, dmg: 175, pierce: true,
     desc: '【必殺技】1秒構えたあと、アリーナを横断する太い光波を放つ。',
+  },
+  // ---- MAGUS ASCENDANT (Xerath)
+  arcanopulse: {
+    name: 'アルカノパルス', en: 'ARCANOPULSE', aim: 'line', kind: 'beam', icon: 'beam', cd: 5,
+    tele: 0.5, wind: { min: 0, full: 1.5, max: 3, cancelCd: 2.5 }, near: 6, range: 12.5, radius: 0.9, dmg: 58,
+    desc: '長押しで溜めるほど射程が伸びる貫通光線（1.5秒で最大。溜め中は遅くなり、3秒で不発）。離すと放つ。',
+  },
+  eyeofdestruction: {
+    name: 'デストラクションアイ', en: 'EYE OF DESTRUCTION', aim: 'ground', kind: 'blast', icon: 'blast', cd: 10,
+    tele: 0.15, range: 9, aoe: 2.2, delay: 0.5, dmg: 40, slow: 2.5, slowPct: 0.25, coreR: 1.0, coreMul: 1.667, coreSlowPct: 0.8,
+    desc: '半秒後に雷を落とし、25%のスロウにする。中心で当てるとダメージが67%増え、スロウが80%になる。',
+  },
+  shockorb: {
+    name: 'ショックオーブ', en: 'SHOCKING ORB', aim: 'line', kind: 'shot', icon: 'orb', cd: 11,
+    tele: 0.4, range: 9.5, speed: 30, radius: 0.85, dmg: 44, stunFar: [0.45, 1.35],
+    desc: '弾を撃ち、当たった相手をスタンさせる。遠くまで飛んでから当たるほどスタンが長い（0.45〜1.35秒）。',
+  },
+  arcanerite: {
+    name: 'アーケーンライト', en: 'RITE OF THE ARCANE', aim: 'self', icon: 'star', cd: 2, ult: true, re: 'arcanefire', stance: true, ai: 'stance',
+    range: 40, half: Math.PI, shots: 6, first: 0.4, every: 0.8, window: 10,
+    desc: '【必殺技】その場で構える。そのあとRを押すたびに、アリーナのどこへでも砲撃を落とす（最大6発、10秒以内、半秒後に着弾）。当てるたびに次の一発が重くなる。',
+  },
+  arcanefire: { name: '蒼の天弾', en: 'ARCANE BARRAGE', aim: 'ground', hidden: true, fire: true, range: 40, aoe: 2.2 },
+  arcanebarrage: { name: '蒼の天弾', en: 'ARCANE BARRAGE', aim: 'ground', kind: 'blast', hidden: true, aoe: 2.2, delay: 0.5, dmg: 52, heavier: 9 },
+  // ---- CRIMSON HUNGER (Briar)
+  headrush: {
+    name: 'ヘッドラッシュ', en: 'HEAD RUSH', aim: 'self', kind: 'strike', icon: 'dash', cd: 9,
+    need: 'range', range: 5.2, tp: true, dmg: 46, stun: 0.5, shredT: 5, shredK: 1.2,
+    desc: 'カーソルに一番近い相手へ飛びかかる。0.5秒スタンさせ、5秒間その相手が受けるダメージを20%増やす。',
+  },
+  bloodfrenzy: {
+    name: '血の狂乱', en: 'BLOOD FRENZY', aim: 'dash', icon: 'buff', cd: 10, re: 'snackattack', ai: 'dash',
+    dist: 3.5, minDist: 3.5, speed: 34, frenzy: 5, halt: false,
+    desc: '前へ跳び、5秒間狂乱する。速くなり、一番近い相手へ勝手に突っ込み続ける（移動は受け付けない）。噛みつきは周りの相手にも当たる。もう一度押すと、次の噛みつきが重くなり回復する。',
+  },
+  snackattack: {
+    name: '衝動噛み', en: 'SNACK ATTACK', aim: 'self', kind: 'buff', hidden: true, free: true,
+    empower: 5, bonus: 20, missing: 70, hitHeal: 0.05, kb: 4,
+  },
+  chillingscream: {
+    name: '呪福の叫び', en: 'CHILLING SCREAM', aim: 'cone', kind: 'cone', icon: 'cone', cd: 16,
+    tele: 0.1, charge: 1, early: true, armor: 0.65, chargeHeal: 0.11, near: 3, range: 5.2, half: 0.6, dmg: 60, slow: 0.5, slowPct: 0.8, kb: 13, tumble: 0.6, pinT: 1,
+    desc: '最大1秒息を吸う（その間は受けるダメージが35%減り、回復する）。もう一度押すか1秒経つと叫び、80%のスロウ。吸い切っていれば吹き飛ばし、壁に当たった相手はスタンして追加ダメージ。使うと狂乱が止まる。',
+  },
+  certaindeath: {
+    name: '迫りくる死', en: 'CERTAIN DEATH', aim: 'line', icon: 'star', cd: 2, ult: true, ai: 'shot',
+    tele: 0.4, range: 30, speed: 42, radius: 0.9, dmg: 20, flyTo: 'certainland', frenzy: 8,
+    desc: '【必殺技】アリーナの端まで届く石を蹴る。当たった相手へ止められない勢いで飛びつき、着地で周りを吹き飛ばす。そのあと8秒間、その相手を追う狂乱になる。',
+  },
+  certainland: { name: '迫りくる死', en: 'CERTAIN DEATH', aim: 'leap', hidden: true, air: 0.55, height: 4, aoe: 3.2, dmg: 90, kb: 4, track: true },
+  // ---- STEAM GOLEM (Blitzcrank)
+  rocketgrab: {
+    name: 'ロケットグラブ', en: 'ROCKET GRAB', aim: 'line', kind: 'shot', icon: 'hook', cd: 16,
+    tele: 0.45, range: 9.8, speed: 30, radius: 0.9, dmg: 60, chain: true, pull: 24, stun: 0.4,
+    desc: '腕を伸ばし、当たった相手を手元まで引きずり込む。0.4秒スタンさせる。',
+  },
+  overdrive: {
+    name: 'オーバードライブ', en: 'OVERDRIVE', aim: 'self', icon: 'buff', cd: 15, ai: 'buff',
+    haste: 5, after: 1.5, afterPct: 0.3,
+    desc: '5秒間加速する。切れたあと1.5秒間、自分が30%遅くなる。',
+  },
+  powerfist: {
+    name: 'パワーフィスト', en: 'POWER FIST', aim: 'self', kind: 'buff', icon: 'burst', cd: 5,
+    empower: 5, bonus: 44, up: 0.6, kb: 3,
+    desc: '5秒以内の次の体当たりが2倍の重さになり、相手を0.6秒打ち上げる。',
+  },
+  staticfield: {
+    name: 'イナズマフィールド', en: 'STATIC FIELD', aim: 'self', icon: 'burst', cd: 2, ult: true, ai: 'burst',
+    aoe: 5.5, dmg: 110, strip: true, silence: 0.3,
+    desc: '【必殺技】周囲に放電する。相手のバリアとガードを消し、0.3秒スキルを封じる。',
+  },
+  // ---- VOID EYE (Vel'Koz)
+  decon: { name: '有機分解', en: 'DECONSTRUCTION', aim: 'self', hidden: true },
+  plasmafission: {
+    name: '電離炸裂弾', en: 'PLASMA FISSION', aim: 'line', icon: 'shot', cd: 7, re: 'fissionsplit', ai: 'shot',
+    tele: 0.35, range: 9.5, speed: 26, radius: 0.8, dmg: 46, slow: 2, slowPct: 0.7, window: 0.6,
+    desc: '弾を撃ち、70%のスロウにする。当たるか、飛んでいる間にもう一度押すと、左右90度に分かれて飛ぶ。',
+  },
+  fissionsplit: { name: '分裂', en: 'SPLIT', aim: 'self', hidden: true, free: true },
+  plasmashard: { name: '電離炸裂弾', en: 'PLASMA FISSION', aim: 'line', hidden: true, range: 10, speed: 30, radius: 0.8, dmg: 46, slow: 2, slowPct: 0.7 },
+  voidrift: {
+    name: 'ヴォイドの裂谷', en: 'VOID RIFT', aim: 'line', icon: 'beam', cd: 1.5, stock: { max: 2, every: 15 }, ai: 'beam',
+    tele: 0.3, range: 9.5, radius: 0.9, dmg: 18,
+    desc: '直線を裂き、0.25秒後に同じ場所が爆発する。2回ぶん溜めておける（15秒で1回ぶん戻る）。',
+  },
+  riftz: { name: 'ヴォイドの裂谷', en: 'VOID RIFT', aim: 'line', hidden: true, range: 9.5, radius: 0.9, dmg: 28, delay: 0.25 },
+  tectonic: {
+    name: '地殻砕裂', en: 'TECTONIC DISRUPTION', aim: 'ground', kind: 'blast', icon: 'blast', cd: 10,
+    tele: 0.15, range: 7.2, aoe: 2.2, delay: 0.4, dmg: 44, kb: 8, tumble: 0.45, launch: 0.5, away: true,
+    desc: '狙った場所を少し遅れて爆発させ、そこにいた相手を自分から遠ざかる向きへ跳ね飛ばす。',
+  },
+  liferay: {
+    name: '生体破壊光線', en: 'LIFE FORM DISINTEGRATION RAY', aim: 'line', icon: 'star', cd: 0.13, ult: true, rapid: true,
+    stream: { max: 2.6, cd: 2, gap: 0.3 }, range: 14.5, radius: 0.9, dmg: 11, slow: 1, slowPct: 0.2, turn: 0.22, every: 5,
+    desc: '【必殺技】押している間（最大2.6秒）、カーソルをゆっくり追う貫通レーザーを撃ち続ける。その間は動けない。20%のスロウ。当て続けると分解も進む。',
+  },
+  // ---- TWIN PURIFIER (Lucian)
+  lightslinger: { name: '二挺拳銃', en: 'LIGHTSLINGER', aim: 'self', hidden: true },
+  piercinglight: {
+    name: 'ピアシングライト', en: 'PIERCING LIGHT', aim: 'line', kind: 'beam', icon: 'beam', cd: 5,
+    tele: 0.2, charge: 0.3, range: 9, radius: 0.8, dmg: 54,
+    desc: '一瞬構えて、相手を貫く光線を撃つ。',
+  },
+  ardentblaze: {
+    name: 'アーデントブレイズ', en: 'ARDENT BLAZE', aim: 'line', kind: 'shot', icon: 'cross', cd: 10,
+    tele: 0.35, range: 8.2, speed: 32, radius: 0.8, dmg: 12, splash: 2.8, splashDmg: 34, markT: 6, rush: 1,
+    desc: '当たるか射程の端で弾ける弾。巻き込んだ相手に6秒間の印を付け、印の相手に攻撃を当てるたびに少しの間加速する。',
+  },
+  lightslide: {
+    name: 'スライド', en: 'RELENTLESS PURSUIT', aim: 'dash', kind: 'dash', icon: 'dash', cd: 14,
+    dist: 4.4, minDist: 2.5, speed: 36, halt: true,
+    desc: '狙った方向へ滑る。スキルのあとの2回当たる体当たりを決めるたびに、待ち時間が2秒縮む。',
+  },
+  culling: {
+    name: '二挺掃射', en: 'THE CULLING', aim: 'line', icon: 'star', cd: 2, ult: true, re: 'cullstop', ai: 'shot',
+    tele: 0.3, dur: 3, shots: 22, range: 13, speed: 44,
+    desc: '【必殺技】3秒間、決めた方向へ撃ち続ける。撃ちながら動けて、Eも使える。もう一度押すと止める。',
+  },
+  cullstop: { name: '撃ち方やめ', en: 'CEASE FIRE', aim: 'self', hidden: true, free: true },
+  cullshot: { name: '二挺掃射', en: 'THE CULLING', aim: 'line', hidden: true, range: 13, speed: 44, radius: 0.6, dmg: 9, kb: 0.6, tumble: 0, launch: 0 },
+  // ---- STONE WEAVER (Taliyah)
+  threadedvolley: {
+    name: 'スレッドボレー', en: 'THREADED VOLLEY', aim: 'line', icon: 'shot', cd: 3, ai: 'shot',
+    tele: 0.3, range: 9.2, speed: 34, shots: 5, every: 0.1, cdOn: 1.5,
+    desc: '動きながら石を5発撃つ（1発目だけ重い）。足元の地面を加工する。加工した地面の上で使うと、スロウの付いた大きな石1発になり、待ち時間が半分になる。',
+  },
+  threadrock: { name: 'スレッドボレー', en: 'THREADED VOLLEY', aim: 'line', hidden: true, range: 9.2, speed: 34, radius: 0.6, dmg: 30, next: 0.4, kb: 1, tumble: 0, launch: 0 },
+  bigrock: { name: 'スレッドボレー', en: 'THREADED VOLLEY', aim: 'line', hidden: true, range: 9.2, speed: 34, radius: 0.95, dmg: 54, slow: 1.5, slowPct: 0.4, kb: 3 },
+  workedground: { name: '加工された地面', en: 'WORKED GROUND', aim: 'ground', kind: 'field', hidden: true, friendly: true, aoe: 3.6, dur: 20, max: 2 },
+  seismicshove: {
+    name: 'サイズミックシャーブ', en: 'SEISMIC SHOVE', aim: 'ground', icon: 'blast', cd: 8, drag: true, ai: 'ground',
+    tele: 0.15, range: 8, aoe: 2.3, push: 4,
+    desc: '押した位置に地点を決め、離した方向を向きにする。0.75秒後に地面が盛り上がり、そこにいた相手をその向きへ飛ばす。',
+  },
+  shovez: { name: 'サイズミックシャーブ', en: 'SEISMIC SHOVE', aim: 'ground', kind: 'blast', hidden: true, aoe: 2.3, delay: 0.75, kb: 11, tumble: 0.6 },
+  unraveled: {
+    name: 'アンレイベルアース', en: 'UNRAVELED EARTH', aim: 'cone', icon: 'cone', cd: 14, ai: 'cone',
+    tele: 0.3, range: 7.5, half: 0.5, dmg: 40,
+    desc: '扇状に岩をまく（4秒）。上にいる相手は20%のスロウ。突進や吹き飛ばしで岩の上を通った相手は爆発に巻き込まれ、スタンする。',
+  },
+  boulders: { name: 'アンレイベルアース', en: 'UNRAVELED EARTH', aim: 'cone', kind: 'field', hidden: true, range: 7.5, half: 0.5, aoe: 7.5, dur: 4, dmg: 36, stun: 0.6, slowPct: 0.2, again: 1 },
+  weaverwall: {
+    name: 'ウィーバーウォール', en: "WEAVER'S WALL", aim: 'line', icon: 'star', cd: 2, ult: true, re: 'wallstop', ai: 'none',
+    tele: 0.4, len: 20, side: 1.7, speed: 17, dist: 20, minDist: 3, through: true, fly: true,
+    desc: '【必殺技】狙った方向へアリーナを横切る岩の壁を4秒立て、そのわきを端まで滑る。途中でもう一度押すと降りる。壁はコマを通さない。',
+  },
+  wallstop: { name: '降りる', en: 'STEP OFF', aim: 'self', hidden: true, free: true },
+  weaverz: { name: 'ウィーバーウォール', en: "WEAVER'S WALL", aim: 'ground', hidden: true, solid: true, grown: true, wall: 10, aoe: 1, dur: 4 },
+  // ---- MAD DOCTOR (Dr. Mundo)
+  canister: { name: '薬瓶', en: 'CANISTER', aim: 'ground', hidden: true, aoe: 0.9, dur: 7, heal: 0.04, cut: 15 },
+  bonesaw: {
+    name: '骨切りノコギリ', en: 'INFECTED BONESAW', aim: 'line', kind: 'shot', icon: 'shot', cd: 4,
+    tele: 0.35, range: 9, speed: 34, radius: 0.8, dmg: 40, curPct: 0.15, slow: 2, slowPct: 0.4,
+    desc: 'ノコギリを投げる。相手に残っている回転の15%（少なくとも一定量）を削り、2秒間40%のスロウにする。',
+  },
+  heartzapper: {
+    name: '心臓ビリビリ', en: 'HEART ZAPPER', aim: 'self', kind: 'field', icon: 'field', cd: 15, re: 'zapburst',
+    follow: true, dur: 3, aoe: 3.3, dps: 20, buff: 3, endDmg: 34, storeHeal: 0.5,
+    desc: '3秒間、周囲を焼く。その間に受けたダメージの半分は灰色でゲージに残り、終わりの爆発で戻ってくる（爆発を当てれば全部、外せば半分）。もう一度押すとすぐ爆発する。',
+  },
+  zapburst: { name: '爆発', en: 'DISCHARGE', aim: 'self', hidden: true, free: true },
+  blunttrauma: {
+    name: '野蛮な痛み', en: 'BLUNT FORCE TRAUMA', aim: 'self', kind: 'buff', icon: 'burst', cd: 6,
+    empower: 4, bonus: 22, selfMiss: 44, kb: 7,
+    desc: '4秒以内の次の体当たりを強化する。自分の回転が減っているほど重くなる（7割減で最大）。',
+  },
+  maxdose: {
+    name: 'マキシマム投与', en: 'MAXIMUM DOSAGE', aim: 'self', kind: 'buff', icon: 'star', cd: 2, ult: true, ai: 'recover',
+    dur: 8,
+    desc: '【必殺技】8秒間、回転がどんどん戻り（合計で最大値の35%）、足が速くなる。',
   },
 };
 for (const id in SKILLS) SKILLS[id].id = id;

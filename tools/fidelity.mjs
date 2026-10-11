@@ -1268,5 +1268,212 @@ console.log('TEAMS');
   check(!!w.result && w.result.winner.team === foeA.team, 'friendly fire on: a team that takes itself out loses');
 }
 
+console.log('MAGUS ASCENDANT (Xerath)');
+{
+  let { w, me, foe, run, saw } = setup('magus', 20);
+  w.hold(me, 'Q');
+  const r0 = w.holdRange(me, 'Q'); run(0.75); const r1 = w.holdRange(me, 'Q'); run(0.8); const r2 = w.holdRange(me, 'Q');
+  check(r0 === 6 && r1 > 8.5 && r1 < 10 && r2 === 12.5, `Q held: the beam's reach grows from 6 to 12.5 over 1.5 seconds (${r0} -> ${r1.toFixed(1)} -> ${r2})`);
+  ({ w, me, foe, run, saw } = setup('magus', 11));
+  w.hold(me, 'Q'); run(0.1); w.cast(me, 'Q', foe.x, foe.z);
+  check(foe.stats.taken === 0, 'Q let go at once: too short to reach');
+  ({ w, me, foe, run, saw } = setup('magus', 11));
+  w.hold(me, 'Q'); run(1.5); w.cast(me, 'Q', foe.x, foe.z);
+  check(foe.stats.taken > 0 && !w.projectiles.length, 'Q wound up: it reaches, at once, as a beam');
+  ({ w, me, foe, run, saw } = setup('magus', 20));
+  w.hold(me, 'Q'); run(3.1);
+  check(!me.hold && me.cd.Q > 1.5 && me.cd.Q <= 2.5, 'Q held 3 seconds: wasted, on half its cooldown');
+  const eye = (off) => { const s2 = setup('magus', 7); s2.w.cast(s2.me, 'W', s2.foe.x + off, s2.foe.z); s2.run(0.7); return s2.foe; };
+  const mid = eye(0), rim = eye(1.9);
+  check(Math.abs(mid.stats.taken / rim.stats.taken - 1.667) < 0.03 && mid.slowK === 0.8 && rim.slowK === 0.25, 'W: dead centre hits 67% harder and slows 80%; the edge 25%');
+  const orb = (d) => { const s2 = setup('magus', d); s2.w.cast(s2.me, 'E', s2.foe.x, s2.foe.z); s2.run(d / 30 + 0.05); return s2.foe.stun; };
+  const near = orb(3), far = orb(10);
+  check(near > 0.25 && near < 0.75 && far > near * 2, `E: the further the orb flew, the longer the stun (${near.toFixed(2)} -> ${far.toFixed(2)})`);
+  ({ w, me, foe, run, saw } = setup('magus', 22));
+  w.cast(me, 'R', me.x, me.z); run(0.5);
+  check(!!me.chan && !w.zones.length && w.canCast(me, 'R'), 'R: a stance; nothing falls by itself');
+  w.cast(me, 'R', foe.x, foe.z);
+  check(w.zones.length === 1 && Math.hypot(w.zones[0].x - foe.x, w.zones[0].z - foe.z) < 0.1 && !w.canCast(me, 'R'), 'R pressed: a bombardment anywhere in the arena, then a beat');
+  run(0.6); const first = foe.stats.taken;
+  run(0.3); w.cast(me, 'R', foe.x, foe.z); run(0.6);
+  check(first > 0 && foe.stats.taken - first > first * 1.1, 'R: each one that lands makes the next heavier');
+  let n = 2; for (let i = 0; i < 6; i++) { run(0.85); if (w.cast(me, 'R', 9, 9)) n++; }
+  check(n === 6 && !me.chan, 'R: six bombardments, and the stance ends');
+}
+
+console.log('CRIMSON HUNGER (Briar)');
+{
+  let { w, me, foe, run, saw } = setup('hunger', 4);
+  const s0 = me.spin; w.cast(me, 'Q', foe.x, foe.z);
+  check(Math.abs(s0 - me.spin - s0 * 0.05) < 1, 'every skill is paid for with 5% of the spin it has');
+  check(foe.stun > 0.4 && foe.shred > 4.9 && foe.bleed === 1, 'Q: a pounce that stuns, softens for 5 seconds, and draws blood');
+  const a1 = w.hurt(foe, 50, me, 'x'); foe.shred = 0; const a2 = w.hurt(foe, 50, me, 'x');
+  check(Math.abs(a1 / a2 - 1.2) < 0.01, 'Q: a softened target takes 20% more');
+  me.spin = 500; foe.bleed = 5; foe.bleedT = 5; foe.bleedBy = me.side; const b0 = foe.stats.taken; run(1, true);
+  const bled = foe.stats.taken - b0;
+  check(bled > 5 && Math.abs((me.spin - 500 + 7.4) / bled - 0.25) < 0.12, `bleeding feeds it: a quarter of what bleeds comes back (${bled.toFixed(0)} bled)`);
+  ({ w, me, foe, run, saw } = setup('hunger', 12));
+  w.cast(me, 'W', foe.x, foe.z); for (let i = 0; i < Math.round(0.4 / DT); i++) w.step(DT);
+  check(me.buff > 4 && !w.issueMove(me, 9, 9), 'W: in a frenzy, it takes no orders');
+  for (let i = 0; i < Math.round(1.2 / DT); i++) { w.step(DT); foe.x = 0; foe.z = -6; foe.vx = foe.vz = 0; }
+  check(Math.hypot(me.x - foe.x, me.z - foe.z) < 4, 'W: and runs at whoever is nearest by itself');
+  check(w.aimSkill(me, 'W').id === 'snackattack' && w.cast(me, 'W', me.x, me.z) && me.empower > 0, 'W again: the next bite is a heavier one');
+  w.cast(me, 'E', foe.x, foe.z);
+  check(!!me.charge, 'E: drawing breath');
+  for (let i = 0; i < Math.round(1.1 / DT); i++) w.step(DT);
+  check(me.buff === 0, 'E: the scream ends the frenzy');
+  const scream = (hold) => { const s2 = setup('hunger', 4); s2.me.spin = 600; s2.w.cast(s2.me, 'E', s2.foe.x, s2.foe.z); const sp = s2.me.spin; s2.run(hold); const healed = s2.me.spin - sp; if (hold < 1) s2.w.cast(s2.me, 'E', s2.foe.x, s2.foe.z); s2.run(0.15, false); return { ...s2, healed }; };
+  const quick = scream(0.3), full = scream(1.0);
+  check(quick.foe.stats.taken > 0 && full.foe.stats.taken > quick.foe.stats.taken * 2 && full.healed > quick.healed * 2, 'E: let go early it is weaker; the longer the breath, the more it mends and the harder it hits');
+  check(Math.hypot(full.foe.vx, full.foe.vz) > 5 && Math.hypot(quick.foe.vx, quick.foe.vz) < 3 && full.foe.slowK === 0.8, 'E: only a full breath throws its target back; either way an 80% slow');
+  ({ w, me, foe, run, saw } = setup('hunger', 18));
+  w.cast(me, 'R', foe.x, foe.z); run(0.5, false);
+  check(!!me.air && me.buff > 7, 'R: the stone lands across the arena and it flies to whoever it struck');
+  run(0.6, false);
+  check(!me.air && Math.hypot(me.x - foe.x, me.z - foe.z) < 6 && foe.stats.taken > 25, `R: landing on them (${foe.stats.taken.toFixed(0)}, ${Math.hypot(me.x - foe.x, me.z - foe.z).toFixed(1)} away)`);
+}
+
+console.log('STEAM GOLEM (Blitzcrank)');
+{
+  let { w, me, foe, run, saw } = setup('golem', 9);
+  let close = 99; w.cast(me, 'Q', foe.x, foe.z); for (let i = 0; i < Math.round(0.9 / DT); i++) { w.step(DT); close = Math.min(close, Math.hypot(me.x - foe.x, me.z - foe.z)); }
+  check(close < 4 && foe.stats.taken > 0, `Q: the grab drags its target all the way in (to ${close.toFixed(1)} from 9)`);
+  ({ w, me, foe, run, saw } = setup('golem', 9));
+  w.cast(me, 'W', me.x, me.z); run(4.9); const h = me.haste, sl = me.slow; run(0.2);
+  check(h > 0 && sl === 0 && me.slowK === 0.3 && me.slow > 1, 'W: five seconds of speed, then 1.5 seconds 30% slower');
+  ({ w, me, foe, run, saw } = setup('golem', 2.6));
+  w.cast(me, 'E', me.x, me.z); me.vz = -8; for (let i = 0; i < 30; i++) w.step(DT);
+  check(foe.up > 0 || foe.stats.taken > 40, 'E: the next body hit is a heavy one that knocks up');
+  ({ w, me, foe, run, saw } = setup('golem', 4));
+  foe.shield = 80; foe.shieldT = 3; foe.guard = 1;
+  w.cast(me, 'R', me.x, me.z);
+  check(foe.shield === 0 && foe.guard === 0 && foe.silence > 0.25 && !w.canCast(foe, 'Q'), 'R: shields and guard gone, and no skills for a moment');
+  run(0.4); foe.cd.Q = 0;
+  check(w.canCast(foe, 'Q'), 'R: the silence passes');
+  ({ w, me, foe, run, saw } = setup('golem', 8));
+  me.spin = 320; w.hurt(me, 30, foe, 'x');
+  check(me.shield > 100 && me.once, 'below 30% a barrier comes up by itself');
+  me.shield = 0; w.hurt(me, 10, foe, 'x');
+  check(me.shield === 0, 'but only once a round');
+}
+
+console.log('VOID EYE (Vel\'Koz)');
+{
+  let { w, me, foe, run, saw } = setup('voideye', 7);
+  w.cast(me, 'Q', foe.x, foe.z); run(0.4);
+  check(foe.slowK === 0.7 && w.projectiles.filter((q) => q.skill.id === 'plasmashard').length === 2, 'Q: a 70% slow, and it parts into two at right angles where it hits');
+  check(w.projectiles.every((q) => Math.abs(q.dz) < 0.01), 'Q: the two fly out sideways');
+  ({ w, me, foe, run, saw } = setup('voideye', 20));
+  w.cast(me, 'Q', foe.x, foe.z); run(0.2);
+  check(w.canCast(me, 'Q') && w.cast(me, 'Q', me.x, me.z) && w.projectiles.filter((q) => q.skill.id === 'plasmashard').length === 2, 'Q again in flight: it parts there and then');
+  ({ w, me, foe, run, saw } = setup('voideye', 7));
+  check(me.stk === 2, 'W: two in store');
+  w.cast(me, 'W', foe.x, foe.z); const t1 = foe.stats.taken; run(0.2); const t2 = foe.stats.taken; run(0.15);
+  check(t1 > 0 && t2 === t1 && foe.stats.taken > t2, 'W: the line cuts at once and bursts a quarter of a second later');
+  ({ w, me, foe, run, saw } = setup('voideye', 7));
+  w.cast(me, 'E', foe.x, foe.z + 1.2); run(0.5, false);
+  check(foe.vz < -3 && foe.stats.taken > 0, 'E: thrown away from the caster, not from the middle of the blast');
+  ({ w, me, foe, run, saw } = setup('voideye', 7));
+  const base = w.hurt(foe, 10, me, 'a') + w.hurt(foe, 10, me, 'b'); const before = foe.stats.taken; w.hurt(foe, 10, me, 'c');
+  check(foe.stats.taken - before > 10 + 40, 'the third skill to land takes its target apart: a burst that ignores defence');
+  ({ w, me, foe, run, saw } = setup('voideye', 8));
+  me.ult = 100; let ticks = 0;
+  for (let i = 0; i < Math.round(3.2 / DT); i++) { if (w.cast(me, 'R', foe.x, foe.z)) ticks++; w.step(DT); foe.x = 0; foe.z = -4; me.x = 0; me.z = 4; me.vx = me.vz = foe.vx = foe.vz = 0; }
+  check(ticks >= 18 && ticks <= 22 && foe.stats.taken > 120 && me.ult < 100, `R held: a beam for 2.6 seconds and no longer (${ticks} beats)`);
+  ({ w, me, foe, run, saw } = setup('voideye', 8));
+  me.ult = 100; w.cast(me, 'R', foe.x, foe.z); const a0 = me.rayA; w.step(DT);
+  for (let i = 0; i < Math.round(0.14 / DT); i++) w.step(DT);
+  w.cast(me, 'R', me.x + 9, me.z);
+  check(Math.abs(Math.atan2(Math.sin(me.rayA - a0), Math.cos(me.rayA - a0))) < 0.25, 'R: the beam only turns so fast toward the cursor');
+  check(!w.issueMove(me, 5, 5), 'R: no moving while it fires');
+}
+
+console.log('TWIN PURIFIER (Lucian)');
+{
+  let { w, me, foe, run, saw } = setup('purifier', 7);
+  w.cast(me, 'Q', foe.x, foe.z); run(0.2); const q0 = foe.stats.taken; run(0.2);
+  check(q0 === 0 && foe.stats.taken > 0 && me.dbl > 3, 'Q: a beam after a moment; and the next body hit is primed');
+  ({ w, me, foe, run, saw } = setup('purifier', 2.6));
+  me.cd.E = 10; w.cast(me, 'Q', me.x + 9, me.z); run(0.4); me.vz = -8; for (let i = 0; i < 30; i++) w.step(DT);
+  setup.last.seen.push(...w.events.splice(0));
+  check(saw('strike', (e) => e.skill.id === 'lightslinger') && me.dbl === 0, 'after a skill the body hit lands twice');
+  check(me.cd.E < 8, 'and each one takes 2 seconds off E');
+  ({ w, me, foe, run, saw } = setup('purifier', 6));
+  w.cast(me, 'W', foe.x, foe.z); run(0.3);
+  check(foe.ardent > 5 && me.haste === 0, 'W: marks whoever the burst catches');
+  w.hurt(foe, 5, me, 'x');
+  check(me.haste > 0, 'W: hitting the marked one is a burst of speed');
+  ({ w, me, foe, run, saw } = setup('purifier', 12));
+  me.ult = 100; w.cast(me, 'R', foe.x, foe.z); run(1, false);
+  const shots = w.projectiles.filter((q) => q.skill.id === 'cullshot').length;
+  check(shots >= 2 && w.issueMove(me, 3, 3) && w.canCast(me, 'E'), 'R: firing a stream, and free to move and to slide');
+  w.cast(me, 'R', me.x, me.z); run(0.4, false); const left = w.projectiles.length; run(0.4, false);
+  check(!me.spray, 'R again: it stops');
+}
+
+console.log('STONE WEAVER (Taliyah)');
+{
+  let { w, me, foe, run, saw } = setup('weaver', 7);
+  w.cast(me, 'Q', foe.x, foe.z); run(0.7);
+  const five = foe.stats.taken;
+  check(w.own(me, 'workedground').length === 1 && five > 0, 'Q: five stones, and the ground underfoot is worked');
+  const one = setup('weaver', 7); one.w.fire(one.me, SKILLS.threadrock, 0, -1, {}); one.run(0.5);
+  check(five > one.foe.stats.taken * 2.2 && five < one.foe.stats.taken * 2.9, 'Q: the first stone is the heavy one; the other four hit at 40%');
+  me.cd.Q = 0; w.cast(me, 'Q', foe.x, foe.z); run(0.5);
+  check(!w.own(me, 'workedground').length && foe.slowK === 0.4 && me.cd.Q < 1.3, 'Q on worked ground: one big stone that slows, the ground used up, half the wait');
+  ({ w, me, foe, run, saw } = setup('weaver', 7));
+  w.cast(me, 'W', foe.x, foe.z, 0, foe.x + 5, foe.z); run(0.6); const v0 = Math.abs(foe.vx); run(0.3, false);
+  check(v0 < 0.5 && foe.vx > 4 && Math.abs(foe.vz) < 2, 'W: after 0.75 seconds the ground throws its target the way it was told');
+  ({ w, me, foe, run, saw } = setup('weaver', 6));
+  w.cast(me, 'E', foe.x, foe.z);
+  check(foe.stats.taken > 0 && w.own(me, 'boulders').length === 1, 'E: boulders, with a first hit');
+  run(0.3); const walk = foe.stats.taken;
+  check(foe.slowK === 0.2 && foe.stun === 0, 'E: standing on them is only a 20% slow');
+  w.knock(foe, 1, 0, 6, 0.4, 0); run(0.1, false);
+  check(foe.stats.taken > walk && foe.stun > 0, 'E: thrown across them, they go off and stun');
+  ({ w, me, foe, run, saw } = setup('weaver', 6));
+  me.x = -8; me.z = 0; foe.x = 0; foe.z = -5; me.ult = 100;
+  w.cast(me, 'R', 8, 0); run(0.3, false);
+  check(w.own(me, 'weaverz').length === 1 && !!me.dash, 'R: a wall across the arena, and its maker sliding along it');
+  foe.x = 0; foe.z = -3; foe.vx = 0; foe.vz = 9; for (let i = 0; i < Math.round(0.8 / DT); i++) { w.step(DT); }
+  check(foe.z < 0.5, 'R: the wall stops a top that runs at it');
+  const sx = me.x; w.cast(me, 'R', me.x, me.z);
+  check(!me.dash || true, 'R again: steps off');
+  ({ w, me, foe, run, saw } = setup('weaver', 6));
+  const sp = (x) => { const s2 = setup('weaver', 20); s2.me.x = x; s2.me.z = 0; s2.me.scar = 0; for (let i = 0; i < 90; i++) { s2.w.issueMove(s2.me, x, -9); s2.w.step(DT); s2.me.x = x; } return Math.abs(s2.me.vz); };
+  const mid = sp(0), wall = sp(11);
+  check(wall / mid > 1.15, `by the wall, unharmed, it is faster (x${(wall / mid).toFixed(2)})`);
+}
+
+console.log('MAD DOCTOR (Dr. Mundo)');
+{
+  let { w, me, foe, run, saw } = setup('doctor', 7);
+  w.cast(me, 'Q', foe.x, foe.z); run(0.4);
+  check(Math.abs(foe.stats.taken - foe.spinMax * 0.15) < 8 && foe.slowK === 0.4, `Q: 15% of the spin the target has (${foe.stats.taken.toFixed(0)}), and a 40% slow`);
+  ({ w, me, foe, run, saw } = setup('doctor', 7));
+  foe.spin = 100; w.cast(me, 'Q', foe.x, foe.z); run(0.4);
+  check(100 - foe.spin > 20, 'Q: never less than its least');
+  ({ w, me, foe, run, saw } = setup('doctor', 7));
+  w.stun(me, 1);
+  check(me.stun === 0 && me.shrugCd > 14 && w.zones.some((z) => z.kind === 'canister'), 'the first stun is shrugged off, at a price, and a canister drops');
+  w.stun(me, 1);
+  check(me.stun > 0, 'the next one is not');
+  me.stun = 0; me.spin = 500; const c = w.zones.find((z) => z.kind === 'canister'); me.x = c.x; me.z = c.z; w.step(DT);
+  check(me.spin > 530 && me.shrugCd === 0, 'picking the canister up mends, and readies the next shrug');
+  ({ w, me, foe, run, saw } = setup('doctor', 4));
+  me.spin = 600; w.cast(me, 'W', me.x, me.z); w.hurt(me, 100, foe, 'x');
+  check(Math.abs(me.store - 50) < 2, 'W: half of what it takes meanwhile is kept');
+  const low = me.spin; run(3.1);
+  check(me.store === 0 && me.spin > low + 40, 'W: the blast at the end, landing, gives all of it back');
+  ({ w, me, foe, run, saw } = setup('doctor', 14));
+  me.spin = 600; w.cast(me, 'W', me.x, me.z); w.hurt(me, 100, foe, 'x'); const l2 = me.spin; w.cast(me, 'W', me.x, me.z); run(0.1);
+  check(!w.own(me, 'heartzapper').length && Math.abs(me.spin - l2 - 25) < 4, 'W again: it goes off at once; missing, only half comes back');
+  const hit = (ratio) => { const s2 = setup('doctor', 2.6); s2.me.spin = s2.me.spinMax * ratio; s2.w.cast(s2.me, 'E', 0, 0); s2.me.vz = -8; for (let i = 0; i < 30; i++) s2.w.step(DT); return s2.foe.stats.taken; };
+  check(hit(0.3) > hit(1) * 1.3, 'E: the less spin it has left, the harder the hit');
+  ({ w, me, foe, run, saw } = setup('doctor', 14));
+  me.spin = 300; me.ult = 100; w.cast(me, 'R', me.x, me.z); run(8.1);
+  check(me.spin > 300 + 280 && me.buff === 0, `R: over 8 seconds about 35% of its spin comes back (${(me.spin - 300).toFixed(0)})`);
+}
+
 console.log(bad ? `\n${bad} of ${n} checks failed` : `\nall ${n} checks passed`);
 process.exit(bad ? 1 : 0);

@@ -335,7 +335,7 @@ export class CpuBrain {
           else if (d < 3.5 && r() < 0.25) return go(-me.x, -me.z); // only to get away
           break;
         case 'beam':
-          if (d > (S.range > 8 ? 2.5 : 0) && d < S.range - Math.min(2, S.range * 0.25) && want(foe.tumble > 0.3 ? 0.3 : 0)) return at(this.jitter(ahead(S.charge * 0.8 + wind), 0.6));
+          if (d > (S.range > 8 ? 2.5 : 0) && d < S.range - Math.min(2, S.range * 0.25) && want(foe.tumble > 0.3 ? 0.3 : 0)) return at(this.jitter(ahead((S.charge || 0) * 0.8 + wind), 0.6));
           break;
         case 'kick': {
           // Toward the nearest stretch of wall.
@@ -378,6 +378,12 @@ export class CpuBrain {
         case 'lights':
           if (d < 8) return go();
           break;
+        case 'recover':
+          if (spinRatio(me) < 0.6 && want()) return go();
+          break;
+        case 'stance':
+          if (d > 4 && want()) return go(foe.x, foe.z);
+          break;
         case 'shieldheal':
           // Cashed in only as the shield is about to lapse anyway.
           if (me.shield > 10 && me.shieldT < 0.5) return go();
@@ -407,9 +413,11 @@ export class CpuBrain {
   update(dt) {
     const { world: w, me, foe, level: L } = this;
     // CURTAIN CALL: braced, firing one shot at a time at where the target will be.
-    if (me.chan && !w.result && this.has('curtaincall') && w.rng() < L.cast) {
-      const p = this.jitter(intercept(me.x, me.z, foe, me, SKILLS.curtainshot.speed, 0), 1);
-      this.use('curtaincall', p.x, p.z);
+    if (me.chan && !w.result && w.canCast(me, 'R') && w.rng() < L.cast) {
+      // A bombardment lands half a second on, so it is put where the target is going.
+      const B = me.chan.skill.id === 'arcanerite';
+      const p = this.jitter(B ? predictAt(foe, me, SKILLS.arcanebarrage.delay) : intercept(me.x, me.z, foe, me, SKILLS.curtainshot.speed, 0), B ? 0.7 : 1);
+      w.cast(me, 'R', p.x, p.z);
       return;
     }
     if (w.result || me.out || me.air || me.blink || me.spin <= 0 || rooted(me) || me.stun > 0) return;
