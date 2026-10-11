@@ -1758,6 +1758,60 @@ console.log('WITH MORE THAN TWO');
   q.put(q.a, 0, 6); q.put(q.x, 0, 2.5); q.put(q.m, 0, -4.2);
   q.w.cast(q.a, 'R', q.x.x, q.x.z); q.run(0.9, [q.a, q.x]);
   check(q.m.stats.taken === 0, 'but not a team mate');
+
+  // What only ever reached the nearest enemy now reaches all of them, and what stopped everyone lets its own side by.
+  q = quad('gale', ['azure', 'azure', 'gaia']);
+  q.put(q.m, 0, 9); q.m.cd.Q = 0; q.x.cd.Q = 0;
+  q.w.cast(q.a, 'W', 0, -9); q.run(0.1);
+  q.w.cast(q.m, 'Q', q.x.x, q.x.z); q.run(0.6);
+  check(q.x.stats.taken > 0, 'WIND WALL: a team mate\'s shot goes through it');
+  q.w.cast(q.x, 'Q', q.a.x, q.a.z); q.run(0.6);
+  check(q.a.stats.taken === 0, 'an enemy\'s is still stopped');
+
+  q = quad('sand');
+  q.put(q.m, 0, 4); q.put(q.x, 1.5, 3); q.put(q.y, -1.5, 3);
+  q.w.cast(q.a, 'R', 0, -9); q.run(0.4);
+  check(q.x.stats.taken > 50 && q.y.stats.taken > 50 && q.m.stats.taken < 10 && Math.abs(q.m.z - 4) < 0.01, 'EMPEROR\'S DIVIDE: every enemy in its way is thrown, and a team mate is let through');
+
+  q = quad('pirate');
+  q.put(q.x, 0, -6); q.put(q.y, 3, -6);
+  q.w.cast(q.a, 'R', 0, -6); q.run(0.6);
+  check(q.x.stats.taken > 0 && q.y.stats.taken > 0, 'CANNON BARRAGE: each wave lands on everyone under it');
+
+  q = quad('hex');
+  q.put(q.a, 0, 2); q.put(q.x, 0, -4 + SKILLS.horizon.aoe); q.put(q.y, 0, -4 - SKILLS.horizon.aoe);
+  q.a.cd.E = 0; q.w.cast(q.a, 'E', 0, -4); q.run(0.7);
+  check(q.x.stun > 0 && q.y.stun > 0, 'EVENT HORIZON: everyone touching the rim is stunned');
+
+  q = quad('chrono');
+  q.put(q.x, 0, -6); q.put(q.y, 2, -6);
+  const trap = q.w.zone(q.a, SKILLS.parallel, 0, -6); q.w.spring(trap);
+  check(q.x.stun > 0 && q.y.stun > 0, 'PARALLEL CONVERGENCE: everyone standing in it is stunned');
+
+  q = quad('reaper');
+  q.put(q.a, 0, 0); q.put(q.x, 0, -6); q.put(q.y, 1.5, -4.5); q.y.spin = 100;
+  q.w.cast(q.a, 'R', 0, -6); q.run(0.6);
+  check(q.x.stats.taken > 60 && q.y.gone && !q.w.result, 'DEATH FROM BELOW: everyone on the X is struck; the one below the line is finished, the other cut');
+
+  q = quad('boss');
+  q.put(q.a, 0, 6); q.put(q.x, 0, 2); q.put(q.y, 3.5, 6);
+  q.w.cast(q.a, 'E', q.a.x, q.a.z);
+  check(q.x.vz > 3 && q.y.vx < -3, 'FACEBREAKER: everyone it reaches is dragged in');
+
+  q = quad('azure');
+  q.put(q.a, 0, 2); q.put(q.x, 0, -6); q.put(q.y, 2.5, -6);
+  q.w.cast(q.a, 'R', 0, -6); q.run(1.1);
+  check(q.x.stats.taken > 80 && q.y.stats.taken > 60, 'METEOR DRIVE: everyone under it is hit');
+
+  q = quad('sand');
+  q.put(q.x, 0, -3); q.put(q.y, 1.5, -1.5);
+  q.a.cd.W = 0; q.w.cast(q.a, 'W', 0, -1.5); q.run(0.6);
+  check(q.x.stats.taken > 0 && q.y.stats.taken > 0, 'a soldier\'s stab goes through everyone within its reach');
+
+  q = quad('dragon');
+  q.put(q.a, 0, 0); q.put(q.x, 0, -3); q.put(q.y, 3, 0);
+  q.w.cast(q.a, 'E', 0, 0); q.w.cast(q.a, 'E', 0, 0);
+  check(q.x.slowK === 0.75 && q.y.slowK === 0.75, 'CRIPPLE: everyone the shockwave reached is slowed');
 }
 
 console.log(bad ? `\n${bad} of ${n} checks failed` : `\nall ${n} checks passed`);

@@ -753,7 +753,7 @@ export const SKILLS = {
   divide: {
     name: '皇帝の分砂嶺', en: "EMPEROR'S DIVIDE", aim: 'line', cd: 2, ult: true, tele: 0.3,
     range: 8, radius: 3.6, wall: 3.6, back: 1, travel: 7, speed: 22, hold: 4, dmg: 100, kb: 18, solid: true,
-    desc: '【必殺技】背後から砂兵の壁が前進し、相手を強く押し出す。壁は4秒残り、自分だけ通り抜けられる。',
+    desc: '【必殺技】背後から砂兵の壁が前進し、相手を強く押し出す。壁は4秒残り、自分と味方だけ通り抜けられる。',
   },
   // ---- IRON HAMMER: walls are weapons ----------------------------------------
   hshock: {

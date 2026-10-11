@@ -841,6 +841,15 @@ export class World {
         this.emit('buff', { top: t, skill: S });
         break;
       }
+      case 'cripplekick':
+        // Everyone the shockwave could have reached is slowed, not only the nearest.
+        for (const o of this.foes(t)) {
+          if (!targetable(o) || Math.hypot(o.x - t.x, o.z - t.z) > S.grab) continue;
+          this.slowBy(o, S.slow, S.slowPct);
+          t.stats.skillHits++;
+          this.emit('strike', { top: o, src: t, skill: S, x: o.x, z: o.z, dmg: 0 });
+        }
+        break;
       case 'singularity': {
         // Thrown, not placed: the orb flies to the spot and only then opens, so a wall in its way stops it.
         const dx = c.ax - t.x, dz = c.az - t.z, d = Math.hypot(dx, dz);
@@ -1450,7 +1459,8 @@ export class World {
         break;
       case 'burst': {
         const hit = this.burst(t, S, t.x, t.z, S.aoe);
-        if (hit && S.pullIn && opp.guard <= 0) this.pull(opp, t, S.pullIn);
+        // Everyone the burst reached is dragged in, not only the nearest.
+        if (hit && S.pullIn) for (const o of this.foes(t)) if (targetable(o) && o.guard <= 0 && Math.hypot(o.x - t.x, o.z - t.z) < S.aoe + o.radius * 0.5) this.pull(o, t, S.pullIn);
         if (hit && S.reHit) t.re[c.key] = S.reHit;
         if (hit && S.buffHit) t.buff = S.buffHit;
         break;
@@ -2158,22 +2168,24 @@ export class World {
       return;
     }
     t.tumble = 0.2;
-    let hit = 0;
-    if (targetable(opp)) {
-      let dx = opp.x - x, dz = opp.z - z;
+    // Everyone under it is hit and thrown outward, hardest at the middle.
+    let hit = 0, tg = null;
+    for (const o of this.foes(t)) {
+      if (!targetable(o)) continue;
+      let dx = o.x - x, dz = o.z - z;
       const d = Math.hypot(dx, dz);
-      if (d < S.aoe + opp.radius * 0.5) {
-        if (d < 0.05) { dx = 1; dz = 0; } else { dx /= d; dz /= d; }
-        const f = d < 2 ? 1 : 1 - 0.45 * ((d - 2) / (S.aoe - 1.5));
-        const g = opp.guard > 0 ? 0.4 : 1;
-        hit = this.hurt(opp, (S.dmg * f * g * t.blade.atk) / opp.blade.def, t, 'meteor');
-        this.knock(opp, dx, dz, S.kb * f * g, 0.8 * g, 2);
-        // Keep the two from overlapping where it came down.
-        if (d < 2.6) { opp.x = x + dx * 2.6; opp.z = z + dz * 2.6; }
-        t.stats.skillHits++;
-      }
+      if (d >= S.aoe + o.radius * 0.5) continue;
+      if (d < 0.05) { dx = 1; dz = 0; } else { dx /= d; dz /= d; }
+      const f = d < 2 ? 1 : 1 - 0.45 * ((d - 2) / (S.aoe - 1.5));
+      const g = o.guard > 0 ? 0.4 : 1;
+      hit += this.hurt(o, (S.dmg * f * g * t.blade.atk) / o.blade.def, t, 'meteor');
+      this.knock(o, dx, dz, S.kb * f * g, 0.8 * g, 2);
+      // Keep the two from overlapping where it came down.
+      if (d < 2.6) { o.x = x + dx * 2.6; o.z = z + dz * 2.6; }
+      t.stats.skillHits++;
+      tg = tg || o;
     }
-    this.emit('meteor', { top: t, x, z, hit, target: hit ? opp : null });
+    this.emit('meteor', { top: t, x, z, hit, target: hit ? tg : null });
   }
 
   chargeDone(t, opp) {
@@ -2483,28 +2495,33 @@ export class World {
           }
           z.b -= dt;
           if (z.b <= 0 && live && d < S.reach + opp.radius * 0.4 && !t.out && Math.hypot(t.x - z.x, t.z - z.z) < S.leash) {
-            const dmg = this.hurt(opp, (S.dmg * (opp.guard > 0 ? 0.3 : 1) * t.blade.atk) / opp.blade.def, t, 'arise');
-            if (opp.guard <= 0) this.push(opp, (opp.x - z.x) / (d || 1), (opp.z - z.z) / (d || 1), S.kb);
+            // It stabs at the nearest, and the spear goes through everyone else within its reach.
+            for (const o of this.foes(t)) {
+              const od = Math.hypot(o.x - z.x, o.z - z.z);
+              if (!targetable(o) || od >= S.reach + o.radius * 0.4) continue;
+              const dmg = this.hurt(o, (S.dmg * (o.guard > 0 ? 0.3 : 1) * t.blade.atk) / o.blade.def, t, 'arise');
+              if (o.guard <= 0) this.push(o, (o.x - z.x) / (od || 1), (o.z - z.z) / (od || 1), S.kb);
+              this.emit('strike', { top: o, src: t, skill: S, x: z.x, z: z.z, dmg });
+            }
             z.b = S.rate;
-            this.emit('strike', { top: opp, src: t, skill: S, x: z.x, z: z.z, dmg });
           }
           break;
         }
         case 'divide': {
-          // c: the advancing wall has already hit
+          // c: whom the advancing wall has already hit (one bit a side)
           if (z.t >= z.T || this.result) { this.endZone(z); break; }
           const w = wallOf(z);
-          if (!z.c && w.moving && live) {
-            const rx = opp.x - w.x, rz = opp.z - w.z;
+          if (w.moving) for (const o of this.foes(t)) {
+            if (z.c & (1 << o.side) || !targetable(o)) continue;
+            const rx = o.x - w.x, rz = o.z - w.z;
             const u = rx * w.nx + rz * w.nz, v = -rx * w.nz + rz * w.nx;
-            if (Math.abs(v) < S.wall + opp.radius * 0.5 && u > -1.2 && u < opp.radius + 0.8) {
-              z.c = 1;
-              const g = opp.guard > 0 ? 0.3 : 1;
-              const dmg = this.hurt(opp, (S.dmg * g * t.blade.atk) / opp.blade.def, t, 'divide');
-              if (g === 1) this.knock(opp, w.nx, w.nz, S.kb, 0.6, 2);
-              t.stats.skillHits++;
-              this.emit('strike', { top: opp, src: t, skill: S, x: opp.x, z: opp.z, dmg, big: true });
-            }
+            if (!(Math.abs(v) < S.wall + o.radius * 0.5 && u > -1.2 && u < o.radius + 0.8)) continue;
+            z.c |= 1 << o.side;
+            const g = o.guard > 0 ? 0.3 : 1;
+            const dmg = this.hurt(o, (S.dmg * g * t.blade.atk) / o.blade.def, t, 'divide');
+            if (g === 1) this.knock(o, w.nx, w.nz, S.kb, 0.6, 2);
+            t.stats.skillHits++;
+            this.emit('strike', { top: o, src: t, skill: S, x: o.x, z: o.z, dmg, big: true });
           }
           break;
         }
@@ -2642,19 +2659,28 @@ export class World {
           if (z.t < z.T) break;
           z.dead = true;
           // The X: two bars crossing at the spot, turned 45 degrees from the aim.
-          const rx = opp.x - z.x, rz = opp.z - z.z, s = Math.SQRT1_2;
-          const u = (rx * (z.dx - z.dz) + rz * (z.dz + z.dx)) * s, w = (rx * (z.dx + z.dz) + rz * (z.dz - z.dx)) * s;
-          const pad = opp.radius * 0.5, inX = live && ((Math.abs(u) < S.arm + pad && Math.abs(w) < S.width + pad) || (Math.abs(w) < S.arm + pad && Math.abs(u) < S.width + pad));
-          let hit = 0;
-          if (inX) {
+          const s = Math.SQRT1_2;
+          // Everyone on the X is struck: those low enough are finished, the rest are cut.
+          const caught = this.result ? [] : this.foes(t).filter((o) => {
+            if (!targetable(o)) return false;
+            const rx = o.x - z.x, rz = o.z - z.z, pad = o.radius * 0.5;
+            const u = (rx * (z.dx - z.dz) + rz * (z.dz + z.dx)) * s, w = (rx * (z.dx + z.dz) + rz * (z.dz - z.dx)) * s;
+            return (Math.abs(u) < S.arm + pad && Math.abs(w) < S.width + pad) || (Math.abs(w) < S.arm + pad && Math.abs(u) < S.width + pad);
+          });
+          let hit = 0, tg = null;
+          if (caught.length) {
             const fx = t.x, fz = t.z;
             t.x = z.x; t.z = z.z; t.vx = t.vz = 0; t.cmd = null; t.dash = null;
             this.emit('warp', { top: t, fx, fz });
-            t.stats.skillHits++;
-            if (opp.egg <= 0 && spinRatio(opp) < S.line) { this.emit('blast', { top: t, skill: S, x: z.x, z: z.z, r: z.r, hit: 0, target: null }); this.slay(opp, t); break; }
-            hit = this.hurt(opp, (S.dmg * (opp.guard > 0 ? 0.3 : 1) * t.blade.atk) / opp.blade.def, t, S.id);
+            for (const o of caught) {
+              t.stats.skillHits++;
+              if (this.result) break;
+              if (o.egg <= 0 && spinRatio(o) < S.line) { this.slay(o, t); continue; }
+              hit += this.hurt(o, (S.dmg * (o.guard > 0 ? 0.3 : 1) * t.blade.atk) / o.blade.def, t, S.id);
+              tg = tg || o;
+            }
           }
-          this.emit('blast', { top: t, skill: S, x: z.x, z: z.z, r: z.r, hit, target: hit ? opp : null });
+          this.emit('blast', { top: t, skill: S, x: z.x, z: z.z, r: z.r, hit, target: hit ? tg : null });
           break;
         }
         default:
@@ -2710,16 +2736,27 @@ export class World {
     // At the very centre of a singularity, a top with almost nothing left is crushed.
     if (inside && S.core && d < S.core && opp.egg <= 0 && spinRatio(opp) < S.line + S.perLine * z.c) { this.endZone(z); this.slay(opp, t); return; }
     if (S.cage) {
-      // Only the rim matters: touching it stuns, once.
-      if (!z.c && z.t > S.arm && live && Math.abs(d - z.r) < 0.5) { z.c = 1; this.stun(opp, S.cage); this.hurt(opp, (S.dmg * t.blade.atk) / opp.blade.def, t, S.id); }
+      // Only the rim matters: touching it stuns, once each (c: one bit a side for those it has caught).
+      if (z.t > S.arm && !this.result) for (const o of this.foes(t)) {
+        if (z.c & (1 << o.side) || !targetable(o) || Math.abs(Math.hypot(o.x - z.x, o.z - z.z) - z.r) >= 0.5) continue;
+        z.c |= 1 << o.side;
+        this.stun(o, S.cage);
+        this.hurt(o, (S.dmg * t.blade.atk) / o.blade.def, t, S.id);
+      }
       return;
     }
     // CANNON BARRAGE comes down in waves.
     if (S.wave && z.t >= S.wave.first + z.c * S.wave.every) {
       z.c++;
-      let hit = 0;
-      if (inside) { hit = this.hurt(opp, (S.wave.dmg * (opp.guard > 0 ? 0.3 : 1) * t.blade.atk) / opp.blade.def, t, S.id); t.stats.skillHits++; }
-      this.emit('blast', { top: t, skill: S, x: z.x, z: z.z, r: z.r, hit, target: hit ? opp : null });
+      // Every enemy under it is hit, not only the nearest.
+      let hit = 0, tg = null;
+      if (live) for (const o of this.foes(t)) {
+        if (!targetable(o) || Math.hypot(o.x - z.x, o.z - z.z) >= z.r + o.radius * 0.3) continue;
+        hit += this.hurt(o, (S.wave.dmg * (o.guard > 0 ? 0.3 : 1) * t.blade.atk) / o.blade.def, t, S.id);
+        t.stats.skillHits++;
+        tg = tg || o;
+      }
+      this.emit('blast', { top: t, skill: S, x: z.x, z: z.z, r: z.r, hit, target: hit ? tg : null });
       this.hitKegs(t, S, (q) => Math.hypot(q.x - z.x, q.z - z.z) < z.r);
     }
     // ONSLAUGHT: between the scythe's cuts, the other hand gets a blow in too.
@@ -2811,9 +2848,10 @@ export class World {
   // PARALLEL CONVERGENCE going off because its owner stepped into it.
   spring(z) {
     if (z.dead) return;
-    const t = z.owner, opp = this.other(t), S = z.skill;
+    const t = z.owner, S = z.skill;
     this.endZone(z);
-    if (targetable(opp) && !this.result && Math.hypot(opp.x - z.x, opp.z - z.z) < z.r + opp.radius * 0.3 && opp.guard <= 0) { this.stun(opp, S.stun); t.stats.skillHits++; }
+    // Every enemy standing in it is stunned.
+    if (!this.result) for (const o of this.foes(t)) if (targetable(o) && Math.hypot(o.x - z.x, o.z - z.z) < z.r + o.radius * 0.3 && o.guard <= 0) { this.stun(o, S.stun); t.stats.skillHits++; }
     t.shield = S.shield; t.shieldT = 2;
     this.emit('blast', { top: t, skill: S, x: z.x, z: z.z, r: z.r, hit: 0, target: null });
   }
@@ -3017,7 +3055,8 @@ export class World {
     if (t.air || t.out || t.blink) return;
     for (const z of this.zones) {
       const S = z.skill;
-      if (z.dead || !S.solid || z.owner.realm !== t.realm || (z.kind === 'divide' && z.owner === t)) continue;
+      // (The emperor's line lets its own side through, not only the emperor.)
+      if (z.dead || !S.solid || z.owner.realm !== t.realm || (z.kind === 'divide' && z.owner.team === t.team)) continue;
       const w = wallOf(z);
       const rx = t.x - w.x, rz = t.z - w.z;
       const u = rx * w.nx + rz * w.nz, v = -rx * w.nz + rz * w.nx;
@@ -3157,8 +3196,11 @@ export class World {
     for (const z of this.zones) {
       if (z.dead) continue;
       // A whirl of blades cuts down whatever flies into it.
-      if (z.skill.eat && z.owner !== p.owner && Math.hypot(p.x - z.x, p.z - z.z) < z.r) return true;
-      if (!(z.kind === 'icewall' || (z.kind === 'windwall' && z.owner !== p.owner))) continue;
+      // (Nothing of another realm is in its way at all.)
+      if (z.owner.realm !== p.owner.realm) continue;
+      // A whirl of blades cuts down what the other side sends into it; its own side's shots pass.
+      if (z.skill.eat && z.owner.team !== p.owner.team && Math.hypot(p.x - z.x, p.z - z.z) < z.r) return true;
+      if (!(z.kind === 'icewall' || (z.kind === 'windwall' && z.owner.team !== p.owner.team))) continue;
       const rx = p.x - z.x, rz = p.z - z.z;
       if (Math.abs(rx * z.dx + rz * z.dz) < 0.6 && Math.abs(-rx * z.dz + rz * z.dx) < z.skill.wall + p.r * 0.5) return true;
     }
