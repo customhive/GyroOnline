@@ -701,5 +701,99 @@ console.log('VAULT BREAKER: the shockwave');
   check(setup.last.seen.some((e) => e.type === 'cone' && e.skill.id === 'relentwave' && e.dz < -0.9), 'E: a shockwave fans out behind the target');
 }
 
+console.log('IRON REVENANT (Mordekaiser)');
+{
+  let { w, me, foe, run, saw } = setup('iron', 5);
+  w.cast(me, 'Q', foe.x, foe.z); run(0.4);
+  check(!!me.charge && foe.stats.taken === 0, 'Q: half a second of winding up');
+  run(0.3);
+  check(foe.spin < foe.spinMax - 40 && !w.zones.length, 'Q: then a slam straight ahead');
+  ({ w, me, foe, run, saw } = setup('iron', 5));
+  w.cast(me, 'Q', me.x + 5, me.z); run(0.7);
+  check(foe.stats.taken === 0, 'Q: aimed elsewhere, it misses');
+  ({ w, me, foe, run, saw } = setup('iron', 5));
+  w.hurt(foe, 100, me, 'x'); const s1 = me.store; w.hurt(me, 100, foe, 'x');
+  check(Math.abs(s1 - 45) < 3 && Math.abs(me.store - s1 - 15) < 3, `W: banks 45% of damage dealt and 15% of damage taken (${s1.toFixed(0)}, ${(me.store - s1).toFixed(0)})`);
+  me.store = 100; me.spin = 500; w.cast(me, 'W', me.x, me.z);
+  check(me.shield === 100 && me.re.W > 0, 'W: the bank becomes a shield, and the key can be pressed again');
+  w.cast(me, 'W', me.x, me.z);
+  check(me.shield === 0 && Math.abs(me.spin - 545) < 1, 'W again: 45% of what is left of the shield becomes spin');
+  ({ w, me, foe, run, saw } = setup('iron', 6));
+  const d0 = Math.hypot(me.x - foe.x, me.z - foe.z);
+  w.cast(me, 'E', foe.x, foe.z); run(0.35);
+  check(foe.stats.taken === 0, 'E: nothing for half a second');
+  run(0.6);
+  check(Math.hypot(me.x - foe.x, me.z - foe.z) < d0 - 1.5, 'E: then whoever stands there is dragged toward the caster');
+  ({ w, me, foe, run, saw } = setup('iron', 6));
+  const plain = w.hurt(foe, 50, me, 'x'), took = w.hurt(me, 50, foe, 'x');
+  me.ult = 100; w.cast(me, 'R', me.x, me.z); me.shield = 0;
+  check(me.buff === 5 && !me.tether, 'R: five seconds, and no leash');
+  const big = w.hurt(foe, 50, me, 'x'), small = w.hurt(me, 50, foe, 'x');
+  check(Math.abs(big / plain - 2) < 0.01 && Math.abs(small / took - 0.5) < 0.01, 'R: damage dealt doubled, damage taken halved');
+}
+
+console.log('FEATHER STORM (Xayah)');
+{
+  let { w, me, foe, run, saw } = setup('plume', 2.4);
+  me.vz = -9; for (let i = 0; i < 20; i++) w.step(DT);
+  check(!w.own(me, 'feather').length && !w.projectiles.length, 'without W, a body hit throws nothing');
+  ({ w, me, foe, run, saw } = setup('plume', 2.4));
+  w.cast(me, 'W', me.x, me.z); me.vz = -9; for (let i = 0; i < 40; i++) w.step(DT);
+  const fs = w.own(me, 'feather');
+  check(fs.length === 1 && fs[0].z < foe.z, 'W: a body hit throws one feather through the target, and it stays behind it');
+  ({ w, me, foe, run, saw } = setup('plume', 6));
+  const a1 = w.hurt(foe, 50, me, 'x'); w.cast(me, 'W', me.x, me.z); const a2 = w.hurt(foe, 50, me, 'x');
+  check(a1 === a2, 'W: no flat damage bonus any more');
+  ({ w, me, foe, run, saw } = setup('plume', 6));
+  for (const k of [0, 1, 2]) w.zone(me, SKILLS.feather, 0, foe.z - 3 - k * 2, null, true);
+  const f0 = foe.spin; w.cast(me, 'E', me.x, me.z);
+  const hits = []; let last = foe.spin;
+  for (let i = 0; i < 60; i++) { w.step(DT); foe.x = 0; foe.z = -3; foe.vx = foe.vz = 0; me.x = 0; me.z = 3; me.vx = me.vz = 0; if (foe.spin < last - 5) { hits.push(last - foe.spin); last = foe.spin; } }
+  check(hits.length === 3 && foe.snare > 0 && foe.stun === 0, `E: three quills snare (${hits.map((h) => h.toFixed(1))})`);
+  check(hits.length === 3 && hits[1] < hits[0] && hits[2] < hits[1], 'E: each quill after the first cuts 5% less');
+  ({ w, me, foe, run, saw } = setup('plume', 6));
+  me.ult = 100; w.cast(me, 'R', foe.x, foe.z); setup.last.drift(0.5);
+  w.issueMove(me, me.x + 5, me.z); setup.last.drift(0.5);
+  check(!!me.charge && me.x > 1, 'R: free to move for a second and a half');
+  const before = me.spin; w.hurt(me, 0, foe, 'x'); foe.x = me.x; foe.z = me.z - 1; foe.vz = 8; setup.last.drift(0.2, me.x, me.z);
+  check(me.spin >= before - 2, 'R: nothing can touch it meanwhile');
+  foe.x = 0; foe.z = -12; setup.last.drift(0.35, 0, -12);
+  check(!me.charge && w.projectiles.filter((q) => q.owner === me).length === 5, 'R: then five feathers in the direction aimed');
+}
+
+console.log('NOX SHADE (Zed)');
+{
+  let { w, me, foe, run, saw } = setup('nox', 5);
+  w.cast(me, 'Q', foe.x, foe.z); run(0.15);
+  check(foe.stats.taken > 0 && w.projectiles.length === 1, 'Q: the shuriken goes through its target');
+  ({ w, me, foe, run, saw } = setup('nox', 16));
+  w.cast(me, 'Q', foe.x, foe.z); run(1);
+  check(foe.stats.taken === 0, 'Q: a short reach');
+  ({ w, me, foe, run, saw } = setup('nox', 16));
+  w.cast(me, 'W', me.x + 6, me.z);
+  const sh = w.own(me, 'shadow')[0];
+  check(Math.hypot(sh.x - me.x, sh.z - me.z) < 0.5, 'W: the shadow starts from the caster');
+  run(0.1);
+  check(sh.x > 1.5 && sh.x < 5, 'W: and flies out');
+  run(0.4);
+  check(Math.abs(sh.x - 6) < 0.1 && (sh.c & 2) === 0, 'W: to where it was sent, and stays');
+  const mx = me.x; w.cast(me, 'W', me.x, me.z);
+  check(Math.abs(me.x - 6) < 0.1 && Math.abs(sh.x - mx) < 0.1, 'W again: swaps places with it');
+  ({ w, me, foe, run, saw } = setup('nox', 3));
+  me.cd.W = 10; w.cast(me, 'E', me.x, me.z);
+  check(Math.abs(me.cd.W - 7) < 0.05 && foe.slow === 0, 'E: a hit takes 3 seconds off W; its own cut does not slow');
+  ({ w, me, foe, run, saw } = setup('nox', 7));
+  w.cast(me, 'W', foe.x + 1, foe.z); run(0.6); w.cast(me, 'E', me.x, me.z);
+  check(foe.slowK === 0.4 && Math.abs(foe.slow - 1.5) < 0.05, 'E from a shadow: a 40% slow for 1.5 seconds');
+  ({ w, me, foe, run, saw } = setup('nox', 8));
+  const home = { x: me.x, z: me.z };
+  w.cast(me, 'R', me.x, me.z);
+  check(!!me.air && me.dmark === 0 && w.own(me, 'shadow').some((q) => q.c & 4), 'R: out of reach for 0.75 seconds, a shadow left behind');
+  check(!w.canCast(me, 'R'), 'R: no way back yet');
+  setup.last.drift(0.8);
+  check(!me.air && me.z < foe.z && me.dmark > 2 && me.dmark <= 3, 'R: up behind the target, which is marked for 3 seconds');
+  check(w.canCast(me, 'R') && w.cast(me, 'R', me.x, me.z) && Math.hypot(me.x - home.x, me.z - home.z) < 0.2, 'R again: back to where it started');
+}
+
 console.log(bad ? `\n${bad} of ${n} checks failed` : `\nall ${n} checks passed`);
 process.exit(bad ? 1 : 0);

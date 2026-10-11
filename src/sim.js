@@ -65,7 +65,7 @@ export function makeTop(side, blade) {
   };
 }
 
-export const targetable = (t) => !t.air && !t.out && !t.blink;
+export const targetable = (t) => !t.air && !t.out && !t.blink && !(t.charge && t.charge.skill.veil);
 export const spinRatio = (t) => Math.max(0, t.spin / t.spinMax);
 // Tops with little spin left are thrown further.
 export const kbMul = (t) => 1 + 0.85 * (1 - spinRatio(t));
@@ -513,6 +513,8 @@ export class World {
         const g = opp.guard > 0 ? 0.3 : 1;
         hit = this.hurt(opp, ((o.dmg ?? S.dmg) * g * t.blade.atk) / opp.blade.def, t, S.id);
         if (g === 1) this.affect(t, opp, o.as || S, dx, dz);
+        // Dragged from where it stood toward whoever reached for it.
+        if (g === 1 && S.pull && !o.as) this.pull(opp, t, S.pull);
         t.stats.skillHits++;
       }
     }
@@ -628,12 +630,13 @@ export class World {
         break;
       case 'shadow':
         // c marks the shadow the recast swaps with.
-        for (const q of this.own(t, 'shadow')) q.c = 0;
-        this.zone(t, S, c.ax, c.az, { c: 1 });
+        // c: 1 the shadow W swaps with, 2 still flying out to (dx, dz), 4 the one R left behind
+        for (const q of this.own(t, 'shadow')) q.c &= ~1;
+        this.zone(t, S, t.x, t.z, { c: 3, dx: c.ax, dz: c.az });
         t.re[c.key] = S.dur;
         break;
-      case 'swap': {
-        const q = this.own(t, 'shadow').find((s) => s.c) || this.own(t, 'shadow')[0];
+      case 'swap': case 'markswap': {
+        const q = this.own(t, 'shadow').find((s) => s.c & (S.id === 'markswap' ? 4 : 1));
         if (q) {
           const fx = t.x, fz = t.z;
           t.x = q.x; t.z = q.z; q.x = fx; q.z = fz; t.cmd = null;
@@ -674,8 +677,11 @@ export class World {
           if (g === 1) {
             const dx = opp.x - from.x, dz = opp.z - from.z, d = Math.hypot(dx, dz) || 1;
             this.affect(t, opp, S, dx / d, dz / d);
-            if (from.sh) opp.slow = Math.max(opp.slow, S.shadowSlow);
+            if (from.sh) this.slowBy(opp, S.shadowSlow, S.slowPct);
           }
+          // Every cut that lands brings the next shadow closer.
+          const wk = this.keyOf(t, 'shadow');
+          if (wk) t.cd[wk] = Math.max(0, t.cd[wk] - S.cut);
           t.stats.skillHits++;
         }
         for (const p of spots) this.emit('blast', { top: t, skill: S, x: p.x, z: p.z, r: S.aoe, hit: p === from ? hit : 0, target: p === from && hit ? opp : null });
@@ -685,19 +691,11 @@ export class World {
         this.burst(t, S, t.x, t.z, S.aoe);
         break;
       case 'deathmark': {
-        const fx = t.x, fz = t.z;
-        let dx = opp.x - t.x, dz = opp.z - t.z;
-        const d = Math.hypot(dx, dz) || 1;
-        dx /= d; dz /= d;
-        this.zone(t, SKILLS.shadow, fx, fz);
-        // Out the far side of the target, or as near to it as the wall allows.
-        let x = opp.x + dx * S.gap, z = opp.z + dz * S.gap;
-        const lim = ARENA.R - t.radius - 0.2, r = Math.hypot(x, z);
-        if (r > lim) { x *= lim / r; z *= lim / r; }
-        t.x = x; t.z = z; t.vx = t.vz = 0; t.cmd = null;
-        t.dmark = S.dur; t.dacc = 0;
-        this.emit('warp', { top: t, fx, fz });
-        this.emit('say', { top: opp, text: 'DEATH MARK', tone: 'red' });
+        // It sinks into the floor, out of reach, and comes up behind the target.
+        this.zone(t, SKILLS.shadow, t.x, t.z, { c: 4 });
+        t.air = { t: 0, T: S.air, sx: t.x, sz: t.z, tx: opp.x, tz: opp.z, skill: S, by: t.side };
+        t.cmd = null; t.vx = t.vz = 0;
+        this.emit('leap', { top: t, tx: opp.x, tz: opp.z, T: S.air, skill: S });
         break;
       }
       case 'lastbreath': {
@@ -795,10 +793,11 @@ export class World {
         t.haste = S.haste;
         this.emit('orbs', { top: t });
         break;
-      case 'realm':
-        t.tether = { t: 0, T: S.dur, skill: S, acc: 0, tick: 0 };
-        t.buff = S.dur;
-        this.emit('tether', { top: t, target: opp });
+      case 'shieldheal':
+        // What is left of the shield is traded for spin.
+        this.mend(t, t.shield * S.heal);
+        t.shield = t.shieldT = 0;
+        this.emit('buff', { top: t, skill: S });
         break;
       case 'rewind': {
         // Back to where it stood a few seconds ago, with part of the spin lost since.
@@ -1452,6 +1451,20 @@ export class World {
   land(t, opp) {
     const a = t.air, S = a.skill, x = a.tx, z = a.tz;
     t.air = null; t.x = x; t.z = z; t.vx = t.vz = 0;
+    if (S.id === 'deathmark') {
+      // Out the far side of where the target is now, or as near as the wall allows.
+      let dx = opp.x - a.sx, dz = opp.z - a.sz;
+      const d = Math.hypot(dx, dz) || 1;
+      let px = opp.x + (dx / d) * S.gap, pz = opp.z + (dz / d) * S.gap;
+      const lim = ARENA.R - t.radius - 0.2, r = Math.hypot(px, pz);
+      if (r > lim) { px *= lim / r; pz *= lim / r; }
+      t.x = px; t.z = pz;
+      t.dmark = S.dur; t.dacc = 0;
+      t.re[this.keyOf(t, S.id)] = S.window;
+      this.emit('warp', { top: t, fx: a.sx, fz: a.sz });
+      this.emit('say', { top: opp, text: 'DEATH MARK', tone: 'red' });
+      return;
+    }
     if (a.by !== t.side) {
       // Thrown by the other top. Heavier tops come down harder.
       const by = this.tops[a.by];
@@ -1492,7 +1505,7 @@ export class World {
   chargeDone(t, opp) {
     const S = t.charge.skill;
     if (S.id === 'nova') { this.novaBlast(t, opp); return; }
-    if (S.kind === 'shot') { const { dx, dz } = t.charge; t.charge = null; this.fire(t, S, dx, dz); return; }
+    if (S.kind === 'shot') { const { dx, dz } = t.charge; t.charge = null; if (S.fan) this.fan(t, S, dx, dz, S.fan); else this.fire(t, S, dx, dz); return; }
     if (S.kind === 'cone') { const { dx, dz } = t.charge; t.charge = null; this.coneHit(t, S, dx, dz); return; }
     if (S.kind === 'beam') {
       // Everything along the line is hit at once.
@@ -1640,6 +1653,11 @@ export class World {
       z.t += dt;
       const t = z.owner, opp = this.other(t), S = z.skill;
       const live = targetable(opp) && !this.result;
+      if (z.kind === 'shadow' && z.c & 2) {
+        // A shadow thrown out: it flies to its spot and stays there.
+        const mx = z.dx - z.x, mz = z.dz - z.z, m = Math.hypot(mx, mz), st = S.fly * dt;
+        if (m <= st) { z.x = z.dx; z.z = z.dz; z.c &= ~2; } else { z.x += (mx / m) * st; z.z += (mz / m) * st; }
+      }
       const d = Math.hypot(opp.x - z.x, opp.z - z.z);
       switch (z.kind) {
         case 'quake': {
@@ -2043,6 +2061,11 @@ export class World {
       const N = s.blade.nailPop;
       if (N && v.tag > 0 && !this.result) { const d2 = this.hurt(v, (N[v.tag - 1] * s.blade.atk) / v.blade.def, s, 'nails'); v.tag = v.tagT = 0; this.emit('strike', { top: v, src: s, skill: SKILLS.nails, x: v.x, z: v.z, dmg: d2 }); }
     }
+    // DEADLY PLUMAGE: every body hit throws a feather straight through the target.
+    for (const [s, v] of [[a, b], [b, a]]) {
+      const P = s.buff > 0 && s.blade.plume;
+      if (P && !this.result) { const sx = s === a ? nx : -nx, sz = s === a ? nz : -nz; this.fire(s, SKILLS[P], sx, sz, { x: v.x, z: v.z, quiet: true }); }
+    }
     // A mark that a body hit sets off as well as a skill.
     for (const [s, v] of [[a, b], [b, a]]) {
       if (v.mark > 0 && s.blade.markOnClash) { v.mark = 0; const d2 = this.hurt(v, (SKILLS.sigil.pop * s.blade.atk) / v.blade.def, s, 'sigil'); this.emit('strike', { top: v, src: s, skill: SKILLS.sigil, x: v.x, z: v.z, dmg: d2 }); }
@@ -2138,6 +2161,8 @@ export class World {
     if (p.back && S.backMul) k *= S.backMul;
     if (p.back && S.backTrue) k *= v.blade.def; // the way back ignores defence
     const scarred = v.scar > 0;
+    // Each quill after the first cuts a little less.
+    if (S.id === 'quill') k *= Math.max(0.1, 1 - S.fall * o.stack);
     const dmg = this.hurt(v, (p.dmg * k) / v.blade.def, o, S.id);
     if (S.chain) this.pull(v, o, S.pull, S.pullDist);
     // TIMEWINDER stops where it hits and hangs there as a slowing field.
@@ -2160,7 +2185,7 @@ export class World {
     if (S.spawn) this.zone(o, SKILLS[S.spawn], v.x, v.z);
     if (S.splash) this.burst(o, S, p.x, p.z, S.splash, { dmg: S.splashDmg, as: {} });
     // The third quill to land pins the target.
-    if (S.id === 'quill') { o.stack++; o.stackT = 1.5; if (o.stack === 3) this.stun(v, S.root); }
+    if (S.id === 'quill') { o.stack++; o.stackT = 1.5; if (o.stack === 3) this.snare(v, S.root); }
     // Only one blade of a wind slash can land.
     if (S.id === 'windslash') for (const q of this.projectiles) if (q !== p && q.skill === S && q.owner === o) q.dead = true;
     o.stats.skillHits++;

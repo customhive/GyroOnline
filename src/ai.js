@@ -243,7 +243,7 @@ export class CpuBrain {
     // Things to set up.
     if (this.has('shadow')) {
       if (this.again('shadow')) {
-        const q = w.own(me, 'shadow').find((s) => s.c);
+        const q = w.own(me, 'shadow').find((s) => (s.c & 3) === 1);
         if (q && d > 5 && Math.hypot(q.x - foe.x, q.z - foe.z) < 3.5 && want(-0.2)) return this.use('shadow');
       } else if (d > 3.5 && d < 12 && want(-0.1)) { const p = this.jitter(ahead(0.2), 0.6); return this.use('shadow', p.x, p.z); }
     }
@@ -323,7 +323,7 @@ export class CpuBrain {
           else if (d < 3.5 && r() < 0.25) return go(-me.x, -me.z); // only to get away
           break;
         case 'beam':
-          if (d > 2.5 && d < S.range - 2 && want(foe.tumble > 0.3 ? 0.3 : 0)) return at(this.jitter(ahead(S.charge * 0.8 + wind), 0.6));
+          if (d > (S.range > 8 ? 2.5 : 0) && d < S.range - Math.min(2, S.range * 0.25) && want(foe.tumble > 0.3 ? 0.3 : 0)) return at(this.jitter(ahead(S.charge * 0.8 + wind), 0.6));
           break;
         case 'kick': {
           // Toward the nearest stretch of wall.
@@ -339,6 +339,10 @@ export class CpuBrain {
         }
         case 'foxfire':
           if (d < S.seek + 2 && want()) return go();
+          break;
+        case 'shieldheal':
+          // Cashed in only as the shield is about to lapse anyway.
+          if (me.shield > 10 && me.shieldT < 0.5) return go();
           break;
         case 'soulrelease':
           if ((me.store > 70 || spinRatio(me) < 0.3) && want()) return go();

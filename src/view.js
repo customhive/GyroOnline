@@ -803,7 +803,7 @@ export class View {
     if (t.out) lift = heightAt(ARENA.R) - gy + t.out.y;
     else if (t.air) lift = Math.sin(Math.PI * Math.min(1, t.air.t / t.air.T)) * (t.air.skill.height ?? 5);
     // Knocked up: it hangs in the air until the timer runs out.
-    v.hover += ((t.up > 0 ? 1 : 0) - v.hover) * Math.min(1, rdt * 16);
+    v.hover += ((t.up > 0 || (t.charge && t.charge.skill.veil) ? 1 : 0) - v.hover) * Math.min(1, rdt * 16);
     lift += v.drop + v.hover * (2.1 + 0.25 * Math.sin(this.time * 11));
     const y = gy + lift;
     // Network smoothing offset, fading out quickly.

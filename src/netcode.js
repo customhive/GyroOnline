@@ -63,7 +63,7 @@ function writeTop(w, t) {
   for (const d of [t.dash, t.blink]) if (d) { w.u8(skillNo(d.skill)); w.i16(d.dx * DIR); w.i16(d.dz * DIR); w.u8(d.t * 250); }
   if (t.air) { const a = t.air; w.u8(skillNo(a.skill)); w.u8(a.by); w.u8(a.t * 200); w.i16(a.sx * POS); w.i16(a.sz * POS); w.i16(a.tx * POS); w.i16(a.tz * POS); }
   if (t.out) { w.u8(t.out.t * 50); w.i16(t.out.y * 100); w.i16(t.out.vy * 100); }
-  if (t.charge) { const c = t.charge; w.u8(skillNo(c.skill)); w.u8(c.t * 200); w.i16((c.dx || 0) * DIR); w.i16((c.dz || 0) * DIR); }
+  if (t.charge) { const c = t.charge; w.u8(skillNo(c.skill)); w.u8(c.t * 150); w.i16((c.dx || 0) * DIR); w.i16((c.dz || 0) * DIR); }
   if (t.orbs) { const o = t.orbs; w.u8(skillNo(o.skill)); w.u8(o.alive); w.u8(o.t * 40); w.u16((((o.ang % TAU) + TAU) % TAU) * 10000); w.u8(o.cd * 200); }
   if (t.tether) { const h = t.tether; w.u8(skillNo(h.skill)); w.u8(h.t * 80); w.u16(h.acc * 100); w.u8(h.tick * 200); }
   if (t.chan) { const c = t.chan; w.u8(c.t * 60); w.u8(c.n); w.i16(c.dx * DIR); w.i16(c.dz * DIR); }
@@ -116,7 +116,7 @@ function readTop(r, t) {
     t.air = { skill, by: r.u8() & 1, t: r.u8() / 200, T: skill.air, sx: r.i16() / POS, sz: r.i16() / POS, tx: r.i16() / POS, tz: r.i16() / POS };
   } else t.air = null;
   t.out = f & F_OUT ? { t: r.u8() / 50, y: r.i16() / 100, vy: r.i16() / 100 } : null;
-  if (f & F_CHARGE) { const skill = skillAt(r.u8()); t.charge = { t: r.u8() / 200, T: skill.charge, skill, ...readDir(r) }; } else t.charge = null;
+  if (f & F_CHARGE) { const skill = skillAt(r.u8()); t.charge = { t: r.u8() / 150, T: skill.charge, skill, ...readDir(r) }; } else t.charge = null;
   if (f & F_ORBS) {
     const skill = skillAt(r.u8()), alive = r.u8();
     let n = 0;
