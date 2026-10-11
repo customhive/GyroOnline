@@ -1,5 +1,5 @@
 // DOM heads-up display, menus and floating combat text.
-import { BLADES, DIFFICULTY, STAGES, ROUNDS_TO_WIN, KEYS, skillOf, kitOf } from './config.js';
+import { BLADES, DIFFICULTY, STAGES, ARENA_SIZES, ROUNDS_TO_WIN, KEYS, skillOf, kitOf } from './config.js';
 
 const $ = (s, r = document) => r.querySelector(s);
 const el = (tag, cls, html) => { const e = document.createElement(tag); if (cls) e.className = cls; if (html != null) e.innerHTML = html; return e; };
@@ -436,6 +436,15 @@ export class UI {
     $('#st-pic').innerHTML = this.stagePic(g);
     $('#st-name').textContent = g.name + (g.soon ? '（準備中）' : '');
     $('#st-ja').textContent = g.ja;
+    // How wide the arena is: the host's choice, like the stage.
+    const sizes = $('#lb-size');
+    sizes.innerHTML = '';
+    ARENA_SIZES.forEach((z, n) => {
+      const btn = el('button', 'rule' + (lb.size === n ? ' on' : ''), `<i></i><b>${z.name}</b><span>${z.ja}</span>`);
+      btn.disabled = !host;
+      btn.onclick = () => this.h.size(n);
+      sizes.appendChild(btn);
+    });
     $('#st-prev').disabled = $('#st-next').disabled = !host;
     $('#st-prev').classList.toggle('ghost', !host);
     $('#st-next').classList.toggle('ghost', !host);

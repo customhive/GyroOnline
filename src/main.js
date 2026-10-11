@@ -6,7 +6,7 @@
 // its own top answers input at once, then corrects itself from each snapshot
 // (rewind to the host's state, re-apply inputs the host has not seen yet,
 // simulate forward by the measured delay).
-import { BLADES, DIFFICULTY, STAGES, ROUND_TIME, ROUNDS_TO_WIN, KEYS, skillOf } from './config.js';
+import { BLADES, DIFFICULTY, STAGES, ARENA_SIZES, ROUND_TIME, ROUNDS_TO_WIN, KEYS, setArenaSize, skillOf } from './config.js';
 import { World, spinRatio } from './sim.js';
 import { CpuBrain } from './ai.js';
 import { View } from './view.js';
@@ -52,7 +52,8 @@ const game = {
   // The room. Slot 0 is the host's, slot 1 the other side: a guest, a CPU, or still open.
   // `me` is this player's own seat. On the host a seat taken by a guest carries that guest's link.
   // `teams` is whether the match is fought in two teams (each seat says which), `ff` whether a team can hurt its own.
-  lobby: { role: null, status: 'opening', url: '', error: '', slots: [], me: 0, edit: 0, stage: 0, teams: false, ff: false },
+  // `size` is how wide the arena is (an index into ARENA_SIZES).
+  lobby: { role: null, status: 'opening', url: '', error: '', slots: [], me: 0, edit: 0, stage: 0, size: 0, teams: false, ff: false },
   peers: [],           // host, in a match: the guests playing, as { id, side, ack }
   spectate: false,     // nobody here is playing: both tops are CPUs
   outbox: [],          // host: events waiting to be sent
@@ -92,6 +93,7 @@ const ui = new UI({
   ff: (on) => { audio.ui(); const lb = game.lobby; if (lb.role !== 'host') return; lb.ff = !!on; lobbyChanged(); },
   team: (i) => { audio.ui(); switchTeam(i); },
   stage: (d) => { audio.ui(); const lb = game.lobby; if (lb.role !== 'host') return; lb.stage = (lb.stage + d + STAGES.length) % STAGES.length; lobbyChanged(); },
+  size: (n) => { audio.ui(); const lb = game.lobby; if (lb.role !== 'host' || !ARENA_SIZES[n]) return; lb.size = n; lobbyChanged(); },
   copy: () => copyInvite(),
 });
 
@@ -105,6 +107,7 @@ function showScreen(name) {
 function toTitle() {
   game.state = 'title'; game.mode = 'cpu'; game.side = 0; game.spectate = false; game.lobby.role = null;
   game.paused = false; game.world = null; game.aimKey = null; game.seq = null;
+  setArenaSize(0);
   view.setMatch(null, 0);
   view.orbiting = true;
   audio.stopMusic();
@@ -137,7 +140,7 @@ function startCpuMatch(bladeId, levelIdx) {
   const level = DIFFICULTY[levelIdx];
   const others = Object.keys(BLADES).filter((b) => b !== bladeId);
   const foe = params.get('foe') || others[(Math.random() * others.length) | 0];
-  const w = new World(BLADES[bladeId], BLADES[foe], (Date.now() & 0xffffff) + 1, Number(params.get('stage') || 0));
+  const w = new World([BLADES[bladeId], BLADES[foe]], { seed: (Date.now() & 0xffffff) + 1, stage: Number(params.get('stage') || 0), size: Number(params.get('size') || 0) });
   beginMatch(w, 0, ['YOU', 'CPU'], ['', level.name]);
   const c = rival();
   // The CPU winds up before firing so its skills can be read and dodged.
@@ -173,7 +176,7 @@ function startLocalMatch() {
   game.mode = 'cpu';
   game.peers = [];
   game.spectate = S[0].kind === 'cpu';
-  const w = new World(blades.map((b) => BLADES[b]), { seed: (Date.now() & 0xffffff) + 1, stage: lb.stage, ...teamOpts(S) });
+  const w = new World(blades.map((b) => BLADES[b]), { seed: (Date.now() & 0xffffff) + 1, stage: lb.stage, size: lb.size, ...teamOpts(S) });
   let n = 0;
   const labels = S.map((p, i) => (p.kind === 'cpu' ? (S.filter((q) => q.kind === 'cpu').length > 1 ? 'CPU ' + ++n : 'CPU') : i === 0 ? 'YOU' : 'RIVAL'));
   ui.meLabel = '';
@@ -305,7 +308,8 @@ function enterLobby(role) {
   lb.slots.forEach((p, i) => { p.team = i % 2; });
   lb.edit = lb.me;
   lb.picking = false;
-  lb.stage = 0;
+  lb.stage = 0; lb.size = 0;
+  setArenaSize(0);
   view.setMatch(null, 0);
   view.orbiting = true;
   showScreen('lobby');
@@ -329,7 +333,7 @@ function sendRoom() {
   const lb = game.lobby;
   if (lb.role !== 'host' || !game.net) return;
   const slots = lb.slots.map((p) => ({ kind: p.kind, blade: p.blade, level: p.level, ready: p.ready, team: p.team }));
-  lb.slots.forEach((p, i) => { if (p.link !== undefined) game.net.send({ t: 'room', slots, stage: lb.stage, teams: lb.teams, ff: lb.ff, you: i }, p.link); });
+  lb.slots.forEach((p, i) => { if (p.link !== undefined) game.net.send({ t: 'room', slots, stage: lb.stage, size: lb.size, teams: lb.teams, ff: lb.ff, you: i }, p.link); });
 }
 
 // Something in the room changed here: tell the others, then refresh.
@@ -345,7 +349,7 @@ function lobbyChanged() {
 
 // Redraws the room. The arena turning behind it is the stage chosen.
 function lobbyRefresh() {
-  if (game.state === 'lobby') { ui.showLobby(game.lobby); view.stage.setStage(STAGES[game.lobby.stage]); }
+  if (game.state === 'lobby') { ui.showLobby(game.lobby); view.stage.setStage(STAGES[game.lobby.stage]); setArenaSize(game.lobby.size); view.stage.setArena(); }
 }
 
 // Every seat is filled, every person in the room is ready, and in a team match both teams have someone.
@@ -355,7 +359,7 @@ const roomReady = () => {
   return !game.lobby.teams || new Set(S.map((p) => p.team)).size === 2;
 };
 // What a match is told about teams: who is on which, and whether they can hurt their own.
-const teamOpts = (S) => (game.lobby.teams ? { teams: S.map((p) => p.team), ff: game.lobby.ff } : {});
+const teamOpts = (S) => ({ size: game.lobby.size, ...(game.lobby.teams ? { teams: S.map((p) => p.team), ff: game.lobby.ff } : {}) });
 
 // A seat changes team: the host can move anyone, a guest only itself.
 function switchTeam(i) {
@@ -442,6 +446,7 @@ function backToLobby(ready) {
   if (!lb.role || (lb.role === 'guest' && !(game.net && game.net.connected))) { leaveOnline(); toTitle(); return; }
   game.mode = lb.role;
   game.state = 'lobby'; game.world = null; game.seq = null; game.paused = false; game.spectate = false;
+  setArenaSize(lb.size);
   view.setMatch(null, 0);
   view.orbiting = true;
   audio.stopMusic();
@@ -583,6 +588,7 @@ function netMessage(m, id) {
       if (lb.edit === lb.me) lb.edit = you;
       lb.me = you;
       lb.stage = Math.max(0, Math.min(STAGES.length - 1, m.stage | 0));
+      lb.size = Math.max(0, Math.min(ARENA_SIZES.length - 1, m.size | 0));
       if (game.state === 'result') ui.toast('ホストがルームに戻りました');
       lobbyRefresh();
       break;
@@ -596,8 +602,9 @@ function netMessage(m, id) {
       if (lb.role !== 'guest' || !Array.isArray(m.blades) || m.blades.length < 2 || m.blades.length > 4 || !m.blades.every((b) => BLADES[b])) return;
       game.mode = 'guest';
       lb.stage = Math.max(0, Math.min(STAGES.length - 1, m.stage | 0));
+      lb.size = Math.max(0, Math.min(ARENA_SIZES.length - 1, m.size | 0));
       startOnlineMatch(m.blades, lb.stage, Array.isArray(m.kinds) ? m.kinds : [], Math.max(0, Math.min(m.blades.length - 1, m.you | 0)),
-        Array.isArray(m.teams) && m.teams.length === m.blades.length ? { teams: m.teams.map((t) => (t ? 1 : 0)), ff: !!m.ff } : {});
+        { size: lb.size, ...(Array.isArray(m.teams) && m.teams.length === m.blades.length ? { teams: m.teams.map((t) => (t ? 1 : 0)), ff: !!m.ff } : {}) });
       break;
     case 'round':
       if (game.mode !== 'guest' || !w) return;

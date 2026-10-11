@@ -89,6 +89,7 @@ export class View {
     this.tops = [];
     this.world = world;
     this.playerSide = playerSide;
+    this.stage.setArena();
     if (!world) return;
     for (const t of world.tops) {
       const v = buildTop(t.blade, this.glow);

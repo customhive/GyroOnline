@@ -165,9 +165,13 @@ export function createStage(canvas) {
     map: floorCanvas(2048, paintFloor), emissiveMap: floorCanvas(2048, (g) => paintGlow(g)), emissive: 0xffffff, emissiveIntensity: 0.85,
     metalness: 0.82, roughness: 0.36, side: THREE.DoubleSide,
   });
+  // The stadium is modelled at the standard width and stretched sideways for a
+  // wider arena (its height stays, so the bowl keeps the depth the simulation uses).
+  const arena = new THREE.Group();
+  scene.add(arena);
   const bowl = new THREE.Mesh(mapUv(new THREE.LatheGeometry(prof, 128)), floorMat);
   bowl.receiveShadow = true;
-  scene.add(bowl);
+  arena.add(bowl);
 
   // The rim wall is built for whichever stage is being played: all the way
   // round, in stretches with gaps between them, or not at all.
@@ -179,7 +183,7 @@ export function createStage(canvas) {
   const edgeMat = new THREE.MeshBasicMaterial({ color: 0xff5a2a });
   const capMat = new THREE.MeshStandardMaterial({ color: 0x161d33, metalness: 0.8, roughness: 0.4, side: THREE.DoubleSide });
   const walls = new THREE.Group();
-  scene.add(walls);
+  arena.add(walls);
   const buildWalls = (g) => {
     // The glowing floor markings follow the stage too.
     paintGlow(floorMat.emissiveMap.image.getContext('2d'), g);
@@ -227,10 +231,10 @@ export function createStage(canvas) {
   const plat = new THREE.Mesh(new THREE.CylinderGeometry(R + 4.5, R + 6, 1.6, 64),
     new THREE.MeshStandardMaterial({ color: 0x0c1122, metalness: 0.7, roughness: 0.5 }));
   plat.position.y = -1.7; plat.receiveShadow = true;
-  scene.add(plat);
+  arena.add(plat);
   const platRing = new THREE.Mesh(new THREE.TorusGeometry(R + 4.5, 0.06, 8, 128), new THREE.MeshBasicMaterial({ color: 0x1d56c8 }));
   platRing.rotation.x = Math.PI / 2; platRing.position.y = -0.88;
-  scene.add(platRing);
+  arena.add(platRing);
   const ground = new THREE.Mesh(new THREE.PlaneGeometry(180, 180), new THREE.MeshBasicMaterial({ map: hallTexture(), fog: false }));
   ground.rotation.x = -Math.PI / 2; ground.position.y = -2.5;
   scene.add(ground);
@@ -276,6 +280,14 @@ export function createStage(canvas) {
     stageId: STAGES[0].id,
     // Rebuilds the rim for a stage (nothing to do if it is already that one).
     setStage(g) { if (g.id !== stage.stageId) { stage.stageId = g.id; buildWalls(g); } },
+    // Stretches the stadium to the arena's present width, and the shadows with it.
+    setArena() {
+      const k = ARENA.R / R;
+      if (arena.scale.x === k) return;
+      arena.scale.set(k, 1, k);
+      sc.left = sc.bottom = -(ARENA.R + 4); sc.right = sc.top = ARENA.R + 4;
+      sc.updateProjectionMatrix();
+    },
     width: 1, height: 1,
     resize() {
       const w = window.innerWidth, h = window.innerHeight;

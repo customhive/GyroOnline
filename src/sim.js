@@ -1,6 +1,6 @@
 // Battle simulation. No rendering in here: the world steps the two tops and
 // pushes events that the renderer, audio and HUD react to.
-import { STAGES, ARENA, SKILLS, KEYS, BLEED, CC, skillOf } from './config.js';
+import { STAGES, ARENA, ARENA_SIZES, SKILLS, KEYS, BLEED, CC, setArenaSize, skillOf } from './config.js';
 
 export function mulberry32(a) {
   return function () {
@@ -317,15 +317,18 @@ export function wallOf(z) {
 
 export class World {
   // new World(bladeA, bladeB, seed, stage) for a duel, or
-  // new World([blades...], { seed, stage, teams, ff }) for two to four tops.
+  // new World([blades...], { seed, stage, size, teams, ff }) for two to four tops.
   constructor(bladeA, bladeB, seed = 1, stage = 0) {
     let blades = [bladeA, bladeB], teams = null;
-    let ff = false;
-    if (Array.isArray(bladeA)) { const o = bladeB || {}; blades = bladeA; seed = o.seed ?? 1; stage = o.stage ?? 0; teams = o.teams || null; ff = !!o.ff; }
+    let ff = false, size = 0;
+    if (Array.isArray(bladeA)) { const o = bladeB || {}; blades = bladeA; seed = o.seed ?? 1; stage = o.stage ?? 0; size = o.size ?? 0; teams = o.teams || null; ff = !!o.ff; }
     // Friendly fire: with it on, a team's own attacks land on its own tops too.
     this.ff = ff;
     this.stage = stage;
     setStage(stage);
+    // How wide the arena is. Like the stage, there is one match at a time and this is its arena.
+    this.size = ARENA_SIZES[size] ? size : 0;
+    setArenaSize(this.size);
     this.rng = mulberry32(seed);
     this.tops = blades.map((b, i) => makeTop(i, b));
     if (teams) this.tops.forEach((t, i) => { t.team = teams[i] ?? i; });
@@ -389,8 +392,8 @@ export class World {
     this.time = 0;
     for (const t of this.tops) {
       // Evenly round the ring, each moving off along it. Two tops start near and far.
-      const ph = (Math.PI * 2 * t.side) / this.tops.length;
-      t.x = 7.5 * Math.sin(ph); t.z = 7.5 * Math.cos(ph);
+      const ph = (Math.PI * 2 * t.side) / this.tops.length, r0 = (7.5 * ARENA.R) / 13;
+      t.x = r0 * Math.sin(ph); t.z = r0 * Math.cos(ph);
       t.vx = t.blade.speed * 0.75 * Math.cos(ph); t.vz = -t.blade.speed * 0.75 * Math.sin(ph);
       if (Math.abs(t.x) < 1e-9) t.x = 0;
       if (Math.abs(t.vz) < 1e-9) t.vz = 0;

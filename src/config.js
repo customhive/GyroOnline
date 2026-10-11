@@ -8,6 +8,14 @@ export const ARENA = {
   ringOutSpeed: 16.5, // outward speed at the wall that throws a launched top out
 };
 
+// How wide the arena is: the room's host chooses. Everything measures itself
+// against ARENA.R, so this is the one number that changes.
+export const ARENA_SIZES = [
+  { id: 'std', R: 13, name: '標準', ja: 'いつもの広さ' },
+  { id: 'wide', R: 16, name: '広い', ja: '面積1.5倍。3〜4人向け' },
+];
+export const setArenaSize = (i) => { ARENA.R = (ARENA_SIZES[i] || ARENA_SIZES[0]).R; };
+
 export const heightAt = (r) => {
   const k = Math.min(r, ARENA.R) / ARENA.R;
   return ARENA.H * k * k;

@@ -488,7 +488,8 @@ div.pc-team i { display: none; }
 .sp-gap { fill: none; stroke: rgba(255, 255, 255, 0.35); stroke-width: 2; stroke-dasharray: 3 5; }
 #st-name { display: block; margin-top: 6px; font-size: 17px; font-style: italic; letter-spacing: 0.04em; }
 #st-ja { display: block; margin-top: 2px; min-height: 35px; font-size: 11.5px; line-height: 1.5; color: var(--dim); }
-#lb-rules { display: grid; gap: 4px; }
+#lb-rules, #lb-size { display: grid; gap: 4px; }
+.room-stage h3.sub { margin-top: 10px; }
 .rule { display: grid; grid-template-columns: 16px auto 1fr; align-items: center; gap: 9px; height: 36px; padding: 0 10px; text-align: left; background: #0b1122; border: 1px solid var(--line); }
 .rule i { width: 10px; height: 10px; border: 1px solid var(--dim); transform: rotate(45deg); justify-self: center; }
 .rule b { font-size: 13.5px; letter-spacing: 0.04em; white-space: nowrap; }

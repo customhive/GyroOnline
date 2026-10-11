@@ -1,7 +1,7 @@
 // Checks blades against the behaviour agreed for them, one line of the
 // agreed table per check. Add a section here whenever a blade is reworked.
 //   node tools/fidelity.mjs
-import { BLADES, SKILLS, CC } from '../src/config.js';
+import { BLADES, SKILLS, CC, ARENA } from '../src/config.js';
 import { World, spinRatio } from '../src/sim.js';
 
 const DT = 1 / 120;
@@ -1046,6 +1046,19 @@ console.log('TURRET ENGINEER (Heimerdinger)');
   ({ w, me, foe, run, saw } = setup('gear', 9));
   me.ult = 100; w.cast(me, 'R', me.x, me.z); w.cast(me, 'W', 0, 0);
   check(w.projectiles.length === 20, 'R then W: four volleys, twenty rockets');
+}
+
+console.log('ARENA');
+{
+  const big = new World([BLADES.azure, BLADES.gaia], { seed: 7, size: 1 });
+  const [a] = big.tops;
+  check(ARENA.R === 16 && Math.abs(Math.hypot(a.x, a.z) - (7.5 * 16) / 13) < 1e-9, 'the wide arena: 16 across the radius, and the tops start that much further out');
+  a.x = 0; a.z = 14; a.vx = 0; a.vz = 0; big.step(DT);
+  const inside = Math.hypot(a.x, a.z) > 13.5;
+  a.z = 15.5; a.vz = 6; for (let i = 0; i < 30; i++) big.step(DT);
+  check(inside && Math.hypot(a.x, a.z) <= 16 - a.radius + 0.01 && !a.out, 'its wall stands at 16');
+  const std = new World(BLADES.azure, BLADES.gaia, 7);
+  check(ARENA.R === 13 && std.size === 0, 'the next match in the standard arena is 13 again');
 }
 
 console.log('HOLDS');
