@@ -1052,5 +1052,40 @@ console.log('TWILIGHT STAR (Zoe)');
   check(me.cd.R > 3 && me.cd.R < 5, 'R: a 5-second cooldown');
 }
 
+console.log('STYLE RANKER (Samira)');
+{
+  let { w, me, foe, run, saw } = setup('rose', 8);
+  w.cast(me, 'Q', foe.x, foe.z); run(0.3);
+  check(me.stack === 1 && w.projectiles.length === 0 && foe.stats.taken > 0, 'Q at range: a bullet, and the first rank');
+  me.cd.Q = 0; w.cast(me, 'Q', foe.x, foe.z); run(0.3);
+  check(me.stack === 1, 'the same attack twice in a row does not raise the style');
+  ({ w, me, foe, run, saw } = setup('rose', 2.6));
+  w.cast(me, 'Q', foe.x, foe.z);
+  check(!w.projectiles.length && saw('cone') === false && foe.stats.taken > 0, 'Q up close: the sword, at once');
+  ({ w, me, foe, run, saw } = setup('rose', 5));
+  w.cast(me, 'E', foe.x, foe.z);
+  check(!!me.dash && w.canCast(me, 'Q'), 'E: Q can be used in the middle of the dash');
+  w.cast(me, 'Q', foe.x, foe.z); setup.last.drift(0.4);
+  check(saw('beam', (e) => e.skill.id === 'flairbomb' && e.hit > 0) && me.stack >= 2, 'Q during E: the path is bombed after the dash; each different hit is a rank');
+  ({ w, me, foe, run, saw } = setup('rose', 3));
+  w.cast(me, 'W', me.x, me.z); const first = foe.stats.taken; run(0.5); const mid = foe.stats.taken; run(0.4);
+  check(first > 0 && mid === first && foe.stats.taken > mid, 'W: it cuts at the start and again at the end');
+  ({ w, me, foe, run, saw } = setup('rose', 3));
+  check(!w.canCast(me, 'R') && w.blocked(me, 'R') === 'ランクSで使える', 'R: locked below rank S, whatever the gauge says');
+  for (const k of ['a', 'b', 'a', 'b', 'a']) w.hurt(foe, 5, me, k);
+  check(me.stack === 5 && !w.canCast(me, 'R'), 'five different hits in a row: rank A');
+  w.hurt(foe, 5, me, 'b');
+  check(me.stack === 6 && w.canCast(me, 'R'), 'the sixth: rank S, and R opens');
+  const sp = (() => { const a = setup('rose', 20), b = setup('rose', 20); b.me.stack = 6; b.me.stackT = 8; for (const s of [a, b]) { s.w.issueMove(s.me, 10, 10); for (let i = 0; i < 60; i++) { s.w.step(DT); s.w.issueMove(s.me, 10, 10); } } return Math.hypot(b.me.vx, b.me.vz) / Math.hypot(a.me.vx, a.me.vz); })();
+  check(sp > 1.1 && sp < 1.3, `style: every rank is a little more speed (x${sp.toFixed(2)} at S)`);
+  w.cast(me, 'R', me.x, me.z); run(1);
+  check(me.slowK === 0.3 && w.own(me, 'inferno').length === 1 && me.stack === 6, 'R: two seconds of fire all around, at 30% less speed');
+  run(1.1);
+  check(me.stack === 0 && !w.own(me, 'inferno').length && foe.stats.taken > 150, 'R: when it ends the style is spent');
+  ({ w, me, foe, run, saw } = setup('rose', 12));
+  w.hurt(foe, 5, me, 'a'); run(7.5); const kept = me.stack; run(1);
+  check(kept === 1 && me.stack === 0, 'style: gone after 8 seconds without landing anything');
+}
+
 console.log(bad ? `\n${bad} of ${n} checks failed` : `\nall ${n} checks passed`);
 process.exit(bad ? 1 : 0);

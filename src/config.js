@@ -277,7 +277,8 @@ export const BLADES = {
     color: 0xe8566a, css: '#e8566a', teeth: 4,
     atk: 1.25, def: 0.98, mass: 0.98, speed: 15.5, decay: 6.6, spinMax: 1000, cdMul: 1.0, guardMul: 1.0,
     bars: { atk: 5, def: 2, sta: 2, spd: 5 },
-    desc: '撃って、弾を斬り払って、すり抜ける。必殺技は自分を中心に弾幕をばらまき続ける。',
+    style: { max: 6, keep: 8, speed: 0.035, ranks: ['E', 'D', 'C', 'B', 'A', 'S'] },
+    desc: '直前と違う攻撃（体当たり・射撃・斬り・爆撃・W・E）を当てるたびにスタイルのランクが上がり、足が速くなる。ランクSまで上げるとRが撃てる。ゲージの必殺技は持たない。',
   },
   glaive: {
     id: 'glaive', kit: { Q: 'darkglaive', W: 'dreaded', E: 'aureate', R: 'grim' },
@@ -1091,24 +1092,26 @@ export const SKILLS = {
   },
   // ---- STYLE RANKER: shoot, cut, pass through --------------------------------
   flair: {
-    name: '早撃ち', en: 'FLAIR', aim: 'line', kind: 'shot', icon: 'shot', cd: 2.5,
-    tele: 0.3, range: 10, speed: 40, radius: 0.7, dmg: 36, kb: 3, tumble: 0.1,
-    desc: '弾を撃つ。クールダウンが短い。',
+    name: '早撃ち', en: 'FLAIR', aim: 'line', kind: 'shot', icon: 'shot', cd: 2,
+    tele: 0.3, range: 8.6, speed: 40, radius: 0.7, dmg: 36, kb: 3, tumble: 0.1,
+    desc: '弾を撃つ。相手が目の前にいれば剣で斬る。Eの突進中に使うと、突進のあと通り道を爆撃する。',
   },
+  flairslash: { name: '早撃ち', en: 'FLAIR', aim: 'cone', kind: 'cone', hidden: true, range: 2.6, half: 0.9, dmg: 36, kb: 3, tumble: 0.1 },
+  flairbomb: { name: '早撃ち', en: 'FLAIR', aim: 'line', hidden: true, range: 6, radius: 1.3, dmg: 36 },
   whirl: {
-    name: '円刃', en: 'BLADE WHIRL', aim: 'self', kind: 'field', icon: 'burst', cd: 11,
-    follow: true, eat: true, dur: 0.8, aoe: 3.4, dmg0: 32,
-    desc: '周囲を斬り、0.8秒間、近くに飛んできた相手の弾をすべて斬り落とす。',
+    name: '円刃', en: 'BLADE WHIRL', aim: 'self', kind: 'field', icon: 'burst', cd: 22,
+    follow: true, eat: true, dur: 0.75, aoe: 3.4, dmg0: 32, endDmg: 32,
+    desc: '0.75秒間、近くに飛んできた相手の弾をすべて斬り落とす。始めと終わりの2回、周囲を斬る。動きながら使える。',
   },
   wildrush: {
-    name: 'ワイルドラッシュ', en: 'WILD RUSH', aim: 'dash', kind: 'dash', icon: 'dash', cd: 6,
-    tele: 0.3, dist: 6, minDist: 4, speed: 38, through: true, pass: 38, haste: 1.5,
-    desc: '相手をすり抜けて斬る突進。そのあと少しの間加速する。',
+    name: 'ワイルドラッシュ', en: 'WILD RUSH', aim: 'dash', kind: 'dash', icon: 'dash', cd: 12,
+    tele: 0.3, dist: 6, minDist: 4, speed: 38, through: true, pass: 38, haste: 1.5, fly: true,
+    desc: '相手をすり抜けて斬る突進。そのあと少しの間加速する。突進中にもスキルを使える。',
   },
   inferno: {
-    name: '地獄の引き金', en: 'INFERNO TRIGGER', aim: 'self', kind: 'field', icon: 'burst', cd: 2, ult: true,
-    follow: true, dur: 2.2, aoe: 5.5, dps: 100,
-    desc: '【必殺技】2.2秒間、自分の周囲に弾幕をばらまき続ける。動きながら撃てる。',
+    name: '地獄の引き金', en: 'INFERNO TRIGGER', aim: 'self', kind: 'field', icon: 'burst', cd: 5, need: 'style',
+    follow: true, dur: 2, aoe: 5.5, dps: 110, selfSlow: 0.3,
+    desc: 'スタイルがランクSのときだけ使える。2秒間、自分の周囲に弾幕をばらまき続ける。その間は自分も30%遅くなる。終わるとランクは最初に戻る。',
   },
   // ---- UNSUNDERED GLAIVE: stronger with every hit ----------------------------
   darkglaive: {

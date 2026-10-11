@@ -40,6 +40,7 @@ export function makeTop(side, blade) {
     doom: 0,               // marked for execution the moment its spin drops below the line
     shred: 0,              // dented: takes more damage for a while
     sleep: 0,              // asleep: the next blow hits harder and wakes it (host only)
+    styleLast: '',         // STYLE: the kind of attack that landed last (host only)
     stk: 0, stkT: 0,       // uses stored up for the blade's stocked skill, and time to the next
     streamT: 0,            // a held stream of fire: time left before it counts as let go
     markK: 1,              // how hard the mark on this top goes off
@@ -93,7 +94,7 @@ export function moveTop(t, dt, opp) {
   const sr = spinRatio(t);
   const B = t.buff > 0 && t.blade.buff;
   const eased = t.slow > 0 ? 1 - (t.slowK || 0.4) : 1;
-  const slow = (t.ground > 0 ? Math.min(0.4, eased) : eased) * ((B && B.speed) || 1) * (t.haste > 0 ? 1.3 : 1) * (t.hold ? 0.8 : 1);
+  const slow = (t.ground > 0 ? Math.min(0.4, eased) : eased) * ((B && B.speed) || 1) * (t.haste > 0 ? 1.3 : 1) * (t.hold ? 0.8 : 1) * (t.blade.style ? 1 + t.blade.style.speed * (t.stack || 0) : 1);
   // Stunned tops stay put too, except while a hit is still carrying them.
   const held = rooted(t) || ((t.stun > 0 || t.snare > 0) && t.tumble <= 0);
   // Steeper near the middle than a plain bowl, so orbits of different size drift out of step.
@@ -171,7 +172,7 @@ export function bounce(t, c) {
 function ghost(t) {
   return {
     blade: t.blade, x: t.x, z: t.z, vx: t.vx, vz: t.vz, spin: t.spin, spinMax: t.spinMax,
-    dir: t.dir, radius: t.radius, tumble: t.tumble, slow: t.slow, phase: t.phase,
+    dir: t.dir, radius: t.radius, tumble: t.tumble, slow: t.slow, phase: t.phase, stack: t.stack,
     ground: t.ground, buff: t.buff, haste: t.haste, up: t.up, egg: t.egg, chan: t.chan, hold: t.hold, stun: t.stun, snare: t.snare, slowK: t.slowK,
     cmd: t.cmd ? { ...t.cmd } : null, dash: t.dash ? { ...t.dash } : null,
     blink: t.blink ? { ...t.blink } : null, charge: t.charge,
@@ -274,7 +275,7 @@ export class World {
       t.markK = 1;
       t.ret2 = t.empS = null;
       t.stack = t.stackT = t.last = t.dmark = t.dacc = t.egg = t.eggHp = t.dot = t.dotT = t.drop = 0;
-      t.sleep = 0;
+      t.sleep = 0; t.styleLast = '';
       t.haste = t.charm = t.pin = t.store = t.tag = t.tagT = t.histT = t.stun = t.snare = t.slowK = 0;
       t.hist = [];
       t.toggle = t.eggUsed = false;
@@ -329,6 +330,7 @@ export class World {
     if (S.need === 'range' && !(targetable(o) && d <= (S.grab ?? S.range) && !((S.id === 'fling' || S.kind === 'throw') && o.egg > 0))) return '射程外';
     if (S.need === 'up' && !(targetable(o) && o.up > 0 && d <= S.range)) return '打ち上げ中のみ';
     if (S.need === 'soldier' && !this.own(t, 'arise').length) return '砂兵がいない';
+    if (S.need === 'style' && t.stack < t.blade.style.max) return 'ランクSで使える';
     if ((t.ground > 0 || t.snare > 0) && (MOBILE.has(S.aim) || S.id === 'shift' || S.tp)) return t.snare > 0 ? '束縛中' : '粘着中';
     return null;
   }
@@ -482,6 +484,7 @@ export class World {
     const S = d.skill;
     // A step, not a charge: it ends standing where it meant to.
     if (S.halt) t.vx = t.vz = 0;
+    if (d.bomb) { const L = d.len ?? S.dist; this.lineHit(t, SKILLS.flairbomb, t.x - d.dx * L, t.z - d.dz * L, d.dx, d.dz); }
     if (d.spin) {
       const Q = d.spin, G = SKILLS.galeq;
       const hit = this.burst(t, Q, t.x, t.z, G.ring, { dmg: Q.dmg, as: Q.id === 'tornado' ? { up: Q.up } : {} });
@@ -573,6 +576,19 @@ export class World {
         this.fire(t, S, dx / d, dz / d, { x: q.x - (dx / d) * 0.9, z: q.z - (dz / d) * 0.9 });
         break;
       }
+      case 'flair':
+        // In the middle of WILD RUSH: bombs along the path, once the dash is over.
+        if (t.dash && t.dash.skill.id === 'wildrush') { t.dash.bomb = true; break; }
+        // Something right in front: the sword instead of the gun.
+        if (this.inCone(t, opp, c.dx, c.dz, SKILLS.flairslash)) this.coneHit(t, SKILLS.flairslash, c.dx, c.dz);
+        else this.fire(t, S, c.dx, c.dz);
+        break;
+      case 'inferno':
+        this.zone(t, S, t.x, t.z);
+        this.slowBy(t, S.dur, S.selfSlow);
+        // The style is spent when it ends.
+        t.stackT = S.dur;
+        break;
       case 'tornado':
         t.stack = 0;
         this.fire(t, S, c.dx, c.dz);
@@ -1163,6 +1179,15 @@ export class World {
     if (foe) {
       t.scar = SCAR;
       if (from.dmark > 0 && kind !== 'deathmark') from.dacc += dmg;
+    }
+    const ST = foe && from.blade.style;
+    if (ST && kind !== 'wall' && !this.own(from, 'inferno').length) {
+      const what = kind === 'clash' || kind === 'dash' || kind === 'empower' || kind === 'parry' ? 'body' : kind;
+      if (from.stack === 0 || what !== from.styleLast) {
+        from.stack = Math.min(ST.max, from.stack + 1);
+        this.emit('say', { top: from, text: ST.ranks[from.stack - 1], tone: from.stack >= ST.max ? 'gold' : '' });
+      }
+      from.styleLast = what; from.stackT = ST.keep;
     }
     t.lastHit = { dmg, time: this.time, kind, by: foe && kind !== 'wall' ? from.side : -1 };
     // DENTING BLOWS: every third hit dents the target.

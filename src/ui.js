@@ -424,6 +424,7 @@ export class UI {
   note(world, me, S, key) {
     const foe = world.other(me);
     switch (S.id) {
+      case 'inferno': return me.stack ? me.blade.style.ranks[Math.min(me.stack, me.blade.style.max) - 1] : '';
       case 'galeq': return me.stack >= S.stacks ? '竜巻' : me.stack ? String(me.stack) : '';
       case 'fourshot': return String(S.shots - me.stack);
       case 'brokenwings': return me.re[key] > 0 ? String(3 - me.stack) : '';
