@@ -57,6 +57,9 @@ export function makeTop(side, blade) {
     pin: 0,                // shoved hard: hitting the wall now stuns
     store: 0,              // damage banked by blades that turn it into a shield
     tag: 0, tagT: 0,       // nails stuck in this top
+    prey: -1,              // the enemy this top last struck with a skill (its follow-ups go there)
+    dmarkTo: -1,           // whom the death mark is on
+    quills: 0, quillT: 0,  // quills that have struck this top lately (host only)
     gone: null,            // out of this round: how ('over', 'burst', 'spin'), or null while still in it
     team: side,            // tops on the same team do not fight each other
     perm: 0,               // growth that lasts the whole match, not just the round
@@ -303,6 +306,23 @@ export class World {
     }
     return best || this.tops.find((o) => o !== t);
   }
+  // Whom a skill cast at a point is meant for: of the enemies it could be used
+  // on, the one nearest that point (the cursor). A follow-up goes to whoever the
+  // first part struck.
+  pick(t, c, S) {
+    if (c.re && t.prey >= 0) { const p = this.tops[t.prey]; if (p && !p.gone && p.team !== t.team) return p; }
+    const reach = S.grab ?? S.range ?? Infinity;
+    const ok = (o) => targetable(o) && (S.need !== 'up' || o.up > 0) && (!S.need || Math.hypot(o.x - t.x, o.z - t.z) <= reach);
+    let best = null, bd = Infinity;
+    for (const o of this.foes(t)) {
+      if (!ok(o)) continue;
+      const d = Math.hypot(o.x - c.ax, o.z - c.az);
+      if (d < bd) { bd = d; best = o; }
+    }
+    return best || this.near(t, c.ax, c.az);
+  }
+  // Enemies of `t` standing in a zone (its radius, plus `pad` of their own).
+  inZone(z, t, pad = 0) { return this.result ? [] : this.foes(t).filter((o) => targetable(o) && Math.hypot(o.x - z.x, o.z - z.z) < z.r + o.radius * pad); }
   // Tops, or teams, still standing.
   sidesLeft() { return new Set(this.tops.filter((t) => !t.gone).map((t) => t.team)).size; }
   emit(type, data) { this.events.push({ type, ...data }); }
@@ -324,7 +344,7 @@ export class World {
       t.vx = t.blade.speed * 0.75 * Math.cos(ph); t.vz = -t.blade.speed * 0.75 * Math.sin(ph);
       if (Math.abs(t.x) < 1e-9) t.x = 0;
       if (Math.abs(t.vz) < 1e-9) t.vz = 0;
-      t.gone = null;
+      t.gone = null; t.prey = t.dmarkTo = -1; t.quills = t.quillT = 0;
       t.spin = t.spinMax;
       t.cmd = t.cast = t.dash = t.air = t.out = t.blink = t.charge = t.orbs = t.tether = t.chan = t.ret = t.hold = null;
       t.tumble = t.launch = t.guard = t.slow = t.hitCd = t.empower = 0;
@@ -390,10 +410,10 @@ export class World {
   // Why a skill that is otherwise ready cannot be used here and now, as a
   // short label for the player; null when nothing stands in the way.
   blocked(t, key) {
-    const S = this.aimSkill(t, key), o = this.other(t);
-    const d = Math.hypot(o.x - t.x, o.z - t.z);
-    if (S.need === 'range' && !(targetable(o) && d <= (S.grab ?? S.range) && !((S.id === 'fling' || S.kind === 'throw') && o.egg > 0))) return '射程外';
-    if (S.need === 'up' && !(targetable(o) && o.up > 0 && d <= S.range)) return '打ち上げ中のみ';
+    const S = this.aimSkill(t, key);
+    const any = (f) => this.foes(t).some((o) => targetable(o) && f(o, Math.hypot(o.x - t.x, o.z - t.z)));
+    if (S.need === 'range' && !any((o, d) => d <= (S.grab ?? S.range) && !((S.id === 'fling' || S.kind === 'throw') && o.egg > 0))) return '射程外';
+    if (S.need === 'up' && !any((o, d) => o.up > 0 && d <= S.range)) return '打ち上げ中のみ';
     if (S.need === 'soldier' && !this.own(t, 'arise').length) return '砂兵がいない';
     if (S.need === 'style' && t.stack < t.blade.style.max) return 'ランクSで使える';
     if ((t.ground > 0 || t.snare > 0) && (MOBILE.has(S.aim) || S.id === 'shift' || S.tp)) return t.snare > 0 ? '束縛中' : '粘着中';
@@ -628,7 +648,7 @@ export class World {
   }
 
   execute(t, c) {
-    const S = c.skill, opp = this.other(t);
+    const S = c.skill, opp = this.pick(t, c, S);
     if (S.weapon !== undefined) {
       // Each weapon keeps its own cooldown, and every use is one of its five shots.
       t.cd[c.key] = t.wcd[S.weapon] = S.cd * t.blade.cdMul;
@@ -870,11 +890,13 @@ export class World {
       }
       case 'slash': {
         const spots = [{ x: t.x, z: t.z, sh: false }, ...this.own(t, 'shadow').map((q) => ({ x: q.x, z: q.z, sh: true }))];
-        let from = null, hit = 0;
-        if (targetable(opp)) {
+        // Every enemy within reach of the body or a shadow is cut once (by a shadow, if one reaches).
+        const cut = new Map();
+        for (const opp of this.foes(t)) {
+          let from = null, hit = 0;
+          if (!targetable(opp)) continue;
           for (const p of spots) if (Math.hypot(opp.x - p.x, opp.z - p.z) < S.aoe + opp.radius * 0.5 && (!from || p.sh)) from = p;
-        }
-        if (from) {
+          if (!from) continue;
           const g = opp.guard > 0 ? 0.3 : 1;
           hit = this.hurt(opp, (S.dmg * g * t.blade.atk) / opp.blade.def, t, 'slash');
           if (g === 1) {
@@ -886,8 +908,10 @@ export class World {
           const wk = this.keyOf(t, 'shadow');
           if (wk) t.cd[wk] = Math.max(0, t.cd[wk] - S.cut);
           t.stats.skillHits++;
+          const was = cut.get(from);
+          cut.set(from, { hit: hit + (was ? was.hit : 0), opp: was ? was.opp : opp });
         }
-        for (const p of spots) this.emit('blast', { top: t, skill: S, x: p.x, z: p.z, r: S.aoe, hit: p === from ? hit : 0, target: p === from && hit ? opp : null });
+        for (const p of spots) { const h = cut.get(p); this.emit('blast', { top: t, skill: S, x: p.x, z: p.z, r: S.aoe, hit: h ? h.hit : 0, target: h && h.hit ? h.opp : null }); }
         break;
       }
       case 'kiburst':
@@ -896,7 +920,7 @@ export class World {
       case 'deathmark': {
         // It sinks into the floor, out of reach, and comes up behind the target.
         this.zone(t, SKILLS.shadow, t.x, t.z, { c: 4 });
-        t.air = { t: 0, T: S.air, sx: t.x, sz: t.z, tx: opp.x, tz: opp.z, skill: S, by: t.side };
+        t.air = { t: 0, T: S.air, sx: t.x, sz: t.z, tx: opp.x, tz: opp.z, skill: S, by: t.side, to: opp.side };
         t.cmd = null; t.vx = t.vz = 0;
         this.emit('leap', { top: t, tx: opp.x, tz: opp.z, T: S.air, skill: S });
         break;
@@ -947,25 +971,30 @@ export class World {
         this.emit('buff', { top: t, skill: S });
         break;
       case 'flare': {
-        let hit = 0;
-        if (this.inCone(t, opp, c.dx, c.dz, S)) {
-          hit = this.hurt(opp, (S.dmg * t.blade.atk * (opp.guard > 0 ? 0.3 : 1)) / opp.blade.def, t, 'flare');
-          t.spin = Math.min(t.spinMax, t.spin + hit * S.heal);
-          if (opp.guard <= 0) this.knock(opp, c.dx, c.dz, S.kb, 0.25, 0.8);
+        let hit = 0, tg = null;
+        for (const o of this.foes(t)) {
+          if (!this.inCone(t, o, c.dx, c.dz, S)) continue;
+          const h = this.hurt(o, (S.dmg * t.blade.atk * (o.guard > 0 ? 0.3 : 1)) / o.blade.def, t, 'flare');
+          hit += h;
+          t.spin = Math.min(t.spinMax, t.spin + h * S.heal);
+          if (o.guard <= 0) this.knock(o, c.dx, c.dz, S.kb, 0.25, 0.8);
           t.stats.skillHits++;
+          tg = tg || o;
         }
-        this.emit('flare', { top: t, dx: c.dx, dz: c.dz, hit, heal: hit * S.heal, target: opp });
+        this.emit('flare', { top: t, dx: c.dx, dz: c.dz, hit, heal: hit * S.heal, target: tg || opp });
         break;
       }
       case 'apprehend': {
-        let hit = 0;
-        if (this.inCone(t, opp, c.dx, c.dz, S)) {
-          const g = opp.guard > 0 ? 0.3 : 1;
-          hit = this.hurt(opp, (S.dmg * g * t.blade.atk) / opp.blade.def, t, 'apprehend');
-          if (g === 1) { this.pull(opp, t, S.pull); this.affect(t, opp, S, 0, 0); }
+        let hit = 0, tg = null;
+        for (const o of this.foes(t)) {
+          if (!this.inCone(t, o, c.dx, c.dz, S)) continue;
+          const g = o.guard > 0 ? 0.3 : 1;
+          hit += this.hurt(o, (S.dmg * g * t.blade.atk) / o.blade.def, t, 'apprehend');
+          if (g === 1) { this.pull(o, t, S.pull); this.affect(t, o, S, 0, 0); }
           t.stats.skillHits++;
+          tg = tg || o;
         }
-        this.emit('cone', { top: t, skill: S, dx: c.dx, dz: c.dz, hit, target: hit ? opp : null });
+        this.emit('cone', { top: t, skill: S, dx: c.dx, dz: c.dz, hit, target: tg });
         break;
       }
       case 'fling': {
@@ -1000,7 +1029,7 @@ export class World {
         this.emit('orbs', { top: t });
         break;
       case 'eclipse':
-        t.tether = { t: 0, T: S.dur, skill: S, acc: 0, tick: 0 };
+        t.tether = { t: 0, T: S.dur, skill: S, acc: 0, tick: 0, to: opp.side };
         this.emit('tether', { top: t, target: opp });
         break;
       case 'foxfire':
@@ -1309,7 +1338,7 @@ export class World {
     if (kind === 'dot') return dmg;
     if (foe) {
       t.scar = SCAR;
-      if (from.dmark > 0 && kind !== 'deathmark') from.dacc += dmg;
+      if (from.dmark > 0 && kind !== 'deathmark' && (from.dmarkTo < 0 || from.dmarkTo === t.side)) from.dacc += dmg;
     }
     const ST = foe && from.blade.style;
     if (ST && kind !== 'wall' && !this.own(from, 'inferno').length) {
@@ -1320,6 +1349,7 @@ export class World {
       }
       from.styleLast = what; from.stackT = ST.keep;
     }
+    if (foe && kind !== 'clash' && kind !== 'wall' && kind !== 'parry') from.prey = t.side;
     t.lastHit = { dmg, time: this.time, kind, by: foe && kind !== 'wall' ? from.side : -1 };
     // DENTING BLOWS: every third hit dents the target.
     const DB = foe && from.blade.dent;
@@ -1593,6 +1623,7 @@ export class World {
       if (t.histT <= 0) { t.histT = 0.1; t.hist.push({ x: t.x, z: t.z, spin: t.spin }); if (t.hist.length > t.blade.rewind * 10) t.hist.shift(); }
     }
     if (t.sleep > 0) t.sleep = Math.max(0, t.sleep - dt);
+    if (t.quillT > 0) { t.quillT -= dt; if (t.quillT <= 0) t.quills = t.quillT = 0; }
     if (t.lightsT > 0) { t.lightsT -= dt; if (t.lightsT <= 0) t.lights = t.lightsT = 0; }
     if (t.shieldT > 0) { t.shieldT -= dt; if (t.shieldT <= 0) { t.shieldT = 0; t.shield = 0; } }
     if (t.bleedT > 0) { t.bleedT -= dt; if (t.bleedT <= 0) { t.bleedT = 0; t.bleed = 0; } }
@@ -1626,11 +1657,12 @@ export class World {
       t.dmark -= dt;
       if (t.dmark <= 0) {
         t.dmark = 0;
-        const S = SKILLS.deathmark;
-        if (!this.result && !opp.out) {
-          const hit = this.hurt(opp, (S.pop * t.blade.atk) / opp.blade.def + t.dacc * S.share, t, 'deathmark');
-          this.emit('blast', { top: t, skill: S, x: opp.x, z: opp.z, r: 3, hit, target: opp });
+        const S = SKILLS.deathmark, who = this.tops[t.dmarkTo] || opp;
+        if (!this.result && !who.out && !who.gone) {
+          const hit = this.hurt(who, (S.pop * t.blade.atk) / who.blade.def + t.dacc * S.share, t, 'deathmark');
+          this.emit('blast', { top: t, skill: S, x: who.x, z: who.z, r: 3, hit, target: who });
         }
+        t.dmarkTo = -1;
         t.dacc = 0;
       }
     }
@@ -1708,8 +1740,9 @@ export class World {
     if (dash && !t.dash) this.dashDone(t, dash);
   }
 
-  land(t, opp) {
+  land(t, near) {
     const a = t.air, S = a.skill, x = a.tx, z = a.tz;
+    const opp = (a.to !== undefined && this.tops[a.to] && !this.tops[a.to].gone && this.tops[a.to]) || near;
     t.air = null; t.x = x; t.z = z; t.vx = t.vz = 0;
     if (S.id === 'deathmark') {
       // Out the far side of where the target is now, or as near as the wall allows.
@@ -1719,7 +1752,7 @@ export class World {
       const lim = ARENA.R - t.radius - 0.2, r = Math.hypot(px, pz);
       if (r > lim) { px *= lim / r; pz *= lim / r; }
       t.x = px; t.z = pz;
-      t.dmark = S.dur; t.dacc = 0;
+      t.dmark = S.dur; t.dacc = 0; t.dmarkTo = opp.side;
       t.re[this.keyOf(t, S.id)] = S.window;
       this.emit('warp', { top: t, fx: a.sx, fz: a.sz });
       this.emit('say', { top: opp, text: 'DEATH MARK', tone: 'red' });
@@ -1831,19 +1864,20 @@ export class World {
   novaBlast(t, opp) {
     const S = t.charge.skill;
     t.charge = null;
-    let hit = 0;
-    if (targetable(opp)) {
-      let dx = opp.x - t.x, dz = opp.z - t.z;
+    let hit = 0, tg = null;
+    for (const o of this.foes(t)) {
+      if (!targetable(o)) continue;
+      let dx = o.x - t.x, dz = o.z - t.z;
       const d = Math.hypot(dx, dz);
-      if (d < S.aoe + opp.radius * 0.5) {
-        if (d < 0.05) { dx = 1; dz = 0; } else { dx /= d; dz /= d; }
-        const f = d < 3 ? 1 : 1 - 0.5 * ((d - 3) / (S.aoe - 2.5));
-        hit = this.hurt(opp, (S.dmg * f * t.blade.atk) / opp.blade.def, t, 'nova');
-        this.knock(opp, dx, dz, S.kb * f, 0.8, 2);
-        t.stats.skillHits++;
-      }
+      if (d >= S.aoe + o.radius * 0.5) continue;
+      if (d < 0.05) { dx = 1; dz = 0; } else { dx /= d; dz /= d; }
+      const f = d < 3 ? 1 : 1 - 0.5 * ((d - 3) / (S.aoe - 2.5));
+      hit += this.hurt(o, (S.dmg * f * t.blade.atk) / o.blade.def, t, 'nova');
+      this.knock(o, dx, dz, S.kb * f, 0.8, 2);
+      t.stats.skillHits++;
+      tg = tg || o;
     }
-    this.emit('nova', { top: t, x: t.x, z: t.z, hit, target: hit ? opp : null });
+    this.emit('nova', { top: t, x: t.x, z: t.z, hit, target: tg });
   }
 
   // CURTAIN CALL: shots at a fixed beat, each turned toward the target as far
@@ -1890,8 +1924,8 @@ export class World {
     if (o.t <= 0 || o.n <= 0) { t.orbs = null; this.emit('orbsEnd', { top: t }); }
   }
 
-  updateTether(t, opp, dt) {
-    const th = t.tether, S = th.skill;
+  updateTether(t, near, dt) {
+    const th = t.tether, S = th.skill, opp = this.tops[th.to] || near;
     th.t += dt;
     const d = Math.hypot(opp.x - t.x, opp.z - t.z);
     const gone = !targetable(opp) || d > S.breakRange;
@@ -1943,25 +1977,29 @@ export class World {
         case 'quake': {
           if (z.t < z.T) break;
           z.dead = true;
-          let hit = 0;
-          if (live && d < z.r + opp.radius * 0.5) {
+          let hit = 0, tg = null;
+          for (const opp of this.inZone(z, t, 0.5)) {
             let dx = opp.x - z.x, dz = opp.z - z.z;
+            const d = Math.hypot(dx, dz);
             if (d < 0.05) { dx = 0; dz = 1; } else { dx /= d; dz /= d; }
             const g = opp.guard > 0 ? 0.3 : 1;
-            hit = this.hurt(opp, (S.dmg * g * t.blade.atk) / opp.blade.def, t, 'quake');
+            hit += this.hurt(opp, (S.dmg * g * t.blade.atk) / opp.blade.def, t, 'quake');
             if (g === 1) { this.stun(opp, S.stun); this.knock(opp, dx, dz, S.kb, 0.25, 0); }
             t.stats.skillHits++;
+            tg = tg || opp;
           }
-          this.emit('quake', { top: t, x: z.x, z: z.z, r: z.r, hit, target: hit ? opp : null });
+          this.emit('quake', { top: t, x: z.x, z: z.z, r: z.r, hit, target: tg });
           break;
         }
         case 'grenade': {
           if (z.t < z.T) break;
           z.dead = true;
-          let hit = 0;
-          if (live && d < z.r + opp.radius * 0.5) {
+          let hit = 0, tg = null;
+          for (const opp of this.inZone(z, t, 0.5)) {
+            const d = Math.hypot(opp.x - z.x, opp.z - z.z);
             const g = opp.guard > 0 ? 0.3 : 1;
-            hit = this.hurt(opp, ((z.c ? S.bigDmg : S.dmg) * g * t.blade.atk) / opp.blade.def, t, 'grenade');
+            tg = tg || opp;
+            hit += this.hurt(opp, ((z.c ? S.bigDmg : S.dmg) * g * t.blade.atk) / opp.blade.def, t, 'grenade');
             if (g === 1) { this.slowBy(opp, S.slow, z.c ? S.bigSlowPct : S.slowPct); if (d < (z.c ? S.bigCore : S.core)) this.stun(opp, S.stun); }
             t.stats.skillHits++;
             // A hit has every turret fire its laser at once.
@@ -1969,7 +2007,7 @@ export class World {
           }
           // Upgraded, it bounces on twice more.
           if (z.c && z.b < S.bounces - 1 && !this.result) this.zone(t, S, z.x + z.dx * S.hop, z.z + z.dz * S.hop, { c: 1, b: z.b + 1, dx: z.dx, dz: z.dz });
-          this.emit('blast', { top: t, skill: S, x: z.x, z: z.z, r: z.r, hit, target: hit ? opp : null });
+          this.emit('blast', { top: t, skill: S, x: z.x, z: z.z, r: z.r, hit, target: tg });
           break;
         }
         case 'sanctuary':
@@ -1997,7 +2035,7 @@ export class World {
         case 'blizzard':
           initZone(z); // keeps spreading
           if (z.t >= z.T || this.result) { this.endZone(z); break; }
-          if (live && d < z.r + opp.radius * 0.3) {
+          for (const opp of this.inZone(z, t, 0.3)) {
             // Fully grown it cuts three times as deep, slows harder and ices over.
             const full = z.t >= S.grow;
             this.slowBy(opp, full ? 1.5 : 1, full ? 0.6 : 0.4);
@@ -2007,11 +2045,11 @@ export class World {
           break;
         case 'poison':
           if (z.t >= z.T) { z.dead = true; break; }
-          if (live && d < z.r + opp.radius * 0.3) opp.poison = S.linger;
+          for (const o of this.inZone(z, t, 0.3)) o.poison = S.linger;
           break;
         case 'glue':
           if (z.t >= z.T) { this.endZone(z); break; }
-          if (live && d < z.r) { opp.ground = 0.25; this.slowBy(opp, 0.25, S.slowPct); }
+          for (const o of this.inZone(z, t, 0)) { o.ground = 0.25; this.slowBy(o, 0.25, S.slowPct); }
           break;
         case 'turret': {
           // a: overclock time left, b: time to the next shot, c: upgraded
@@ -2101,7 +2139,7 @@ export class World {
           if (z.t >= z.a + S.dur || this.result) { this.endZone(z); break; }
           if (z.t < z.a) break;
           if (!z.c) { z.c = 1; this.burst(t, S, z.x, z.z, z.r); }
-          if (live && d < z.r + opp.radius * 0.3) { this.slowBy(opp, 0.3, S.slowPct); this.dot(opp, (S.dps * dt * t.blade.atk) / opp.blade.def, t); }
+          for (const o of this.inZone(z, t, 0.3)) { this.slowBy(o, 0.3, S.slowPct); this.dot(o, (S.dps * dt * t.blade.atk) / o.blade.def, t); }
           break;
         case 'gazeeye':
           // GAZE OF THE ABYSS: it opens, finds whoever is nearest, and fires at them.
@@ -2132,7 +2170,7 @@ export class World {
             this.endZone(z);
             const dmg = this.hurt(opp, (B.dmg * t.blade.atk) / opp.blade.def, t, B.id);
             this.slowBy(opp, B.slow, B.slowPct);
-            t.tether = { t: 0, T: B.dur, skill: B, acc: 0, tick: 0 };
+            t.tether = { t: 0, T: B.dur, skill: B, acc: 0, tick: 0, to: opp.side };
             this.emit('say', { top: opp, text: B.tie, tone: '' });
             this.emit('strike', { top: opp, src: t, skill: B, x: opp.x, z: opp.z, dmg });
           }
@@ -2516,14 +2554,14 @@ export class World {
     bounce(t, c);
     this.stopDash(t);
     if (t.pin > 0 && c.vn > 3) {
-      const by = this.other(t), P = by.blade.pin;
+      const by = this.lastBy(t) || this.other(t), P = by.blade.pin;
       t.pin = 0;
       if (P) { this.hurt(t, (P.dmg * by.blade.atk) / t.blade.def, by, 'pin'); this.stun(t, P.stun); }
     }
     let dmg = 0;
     if (c.vn > 4) {
       dmg = ((c.vn - 4) * (t.launch > 0 ? 2.2 : 1.0)) / t.blade.def;
-      dmg = this.hurt(t, dmg, t.launch > 0 ? this.other(t) : null, 'wall');
+      dmg = this.hurt(t, dmg, t.launch > 0 ? this.lastBy(t) || this.other(t) : null, 'wall');
     }
     if (c.vn > 2) this.emit('wall', { top: t, x: t.x + c.nx, z: t.z + c.nz, nx: c.nx, nz: c.nz, power: c.vn, dmg, slam: t.launch > 0 });
   }
@@ -2567,7 +2605,7 @@ export class World {
     }
     const marked = !!v.lastHit && v.lastHit.by === o.side && this.time - v.lastHit.time < (S.markT || 0);
     // Each quill after the first cuts a little less.
-    if (S.id === 'quill') k *= Math.max(0.1, 1 - S.fall * o.stack);
+    if (S.id === 'quill') k *= Math.max(0.1, 1 - S.fall * (v.quillT > 0 ? v.quills : 0));
     const dmg = this.hurt(v, (p.dmg * k) / v.blade.def, o, S.id);
     if (S.chain) this.pull(v, o, S.pull, S.pullDist);
     // TIMEWINDER stops where it hits and hangs there as a slowing field.
@@ -2578,7 +2616,7 @@ export class World {
     if (S.id === 'galeq') { o.stack = Math.min(S.stacks, o.stack + 1); o.stackT = S.keep; }
     if (S.id === 'flourish' && marked) this.snare(v, S.root);
     if (S.tie) {
-      o.tether = { t: 0, T: S.dur, skill: S, acc: 0, tick: 0 };
+      o.tether = { t: 0, T: S.dur, skill: S, acc: 0, tick: 0, to: v.side };
       this.emit('say', { top: v, text: S.tie, tone: '' });
     }
     if (S.refund) for (const k of KEYS) o.cd[k] = Math.max(0, o.cd[k] - S.refund);
@@ -2602,7 +2640,7 @@ export class World {
       if (A.sentry) this.zone(o, SKILLS.sentry, v.x - p.dx * 2.6, v.z - p.dz * 2.6, { c: 1, a: SKILLS.sentry.live });
     }
     // The third quill to land pins the target.
-    if (S.id === 'quill') { o.stack++; o.stackT = 1.5; if (o.stack === 3) this.snare(v, S.root); }
+    if (S.id === 'quill') { v.quills = v.quillT > 0 ? v.quills + 1 : 1; v.quillT = 1.5; if (v.quills === 3) this.snare(v, S.root); }
     // Only one blade of a wind slash can land.
     if (S.id === 'windslash') for (const q of this.projectiles) if (q !== p && q.skill === S && q.owner === o) q.dead = true;
     o.stats.skillHits++;

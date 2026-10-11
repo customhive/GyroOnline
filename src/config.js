@@ -1310,6 +1310,9 @@ export const SKILLS = {
   },
 };
 for (const id in SKILLS) SKILLS[id].id = id;
+// A skill that is used on someone picks the enemy nearest the cursor, so the
+// cursor is sent along even though nothing is aimed.
+for (const id in SKILLS) if (SKILLS[id].need === 'range' || SKILLS[id].need === 'up') SKILLS[id].cursor = true;
 
 export const KEYS = ['Q', 'W', 'E', 'R'];
 export const skillOf = (top, key) => SKILLS[top.blade.kit[key]];

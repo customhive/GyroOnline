@@ -1181,5 +1181,60 @@ console.log('VISION PAINTER (Hwei)');
   check(sk >= 0.5 && !w.own(me, 'despairz').length && foe.stats.taken > 150, `R: the slow deepens, and it ends in a burst (${sk})`);
 }
 
+console.log('MORE THAN TWO TOPS');
+{
+  // me at the bottom, A far ahead, B off to the right
+  const ring = (blade, others = ['gaia', 'gaia']) => {
+    const w = new World([BLADES[blade], ...others.map((b) => BLADES[b])], { seed: 7 });
+    const [me, A, B, C] = w.tops;
+    for (const t of w.tops) for (const k of 'QWER') t.cd[k] = t === me ? 0 : 99;
+    me.ult = 100;
+    const put = (t, x, z) => { t.x = x; t.z = z; t.vx = t.vz = 0; t.cmd = null; t.tumble = 0; };
+    put(me, 0, 6); put(A, 0, -2); put(B, 6, 6); if (C) put(C, -9, -6);
+    const seen = [];
+    const run = (sec, pin = true) => { for (let i = 0; i < Math.round(sec / DT); i++) { const P = w.tops.map((t) => [t.x, t.z]); w.step(DT); seen.push(...w.events.splice(0)); if (pin) w.tops.forEach((t, k) => { if (t !== me && t.tumble <= 0 && t.up <= 0 && !t.gone) { t.x = P[k][0]; t.z = P[k][1]; t.vx = t.vz = 0; } }); } };
+    return { w, me, A, B, C, put, run, seen };
+  };
+  let { w, me, A, B, put, run, seen } = ring('azure');
+  check(w.tops.length === 3 && w.other(me) === B, 'a top fights whoever is nearest');
+  put(A, 0, 3.4); put(B, 2.4, 6);
+  w.burst(me, SKILLS.grenade, 0, 6, 4);
+  check(A.stats.taken > 0 && B.stats.taken > 0, 'a blast lands on every enemy in it');
+  ({ w, me, A, B, put, run, seen } = ring('nox'));
+  put(A, 0, 1); put(B, 3, 6.5);
+  w.cast(me, 'R', A.x, A.z); run(0.9);
+  check(me.dmarkTo === A.side && Math.hypot(me.x - A.x, me.z - A.z) < 4, 'Death Mark: aimed with the cursor, it goes for that one, not the nearest');
+  const a0 = A.stats.taken, b0 = B.stats.taken; run(3);
+  check(A.stats.taken > a0 + 50 && B.stats.taken === b0, 'Death Mark: and it is that one the mark goes off on');
+  ({ w, me, A, B, put, run, seen } = ring('gale'));
+  put(A, 0, 1); put(B, 3, 6.5); A.up = 1; B.up = 0;
+  check(w.canCast(me, 'R'), 'Last Breath: open because someone is in the air, though the nearest is not');
+  w.cast(me, 'R', B.x, B.z);
+  check(A.stats.taken > 0 && B.stats.taken === 0, 'Last Breath: it goes to the one in the air');
+  ({ w, me, A, B, put, run, seen } = ring('plume'));
+  put(A, -3, 2); put(B, 3, 2);
+  const q = (x) => w.fire(me, SKILLS.quill, 0, 1, { x, z: -2, left: 9, quiet: true });
+  q(-3); q(-3); q(3); run(0.3);
+  check(A.quills === 2 && B.quills === 1 && A.snare === 0 && B.snare === 0, 'quills are counted on each top: two on one and one on another snare nobody');
+  q(-3); run(0.3);
+  check(A.snare > 0 && B.snare === 0, 'the third on the same top snares it');
+  ({ w, me, A, B, put, run, seen } = ring('star'));
+  put(A, 0, 0); put(B, 2.5, 6);
+  w.cast(me, 'E', A.x, A.z); run(0.4);
+  check(me.tether && me.tether.to === A.side, 'the bubble holds the one it struck');
+  put(A, -8, -8); run(1.2);
+  check(A.stun > 0 && B.stun === 0, 'and that one falls asleep, wherever it has gone and whoever is nearer');
+  ({ w, me, A, B, put, run, seen } = ring('gaia'));
+  A.spin = 0; run(0.1, false);
+  check(A.gone && !w.result && seen.some((e) => e.type === 'ko' && e.top === A), 'a top that runs down is out, and the round goes on');
+  check(w.other(me) === B && w.foes(me).length === 1, 'the fight turns to who is left');
+  B.spin = 0; run(0.1, false);
+  check(!!w.result && w.result.winner === me, 'the last one standing takes the round');
+  ({ w, me, A, B, put, run, seen } = ring('nox'));
+  put(A, 0, 3.5); put(B, 2.6, 6);
+  w.cast(me, 'E', me.x, me.z);
+  check(A.stats.taken > 0 && B.stats.taken > 0, 'Shadow Slash cuts everyone around it');
+}
+
 console.log(bad ? `\n${bad} of ${n} checks failed` : `\nall ${n} checks passed`);
 process.exit(bad ? 1 : 0);

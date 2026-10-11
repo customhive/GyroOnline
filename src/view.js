@@ -992,7 +992,7 @@ export class View {
         if (dt > 0) P.emit(p.x, y, p.z, (Math.random() - 0.5) * 2, Math.random() * 1.5, (Math.random() - 0.5) * 2, 0.35, 0.3, c, 0, 1);
       }
       if (t.tether) {
-        const o = w.other(t), wob = 0.5 + 0.5 * Math.sin(this.time * 26);
+        const o = w.tops[t.tether.to] || w.other(t), wob = 0.5 + 0.5 * Math.sin(this.time * 26);
         const dx = o.x - t.x, dz = o.z - t.z, d = Math.hypot(dx, dz) || 1;
         const TS = t.tether.skill, safe = TS.safe ?? TS.range;
         const strain = clamp((d - safe) / (TS.breakRange - safe), 0, 1);
@@ -1003,7 +1003,8 @@ export class View {
         // A chain that pays off when its time is up: show how long is left.
         if (!TS.drain) G.ring(o.x, o.z, 1.8, 2.0, 0xffffff, 0.8, 0.1, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * (t.tether.t / t.tether.T));
       }
-      const foe = w.other(t);
+      // The death mark shows on whoever carries it.
+      const foe = (t.dmark > 0 && w.tops[t.dmarkTo]) || w.other(t);
       // Winding something up: the other side sees how far it reaches by now.
       if (t.hold && t.side !== this.playerSide) { const R = w.holdRange(t, t.hold.key); G.ring(t.x, t.z, R - 0.08, R, this.dangerOf(t), 0.5 + 0.3 * Math.sin(this.time * 18)); }
       // Low enough to be executed: marked for all to see.
