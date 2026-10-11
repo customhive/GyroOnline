@@ -15,4 +15,11 @@ const options = {
   define: { __VERSION__: JSON.stringify(pkg.version), __BUILD__: JSON.stringify(watch ? 'dev' : stamp) },
 };
 if (watch) { await (await context(options)).watch(); console.log('watching…'); }
-else { await build(options); console.log(`built game.js  v${pkg.version} · ${stamp}`); }
+else {
+  await build(options);
+  // The page asks for this build's files by name, so a browser never pairs a new page with a cached style.css or game.js.
+  const tag = `${pkg.version}-${stamp.replace(/\D/g, '')}`;
+  const html = fs.readFileSync('index.html', 'utf8');
+  fs.writeFileSync('index.html', html.replace(/(style\.css|game\.js)(\?v=[^"]*)?"/g, `$1?v=${tag}"`));
+  console.log(`built game.js  v${pkg.version} · ${stamp}`);
+}
