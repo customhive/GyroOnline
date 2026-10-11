@@ -635,7 +635,6 @@ export class UI {
       case 'guillotine': return foe.bleed ? '出血' + foe.bleed : '';
       case 'poison': return me.toggle ? 'ON' : '';
       case 'insanity': case 'upgrade': return me.buff > 0 ? Math.ceil(me.buff) + 's' : '';
-      case 'lotus': case 'turret': { const n = world.own(me, S.id).length; return n ? String(n) : ''; }
       case 'conquer': case 'shift': return world.own(me, 'arise').length ? '' : '—';
     }
     // Skills described by fields (see `kind` in config.js).
