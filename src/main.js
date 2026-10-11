@@ -71,6 +71,7 @@ const ui = new UI({
   hover: () => audio.hover(),
   host: () => { audio.unlock(); audio.ui(); openRoom(); },
   ready: () => { audio.unlock(); audio.ui(); pressReady(); },
+  start: () => { audio.unlock(); audio.ui(); pressStart(); },
   pick: (id) => { audio.unlock(); audio.ui(); pickBlade(id); },
   // Opens the blade picker on a seat (-1 closes it).
   edit: (i) => { audio.ui(); const lb = game.lobby; if (i < 0) lb.picking = false; else { lb.edit = i; lb.picking = true; } lobbyRefresh(); },
@@ -135,6 +136,7 @@ function startLocalMatch() {
   const any = (not) => { const l = ids.filter((b) => b !== not); return l[(Math.random() * l.length) | 0]; };
   const b0 = lb.slots[0].blade === 'random' ? any(lb.slots[1].blade) : lb.slots[0].blade;
   const b1 = lb.slots[1].blade === 'random' ? any(b0) : lb.slots[1].blade;
+  for (const p of lb.slots) p.ready = false;
   game.mode = 'cpu';
   game.spectate = lb.slots[0].kind === 'cpu';
   ui.meLabel = game.spectate ? 'CPU 1' : '';
@@ -310,19 +312,22 @@ function startOnline() {
   startRound(1);
 }
 
-// The big button. The host starts the game (everyone else must be ready);
-// a guest says it is ready.
+// Every person in the room says when they are ready.
 function pressReady() {
+  const lb = game.lobby, p = mySlot();
+  lb.picking = false;
+  if (p.kind !== 'human' || (lb.role === 'guest' && lb.status !== 'connected')) return;
+  p.ready = !p.ready;
+  lobbyChanged();
+}
+
+// The host starts the game once every person is ready (CPUs always are).
+function pressStart() {
   const lb = game.lobby;
   lb.picking = false;
-  if (lb.role === 'host') {
-    if (STAGES[lb.stage].soon) return;
-    if (lb.slots[1].kind === 'cpu') return startLocalMatch();
-    return startOnline();
-  }
-  if (lb.status !== 'connected') return;
-  lb.slots[1].ready = !lb.slots[1].ready;
-  lobbyChanged();
+  if (lb.role !== 'host' || game.state !== 'lobby' || STAGES[lb.stage].soon) return;
+  if (!lb.slots.every((p) => p.kind === 'cpu' || (p.kind === 'human' && p.ready))) return;
+  if (lb.slots[1].kind === 'cpu') startLocalMatch(); else startOnline();
 }
 
 // A blade for whichever slot is being edited: your own, or (for the host) a CPU's.
@@ -365,8 +370,8 @@ function backToLobby(ready) {
   ui.setNet('');
   showScreen('lobby');
   for (const p of lb.slots) p.ready = false;
-  // A guest asking for a rematch comes back already ready.
-  if (lb.role === 'guest') lb.slots[1].ready = !!ready;
+  // Asking for a rematch comes back already ready.
+  if (ready && mySlot().kind === 'human') mySlot().ready = true;
   lobbyChanged();
 }
 

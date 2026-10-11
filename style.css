@@ -261,7 +261,6 @@ kbd { flex: none; width: 28px; height: 28px; display: grid; place-items: center;
 .lb-blade:disabled { opacity: 0.5; cursor: default; }
 #lb-kit { --c: var(--cyan); display: grid; grid-template-columns: 1fr 1fr; gap: 8px 16px; margin-bottom: 18px; }
 #lb-ready:disabled { filter: grayscale(1) brightness(0.6); cursor: default; }
-#lb-ready.armed { background: linear-gradient(180deg, #d8ffe6, #7dffb0 45%, #24c46a); box-shadow: 0 0 30px rgba(80, 255, 150, 0.45); }
 
 @media (max-height: 820px) {
   .logo h1 { font-size: 52px; }
@@ -377,6 +376,10 @@ kbd { flex: none; width: 28px; height: 28px; display: grid; place-items: center;
 .room-go { display: grid; gap: 8px; margin-top: auto; }
 .room-go #lb-leave { padding: 9px; font-size: 13px; background: #080c18; border: 1px solid var(--line); }
 .room-go .primary { font-size: 20px; }
+.ready-btn { padding: 13px 10px 12px; font-size: 18px; font-weight: 700; font-style: italic; letter-spacing: 0.12em; color: #04101c; background: linear-gradient(180deg, #c9f1ff, var(--cyan) 50%, #1b8fd1); border: 0; transform: skewX(-6deg); transition: filter 0.12s, box-shadow 0.12s; }
+.ready-btn:hover:not(:disabled) { filter: brightness(1.15); box-shadow: 0 0 22px rgba(53, 200, 255, 0.5); }
+.ready-btn.armed { color: #7dffb0; background: #08140f; box-shadow: inset 0 0 0 2px #24c46a; font-size: 15px; }
+.ready-btn:disabled { opacity: 0.4; cursor: default; }
 .room-go .primary:disabled { font-size: 15px; }
 
 .screen.overlay { z-index: 30; background: rgba(3, 6, 14, 0.78); backdrop-filter: blur(4px); }

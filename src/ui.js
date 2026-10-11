@@ -134,6 +134,7 @@ export class UI {
     $('#st-prev').onclick = () => this.h.stage(-1);
     $('#st-next').onclick = () => this.h.stage(1);
     $('#lb-ready').onclick = () => this.h.ready();
+    $('#lb-start').onclick = () => this.h.start();
     $('#lb-copy').onclick = () => this.h.copy();
     $('#lb-url').onclick = (e) => e.target.select();
     document.querySelectorAll('button').forEach((b) => b.addEventListener('mouseenter', () => this.h.hover()));
@@ -304,7 +305,7 @@ export class UI {
       opening: 'ルームを準備しています…',
       waiting: lb.slots[1].kind === 'cpu' ? 'CPUと対戦できます。招待URLから友だちが入ることもできます' : '招待URLを送って相手を待つか、2Pの枠をCPUにしてください',
       connecting: 'ルームに接続しています…',
-      connected: host ? (lb.slots[1].ready ? '全員の準備ができました。ゲーム開始を押してください' : '相手が参加しました。相手の準備完了を待っています') : (me.ready ? '準備完了。ホストの開始を待っています' : 'ルームに入りました。ブレードを選んで準備完了を押してください'),
+      connected: host ? (lb.slots.every((p) => p.kind === 'cpu' || p.ready) ? '全員の準備ができました。ゲーム開始を押してください' : '相手が参加しました。全員が準備完了を押すと開始できます') : (me.ready ? '準備完了。ホストの開始を待っています' : 'ルームに入りました。ブレードを選んで準備完了を押してください'),
       failed: host ? 'オンラインにつながりません（CPUとの対戦はできます）' : lb.error || '接続できませんでした',
     }[lb.status];
     const s = $('#lb-status');
@@ -327,7 +328,7 @@ export class UI {
       card.style.setProperty('--c', empty ? '#3a4566' : b ? b.css : '#8fa0c8');
       card.disabled = !can;
       const skills = b ? kitOf(b).map((S, k) => `<div class="pc-skill" data-k="${k}"><kbd>${KEYS[k]}</kbd><div class="how-icon">${iconOf(S)}</div><span>${S.name}</span></div>`).join('') : '';
-      card.innerHTML = `<div class="pc-top"><span class="pc-no">${i + 1}P</span><span class="pc-who">${who}${p.kind === 'cpu' ? ' ／ ' + DIFFICULTY[p.level].name : ''}</span><em>${empty ? '' : p.kind === 'cpu' || p.ready ? 'READY' : i === 0 ? '' : '準備中'}</em></div>`
+      card.innerHTML = `<div class="pc-top"><span class="pc-no">${i + 1}P</span><span class="pc-who">${who}${p.kind === 'cpu' ? ' ／ ' + DIFFICULTY[p.level].name : ''}</span><em>${empty ? '' : p.kind === 'cpu' || p.ready ? 'READY' : '準備中'}</em></div>`
         + (empty
           ? `<div class="pc-wait"><div class="pc-plus">＋</div><b>参加待ち</b><span>招待URLを開いた相手がここに入ります。<br>下のボタンでCPUに変えられます。</span></div>`
           : `<div class="pc-disc"><i></i></div><div class="pc-type">${b ? b.type : 'CPU'}</div><div class="pc-en">${b ? b.en : 'RANDOM'}</div><div class="pc-name">${b ? b.name : 'おまかせ'}</div>`
@@ -388,19 +389,18 @@ export class UI {
       this.showBlade(ed.blade);
     }
 
-    const r = $('#lb-ready'), rival = lb.slots[1];
+    // Every person readies up; the host then starts the game.
+    const r = $('#lb-ready'), go = $('#lb-start'), rival = lb.slots[1];
+    const human = me.kind === 'human';
+    r.classList.toggle('hidden', !human);
+    r.disabled = !human || (!host && !linked);
+    r.textContent = me.ready ? '準備を取り消す' : '準備完了';
+    r.classList.toggle('armed', !!me.ready);
+    go.classList.toggle('hidden', !host);
     if (host) {
-      // Against a CPU the button starts the match; against a person both sides ready up.
-      const vsHuman = rival.kind === 'human';
-      r.disabled = rival.kind === 'open' || !!g.soon;
-      const wait = vsHuman && !rival.ready;
-      r.disabled = rival.kind === 'open' || !!g.soon || wait;
-      r.textContent = g.soon ? 'このステージは準備中' : rival.kind === 'open' ? '相手がいません' : wait ? '相手の準備待ち' : 'ゲーム開始';
-      r.classList.remove('armed');
-    } else {
-      r.disabled = !linked;
-      r.textContent = me.ready ? '準備を取り消す' : '準備完了';
-      r.classList.toggle('armed', me.ready);
+      const all = lb.slots.every((p) => p.kind === 'cpu' || (p.kind === 'human' && p.ready));
+      go.disabled = rival.kind === 'open' || !!g.soon || !all;
+      go.textContent = g.soon ? 'このステージは準備中' : rival.kind === 'open' ? '相手がいません' : !all ? '全員の準備待ち' : 'ゲーム開始';
     }
   }
 

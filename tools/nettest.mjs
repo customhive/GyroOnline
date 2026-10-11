@@ -90,13 +90,13 @@ try {
   if (!gs.conn) throw new Error('guest could not connect');
   await host.shot('net-lobby-host'); await guest.front(); await guest.shot('net-lobby-guest');
 
-  // The guest readies up; only then can the host start.
-  await host.eval(`document.querySelector('.blade[data-id=${hostBlade}]').click(); document.getElementById('lb-ready').click()`);
+  // Everyone readies up; only then can the host start.
+  await host.eval(`document.querySelector('.blade[data-id=${hostBlade}]').click(); document.getElementById('lb-ready').click(); document.getElementById('lb-start').click()`);
   await sleep(400);
   if ((await read(host)).state !== 'lobby') throw new Error('the host must not be able to start before the guest is ready');
   await guest.eval(`document.querySelector('.blade[data-id=${guestBlade}]').click(); document.getElementById('lb-ready').click()`);
   await sleep(800);
-  await host.eval(`document.getElementById('lb-ready').click()`);
+  await host.eval(`document.getElementById('lb-start').click()`);
   let shots = 0, maxDiff = 0, sumDiff = 0, samples = 0;
   const t0 = Date.now();
   while (Date.now() - t0 < 300000) {
@@ -126,9 +126,9 @@ try {
   console.log('back in lobby:', hs.state, gs.state, '| host sees rival ready:', hs.peer && hs.peer.ready, '| guest sees host ready:', gs.peer && gs.peer.ready);
   if (hs.state !== 'lobby' || gs.state !== 'lobby') throw new Error('both should be waiting in the lobby');
   await host.shot('net-lobby-after');
-  await host.eval(`document.querySelector('.blade[data-id=azure]').click()`);
+  await host.eval(`document.querySelector('.blade[data-id=azure]').click(); document.getElementById('lb-ready').click()`);
   await sleep(600);
-  await host.eval(`document.getElementById('lb-ready').click()`);
+  await host.eval(`document.getElementById('lb-start').click()`);
   for (let i = 0; i < 40; i++) { await sleep(250); gs = await read(guest); if (gs.state === 'fight') break; }
   console.log('rematch started:', gs.state === 'fight', 'round', gs.round);
   await guest.eval(`document.getElementById('btn-quit').click()`);
