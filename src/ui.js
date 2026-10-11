@@ -309,7 +309,8 @@ export class UI {
       failed: host ? 'オンラインにつながりません（CPUとの対戦はできます）' : lb.error || '接続できませんでした',
     }[lb.status];
     const s = $('#lb-status');
-    s.textContent = status;
+    // Why the game cannot start yet is said here, not on the button.
+    s.textContent = host && STAGES[lb.stage].soon ? 'このステージはまだ準備中です。別のステージを選んでください' : status;
     s.className = 'lb-status ' + lb.status;
     $('#lb-invite').classList.toggle('hidden', !host || !lb.url || lb.slots[1].kind === 'human');
     if (lb.url && $('#lb-url').value !== lb.url) $('#lb-url').value = lb.url;
@@ -399,7 +400,7 @@ export class UI {
     if (host) {
       const all = lb.slots.every((p) => p.kind === 'cpu' || (p.kind === 'human' && p.ready));
       go.disabled = rival.kind === 'open' || !!g.soon || !all;
-      go.textContent = g.soon ? 'このステージは準備中' : rival.kind === 'open' ? '相手がいません' : !all ? '全員の準備待ち' : 'ゲーム開始';
+      go.textContent = 'ゲーム開始';
     }
   }
 
