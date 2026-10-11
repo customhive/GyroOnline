@@ -2992,7 +2992,8 @@ export class World {
         else {
           p.dead = true;
           // A star that met nothing waits where it stopped, to be sent on.
-          if (S.rest) { const k = this.keyOf(p.owner, S.id); this.zone(p.owner, SKILLS[S.rest], p.x, p.z, null, true); if (k) p.owner.re[k] = SKILLS[S.rest].dur; }
+          // (Just inside the wall if it flew that far, so it can be seen waiting there.)
+          if (S.rest) { const k = this.keyOf(p.owner, S.id), lim = ARENA.R - 0.6, pr = Math.hypot(p.x, p.z), f = pr > lim ? lim / pr : 1; this.zone(p.owner, SKILLS[S.rest], p.x * f, p.z * f, null, true); if (k) p.owner.re[k] = SKILLS[S.rest].dur; }
           // A bubble that met nothing settles as a trap.
           if (S.trap && Math.hypot(p.x, p.z) < ARENA.R) this.zone(p.owner, SKILLS[S.trap], p.x, p.z, null, true);
           if (S.feather && Math.hypot(p.x, p.z) < ARENA.R) this.zone(p.owner, SKILLS.feather, p.x, p.z, null, true);

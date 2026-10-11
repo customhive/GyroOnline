@@ -1027,6 +1027,13 @@ console.log('SAND EMPEROR: which soldier');
 
 console.log('TWILIGHT STAR (Zoe)');
 {
+  {
+    const s0 = setup('star', 16);
+    s0.me.z = 10; s0.w.cast(s0.me, 'Q', 0, 20);
+    for (let i = 0; i < 40; i++) { s0.me.x = 0; s0.me.z = 10; s0.me.vx = s0.me.vz = 0; s0.w.step(DT); }
+    const st = s0.w.own(s0.me, 'reststar')[0];
+    check(!!st && Math.hypot(st.x, st.z) < 13 && s0.w.cast(s0.me, 'Q', s0.foe.x, s0.foe.z), 'Q thrown at the wall: the star waits just inside it, and can still be sent on');
+  }
   let { w, me, foe, run, saw } = setup('star', 20);
   w.cast(me, 'Q', me.x + 9, me.z); run(0.4);
   check(w.own(me, 'reststar').length === 1 && w.canCast(me, 'Q') && Math.abs(w.own(me, 'reststar')[0].x - 7.9) < 0.5, 'Q: meeting nothing, the star rests where it stopped');
