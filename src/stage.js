@@ -65,16 +65,6 @@ function paintGlow(g, stage = STAGES[0]) {
   g.strokeStyle = '#ff5a2a'; g.lineWidth = 0.5; g.setLineDash([0.9, 0.6]);
   for (const [a0, a1] of wallArcs(stage)) { g.beginPath(); g.arc(0, 0, 12.35, -a1, -a0); g.stroke(); }
   g.setLineDash([]);
-  // A gap is a way out: arrows on the floor point through it, between two bright sides.
-  for (const [c, h] of stage.gaps) {
-    g.save();
-    g.rotate(-c);
-    g.strokeStyle = '#ff5a2a'; g.lineWidth = 0.2; g.lineJoin = 'miter';
-    for (const r of [10.9, 12.0, 13.1, 14.2]) { g.beginPath(); g.moveTo(r - 0.5, -1.15); g.lineTo(r, 0); g.lineTo(r - 0.5, 1.15); g.stroke(); }
-    g.strokeStyle = '#ffd0a0'; g.lineWidth = 0.09;
-    for (const a of [-h, h]) { g.beginPath(); g.moveTo(Math.cos(a) * 12.0, Math.sin(a) * 12.0); g.lineTo(Math.cos(a) * 15.1, Math.sin(a) * 15.1); g.stroke(); }
-    g.restore();
-  }
   line(11.95, 0.05, '#ff9a4a');
   g.strokeStyle = '#2c8fe0'; g.lineWidth = 0.05;
   for (let i = 0; i < 12; i++) {

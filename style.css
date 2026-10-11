@@ -417,11 +417,17 @@ kbd { flex: none; width: 28px; height: 28px; display: grid; place-items: center;
 /* ---- cut corners keep their outline ---- */
 /* clip-path slices the border off at the two cut corners; these draw the
    missing diagonal back in, in the same colour as the border. */
-.panel, .pcard { position: relative; --cut: 18px; --edge: var(--line); }
+.panel, .pcard, .res { position: relative; --cut: 18px; --edge: var(--line); }
 .pcard { --cut: 14px; --edge: color-mix(in srgb, var(--c) 55%, #1a2440); }
 .pcard:not(:disabled):hover, .pcard.ready { --edge: var(--c); }
-.panel::after, .pcard::after { content: ''; position: absolute; inset: -1px; pointer-events: none;
+.panel::after, .pcard::after, .res::after { content: ''; position: absolute; inset: -1px; pointer-events: none;
   background:
     linear-gradient(135deg, transparent calc(var(--cut) * 0.7071 - 0.2px), var(--edge) calc(var(--cut) * 0.7071 - 0.2px), var(--edge) calc(var(--cut) * 0.7071 + 1.3px), transparent calc(var(--cut) * 0.7071 + 1.3px)) top left / calc(var(--cut) + 4px) calc(var(--cut) + 4px) no-repeat,
     linear-gradient(315deg, transparent calc(var(--cut) * 0.7071 - 0.2px), var(--edge) calc(var(--cut) * 0.7071 - 0.2px), var(--edge) calc(var(--cut) * 0.7071 + 1.3px), transparent calc(var(--cut) * 0.7071 + 1.3px)) bottom right / calc(var(--cut) + 4px) calc(var(--cut) + 4px) no-repeat; }
 .pcard.empty::after { opacity: 0.6; }
+/* The skill bar is cut at its two top corners. */
+#skillbar { position: relative; --cut: 14px; --edge: var(--line); }
+#skillbar::after { content: ''; position: absolute; inset: -1px; pointer-events: none;
+  background:
+    linear-gradient(135deg, transparent calc(var(--cut) * 0.7071 - 0.2px), var(--edge) calc(var(--cut) * 0.7071 - 0.2px), var(--edge) calc(var(--cut) * 0.7071 + 1.3px), transparent calc(var(--cut) * 0.7071 + 1.3px)) top left / calc(var(--cut) + 4px) calc(var(--cut) + 4px) no-repeat,
+    linear-gradient(225deg, transparent calc(var(--cut) * 0.7071 - 0.2px), var(--edge) calc(var(--cut) * 0.7071 - 0.2px), var(--edge) calc(var(--cut) * 0.7071 + 1.3px), transparent calc(var(--cut) * 0.7071 + 1.3px)) top right / calc(var(--cut) + 4px) calc(var(--cut) + 4px) no-repeat; }
