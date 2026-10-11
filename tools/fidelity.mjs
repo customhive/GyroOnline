@@ -1,7 +1,7 @@
 // Checks blades against the behaviour agreed for them, one line of the
 // agreed table per check. Add a section here whenever a blade is reworked.
 //   node tools/fidelity.mjs
-import { BLADES, SKILLS } from '../src/config.js';
+import { BLADES, SKILLS, CC } from '../src/config.js';
 import { World, spinRatio } from '../src/sim.js';
 
 const DT = 1 / 120;
@@ -211,7 +211,7 @@ console.log('BROKEN EDGE (Riven)');
   check(saw('blast') && me.re.Q === 0, 'Q: the third use ends in a slam and closes the window');
   ({ w, me, foe, run, saw } = setup('edge', 3));
   w.cast(me, 'W', me.x, me.z);
-  check(Math.abs(foe.stun - 0.45) < 0.01, 'W: stuns for 0.45 seconds');
+  check(Math.abs(foe.stun - 0.75) < 0.01, 'W: stuns for 0.75 seconds');
   ({ w, me, foe, run, saw } = setup('edge', 22));
   w.cast(me, 'E', foe.x, foe.z);
   check(me.shield === 80 && Math.abs(me.shieldT - 1.5) < 0.01, 'E: a shield for 1.5 seconds');
@@ -293,7 +293,7 @@ console.log('DARK SORCERER (Veigar)');
   w.cast(me, 'E', foe.x + 4.25, foe.z); run(0.4);
   check(foe.stun === 0, 'E: nothing for the first half second');
   run(0.15);
-  check(foe.stun > 1.3 && foe.stun <= 1.5, 'E: touching the rim stuns for 1.5 seconds');
+  check(foe.stun > 2.3 && foe.stun <= 2.5, 'E: touching the rim stuns for 2.5 seconds');
   const at = (ratio) => { const s = setup('hex', 6); s.foe.spin = s.foe.spinMax * ratio; s.w.cast(s.me, 'R', s.me.x, s.me.z); return s.foe.spinMax * ratio - s.foe.spin; };
   const full = at(1), third = at(0.333), tenth = at(0.1);
   check(third > full * 1.9 && Math.abs(tenth - third) < 1, `R: up to double against a weakened target, capped at two thirds missing (${full.toFixed(0)} / ${third.toFixed(0)} / ${tenth.toFixed(0)})`);
@@ -383,7 +383,7 @@ console.log('PRISM RADIANCE (Lux)');
 {
   let { w, me, foe, run, saw } = setup('prism', 7);
   w.cast(me, 'Q', foe.x, foe.z); run(0.3);
-  check(foe.snare > 0.9 && foe.snare <= 1.2 && foe.stun === 0, 'Q: roots for 1.2 seconds');
+  check(foe.snare > 1.7 && foe.snare <= 2 && foe.stun === 0, 'Q: roots for 2 seconds');
   ({ w, me, foe, run, saw } = setup('prism', 20));
   w.cast(me, 'W', foe.x, foe.z);
   check(me.shield === 50, 'W: a shield as the wand leaves');
@@ -580,7 +580,7 @@ console.log('VAULT BREAKER (Vi)');
   check(me.stk === 1 && w.canCast(me, 'E'), 'E: one comes back after 8 seconds');
   ({ w, me, foe, run, saw } = setup('gauntlet', 8));
   w.cast(me, 'R', me.x, me.z);
-  check(Math.abs(foe.up - 0.8) < 0.01 && Math.hypot(me.x - foe.x, me.z - foe.z) < 3, 'R: closes in and knocks up for 0.8 seconds');
+  check(Math.abs(foe.up - 1.3) < 0.01 && Math.hypot(me.x - foe.x, me.z - foe.z) < 3, 'R: closes in and knocks up for 1.3 seconds');
 }
 
 console.log('SPARK SURGE (Zeri)');
@@ -877,7 +877,7 @@ console.log('CURTAIN CALL (Jhin)');
   check(foe.stats.taken > 0 && foe.snare === 0 && foe.stun === 0, 'W: reaches across the arena; unmarked, it only hurts');
   ({ w, me, foe, run, saw } = setup('curtain', 10));
   w.hurt(foe, 10, me, 'x'); run(3); w.cast(me, 'W', foe.x, foe.z); run(0.4);
-  check(Math.abs(foe.snare - 1.35) < 0.3 && foe.stun === 0, 'W: struck within the last 4 seconds, the target is snared for 1.35');
+  check(Math.abs(foe.snare - 2.25) < 0.3 && foe.stun === 0, 'W: struck within the last 4 seconds, the target is snared for 2.25');
   ({ w, me, foe, run, saw } = setup('curtain', 10));
   w.hurt(foe, 10, me, 'x'); run(4.2); w.cast(me, 'W', foe.x, foe.z); run(0.4);
   check(foe.snare === 0, 'W: the mark is gone after 4 seconds');
@@ -958,6 +958,17 @@ console.log('TURRET ENGINEER (Heimerdinger)');
   ({ w, me, foe, run, saw } = setup('gear', 9));
   me.ult = 100; w.cast(me, 'R', me.x, me.z); w.cast(me, 'W', 0, 0);
   check(w.projectiles.length === 20, 'R then W: four volleys, twenty rockets');
+}
+
+console.log('HOLDS');
+{
+  const { w, me, foe } = setup('prism', 7);
+  CC.scale = 0.6;
+  w.stun(foe, 1); w.snare(foe, 2); w.lift(foe, 1);
+  check(Math.abs(foe.stun - 0.6) < 1e-9 && Math.abs(foe.snare - 1.2) < 1e-9 && Math.abs(foe.up - 0.6) < 1e-9, 'one number shortens every stun, snare and knock-up together');
+  CC.scale = 1;
+  w.slowBy(me, 2, 0.5);
+  check(me.slow === 2, 'slows are left as they are');
 }
 
 console.log('POWDER CAPTAIN (Gangplank)');
@@ -1369,7 +1380,7 @@ console.log('STEAM GOLEM (Blitzcrank)');
   foe.shield = 80; foe.shieldT = 3; foe.guard = 1;
   w.cast(me, 'R', me.x, me.z);
   check(foe.shield === 0 && foe.guard === 0 && foe.silence > 0.25 && !w.canCast(foe, 'Q'), 'R: shields and guard gone, and no skills for a moment');
-  run(0.4); foe.cd.Q = 0;
+  run(0.6); foe.cd.Q = 0;
   check(w.canCast(foe, 'Q'), 'R: the silence passes');
   ({ w, me, foe, run, saw } = setup('golem', 8));
   me.spin = 320; w.hurt(me, 30, foe, 'x');

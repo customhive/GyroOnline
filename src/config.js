@@ -133,7 +133,7 @@ export const BLADES = {
     color: 0x5f8cff, css: '#5f8cff', teeth: 6,
     atk: 1.02, def: 1.15, mass: 1.3, speed: 12.5, decay: 5.9, spinMax: 1000, cdMul: 1.0, guardMul: 1.0,
     bars: { atk: 3, def: 5, sta: 3, spd: 2 },
-    pin: { dmg: 40, stun: 1.2 },
+    pin: { dmg: 40, stun: 2 },
     desc: '相手を壁へ押し込んでスタンさせ、突進してくる相手は陣で止める。溜めた必殺技は相手をほぼ場外まで吹き飛ばす。',
   },
   fox: {
@@ -348,7 +348,7 @@ export const BLADES = {
     bars: { atk: 5, def: 2, sta: 3, spd: 4 },
     costPct: 0.05, bleedAll: 1, bleedLeech: 0.25,
     buff: { speed: 1.4, frenzy: 3, hunt: true, leech: 0.1 },
-    pin: { dmg: 70, stun: 0.9 },
+    pin: { dmg: 70, stun: 1.5 },
     desc: 'スキルのたびに回転を払い、噛んだ相手の出血で取り戻す。Wの間は自分では止まれず、一番近い相手へ勝手に突っ込み続ける。止める手段はEだけ。',
   },
   golem: {
@@ -402,6 +402,12 @@ export const BLADES = {
 };
 
 export const ENEMY_COLOR = 0xff3b4e;
+// How long anything that takes a top out of its owner's hands lasts: stuns,
+// snares, knock-ups, charms, fears, silence and sleep. Each skill is written
+// with the time it has in the original; this one number stretches or shrinks
+// them all together (1 = as written, 0.6 = the shorter holds of earlier builds).
+// Slows are not part of it.
+export const CC = { scale: 1 };
 // Stacking damage over time left by GUILLOTINE LORD's skills.
 export const BLEED = { max: 5, dur: 5, dps: 3 };
 
@@ -547,8 +553,8 @@ export const SKILLS = {
   },
   flourish: {
     name: '致命の一閃', en: 'DEADLY FLOURISH', aim: 'line', cd: 12, tele: 0.45,
-    range: 24, speed: 60, radius: 0.6, dmg: 44, root: 1.35, markT: 4,
-    desc: 'アリーナの端まで届く細い弾を撃つ。直前4秒に自分の攻撃が当たっていれば、相手を1.35秒その場に縛る（スキルは使われる）。',
+    range: 24, speed: 60, radius: 0.6, dmg: 44, root: 2.25, markT: 4,
+    desc: 'アリーナの端まで届く細い弾を撃つ。直前4秒に自分の攻撃が当たっていれば、相手を2.25秒その場に縛る（スキルは使われる）。',
   },
   lotus: {
     name: '蓮の罠', en: 'LOTUS TRAP', aim: 'ground', cd: 2, stock: { max: 2, every: 14 },
@@ -577,7 +583,7 @@ export const SKILLS = {
   },
   shatter: {
     name: 'フラッシュフロスト・炸裂', en: 'SHATTER', aim: 'self', hidden: true,
-    aoe: 3.3, dmg: 52, stun: 0.9, slow: 3, slowPct: 0.3, frost: 3,
+    aoe: 3.3, dmg: 52, stun: 1.5, slow: 3, slowPct: 0.3, frost: 3,
   },
   icewall: {
     name: 'アイスウォール', en: 'CRYSTALLIZE', aim: 'ground', cd: 17,
@@ -597,13 +603,13 @@ export const SKILLS = {
   // ---- BROKEN EDGE: short dashes, then the finishing cut ------------------------
   brokenwings: {
     name: '折れた翼', en: 'BROKEN WINGS', aim: 'dash', cd: 13, tele: 0.3, re: 'brokenwings',
-    dist: 2.75, minDist: 2.75, speed: 30, dmg: 26, keep: 0.3, kb: 5, window: 4, aoe: 2.9, slam: 36, slamUp: 0.45,
+    dist: 2.75, minDist: 2.75, speed: 30, dmg: 26, keep: 0.3, kb: 5, window: 4, aoe: 2.9, slam: 36, slamUp: 0.75,
     desc: '斬りながら短く踏み込む。4秒以内なら3回まで続けて使え、3回目は跳んで周囲を打ち上げる。',
   },
   kiburst: {
     name: '気功破', en: 'KI BURST', aim: 'self', cd: 7,
-    aoe: 3.2, dmg: 30, stun: 0.45,
-    desc: '周囲の相手を一瞬スタンさせる。',
+    aoe: 3.2, dmg: 30, stun: 0.75,
+    desc: '周囲の相手を0.75秒スタンさせる。',
   },
   valor: {
     name: '勇躍', en: 'VALOR', aim: 'dash', cd: 6,
@@ -633,7 +639,7 @@ export const SKILLS = {
   recall: { name: 'ゆがみ・帰還', en: 'RETURN', aim: 'self', hidden: true },
   ethereal: {
     name: 'エーテルチェイン', en: 'ETHEREAL CHAINS', aim: 'line', cd: 11, tele: 0.42,
-    range: 7.55, speed: 32, radius: 0.8, dmg: 24, tie: 'CHAINED', dur: 1.5, safe: 7, breakRange: 9.9, pop: 54, snareT: 0.9,
+    range: 7.55, speed: 32, radius: 0.8, dmg: 24, tie: 'CHAINED', dur: 1.5, safe: 7, breakRange: 9.9, pop: 54, snareT: 1.5,
     desc: '鎖でつなぐ。1.5秒のあいだ引きちぎられなければ、相手をその場に縛り付ける。',
   },
   mimic: {
@@ -675,7 +681,7 @@ export const SKILLS = {
   },
   fling: {
     name: 'すくい投げ', en: 'FLING', aim: 'self', cd: 8, need: 'range',
-    range: 3.6, dist: 5.5, air: 0.55, height: 3.2, dmg: 46, snare: 1.2,
+    range: 3.6, dist: 5.5, air: 0.55, height: 3.2, dmg: 46, snare: 2,
     desc: '密着した相手を自分の背後へ放り投げる。粘着床に落とすと、その場に縛り付ける。',
   },
   insanity: {
@@ -705,7 +711,7 @@ export const SKILLS = {
   },
   grenade: {
     name: '電磁グレネード', en: 'CH-2 GRENADE', aim: 'ground', cd: 11, tele: 0.15, big: true,
-    range: 8.8, aoe: 3, bigAoe: 4.3, delay: 0.55, core: 1.6, bigCore: 2.8, dmg: 56, bigDmg: 96, stun: 0.9, slow: 2, slowPct: 0.35, bigSlowPct: 0.8,
+    range: 8.8, aoe: 3, bigAoe: 4.3, delay: 0.55, core: 1.6, bigCore: 2.8, dmg: 56, bigDmg: 96, stun: 1.5, slow: 2, slowPct: 0.35, bigSlowPct: 0.8,
     bounces: 3, hop: 3.4,
     desc: '爆弾を投げる。中心で当てるとスタン、外側は35%のスロウ。当たると自分の砲台がすぐレーザーを撃つ。',
   },
@@ -744,7 +750,7 @@ export const SKILLS = {
   },
   steadfast: {
     name: 'ステッドファスト', en: 'STEADFAST PRESENCE', aim: 'self', kind: 'field', icon: 'shield', cd: 12,
-    follow: true, block: true, dur: 2, aoe: 4, dmg: 24, blockUp: 0.3, groundT: 2, slowPct: 0.25, haste: 2,
+    follow: true, block: true, dur: 2, aoe: 4, dmg: 24, blockUp: 0.5, groundT: 2, slowPct: 0.25, haste: 2,
     desc: '2秒間加速し、自分の周りに陣を張る。陣に突進・瞬間移動で触れた相手を打ち上げ、2秒間スロウにして突進を封じる。',
   },
   hcharge: {
@@ -759,7 +765,7 @@ export const SKILLS = {
   },
   verdicttap: {
     name: '守護者の鉄鎚', en: "KEEPER'S VERDICT", aim: 'cone', hidden: true,
-    range: 5, half: 0.6, dmg: 80, up: 0.6,
+    range: 5, half: 0.6, dmg: 80, up: 1,
   },
   verdictwave: {
     name: '守護者の鉄鎚', en: "KEEPER'S VERDICT", aim: 'line', hidden: true,
@@ -782,8 +788,8 @@ export const SKILLS = {
   },
   charm: {
     name: 'チャーム', en: 'CHARM', aim: 'line', kind: 'shot', icon: 'heart', cd: 12,
-    tele: 0.4, range: 8, speed: 30, radius: 0.85, dmg: 30, charm: 1.1, slow: 1.1, slowPct: 0.65,
-    desc: '当たった相手は1.1秒間、何もできずにゆっくりこちらへ歩いてくる。相手の突進も止める。',
+    tele: 0.4, range: 8, speed: 30, radius: 0.85, dmg: 30, charm: 1.8, slow: 1.8, slowPct: 0.65,
+    desc: '当たった相手は1.8秒間、何もできずにゆっくりこちらへ歩いてくる。相手の突進も止める。',
   },
   rush: {
     name: 'スピリットラッシュ', en: 'SPIRIT RUSH', aim: 'dash', kind: 'dash', icon: 'dash', cd: 2, ult: true, re: 'rush',
@@ -816,7 +822,7 @@ export const SKILLS = {
   },
   wraith: {
     name: '亡霊', en: 'PHANTOM', aim: 'line', hidden: true, ghost: true,
-    range: 30, speed: 26, radius: 1.1, dmg: 44, stun: 0.75, pierce: true,
+    range: 30, speed: 26, radius: 1.1, dmg: 44, stun: 1.25, pierce: true,
   },
   deathbelow: {
     name: '水底の急襲', en: 'DEATH FROM BELOW', aim: 'ground', icon: 'cross', cd: 2, ult: true,
@@ -837,7 +843,7 @@ export const SKILLS = {
   },
   bodyslam: {
     name: 'ボディスラム', en: 'BODY SLAM', aim: 'dash', kind: 'dash', icon: 'dash', cd: 12,
-    tele: 0.4, dist: 6, minDist: 3, speed: 32, dmg: 30, keep: 0.5, kb: 6, stun: 0.6, refundHit: 0.4,
+    tele: 0.4, dist: 6, minDist: 3, speed: 32, dmg: 30, keep: 0.5, kb: 6, stun: 1, refundHit: 0.4,
     desc: '突進し、最初に当たった相手をスタンさせる。当てると、残りクールダウンの40%が戻る。',
   },
   bigkeg: {
@@ -853,7 +859,7 @@ export const SKILLS = {
   },
   parallel: {
     name: 'パラレルトラップ', en: 'PARALLEL CONVERGENCE', aim: 'ground', icon: 'field', cd: 14,
-    ai: 'ground', range: 12, aoe: 3.6, arm: 3, reveal: 2.5, dur: 4.5, stun: 1.35, shield: 90,
+    ai: 'ground', range: 12, aoe: 3.6, arm: 3, reveal: 2.5, dur: 4.5, stun: 2.25, shield: 90,
     desc: '3秒後に領域が現れ、1.5秒残る（相手には直前まで見えない）。中の相手はスロウ。領域が現れてから自分が中にいると爆発し、相手をスタンさせてバリアを得る。',
   },
   phasedive: {
@@ -990,8 +996,8 @@ export const SKILLS = {
   // ---- PRISM RADIANCE: bind, then burn a line across the arena ---------------
   binding: {
     name: 'ライトバインド', en: 'LIGHT BINDING', aim: 'line', kind: 'shot', icon: 'shot', cd: 10,
-    tele: 0.45, range: 10, speed: 30, radius: 0.8, dmg: 44, snare: 1.2,
-    desc: '当たった相手を1.2秒、その場に縛り付ける光の弾。',
+    tele: 0.45, range: 10, speed: 30, radius: 0.8, dmg: 44, snare: 2,
+    desc: '当たった相手を2秒、その場に縛り付ける光の弾。',
   },
   barrier: {
     name: 'プリズムバリア', en: 'PRISMATIC BARRIER', aim: 'line', kind: 'shot', icon: 'shield', cd: 10,
@@ -1051,11 +1057,11 @@ export const SKILLS = {
   hlights: { name: '迸る光彩', en: 'STIRRING LIGHTS', aim: 'self', hidden: true, short: '光', ai: 'lights', hits: 3, dur: 9, bonus: 18 },
   hvisage: {
     name: '恐怖の形相', en: 'GRIM VISAGE', aim: 'line', kind: 'shot', hidden: true, short: '恐',
-    tele: 0.4, range: 9, speed: 34, radius: 0.8, dmg: 40, fear: 0.9, slow: 0.9, slowPct: 0.6,
+    tele: 0.4, range: 9, speed: 34, radius: 0.8, dmg: 40, fear: 1.5, slow: 1.5, slowPct: 0.6,
   },
   hgaze: { name: '深淵の眼差し', en: 'GAZE OF THE ABYSS', aim: 'ground', hidden: true, short: '眼', ai: 'ground', range: 9, aoe: 4, dur: 3, arm: 0.95 },
   gazeeye: { name: '深淵の眼', en: 'ABYSSAL EYE', aim: 'ground', kind: 'field', hidden: true, aoe: 4, dur: 3, arm: 0.95 },
-  gazeshot: { name: '深淵の眼差し', en: 'GAZE OF THE ABYSS', aim: 'line', hidden: true, range: 7, speed: 40, radius: 0.8, dmg: 40, snare: 1.2 },
+  gazeshot: { name: '深淵の眼差し', en: 'GAZE OF THE ABYSS', aim: 'line', hidden: true, range: 7, speed: 40, radius: 0.8, dmg: 40, snare: 2 },
   hmaw: {
     name: '粉砕の牙', en: 'CRUSHING MAW', aim: 'ground', kind: 'blast', hidden: true, short: '牙',
     tele: 0.1, range: 8, aoe: 2.6, delay: 0.4, dmg: 40, pullMid: 14, slow: 1.25, slowPct: 0.7,
@@ -1092,9 +1098,9 @@ export const SKILLS = {
   },
   bubble: {
     name: 'おやすみ泡', en: 'SLEEPY TROUBLE BUBBLE', aim: 'line', kind: 'shot', icon: 'orb', cd: 14,
-    range: 7, speed: 26, radius: 0.9, dmg: 30, slow: 1.4, slowPct: 0.3, tie: 'DROWSY', dur: 1.4, breakRange: 99, pop: 0, root: 1.3, sleep: true, wake: 30,
+    range: 7, speed: 26, radius: 0.9, dmg: 30, slow: 1.4, slowPct: 0.3, tie: 'DROWSY', dur: 1.4, breakRange: 99, pop: 0, root: 2.2, sleep: true, wake: 30,
     trap: 'bubbletrap', refundSelf: 0.3,
-    desc: '当たった相手はうとうとして、1.4秒後に眠って1.3秒動けなくなる。眠った相手への最初の一撃は重くなる。外れた泡はその場で4秒間の罠になる。当てると待ち時間が30%戻る。',
+    desc: '当たった相手はうとうとして、1.4秒後に眠って2.2秒動けなくなる。眠った相手への最初の一撃は重くなる。外れた泡はその場で4秒間の罠になる。当てると待ち時間が30%戻る。',
   },
   portal: {
     name: 'ポータルジャンプ', en: 'PORTAL JUMP', aim: 'blink', kind: 'blink', icon: 'blink', cd: 5,
@@ -1149,7 +1155,7 @@ export const SKILLS = {
   plumeshot: { name: '羽根', en: 'PLUME', aim: 'line', hidden: true, range: 4.5, speed: 38, radius: 0.7, dmg: 12, pierce: true, feather: true },
   quill: {
     name: '羽根', en: 'QUILL', aim: 'line', hidden: true,
-    range: 30, speed: 40, radius: 0.9, dmg: 28, pierce: true, root: 0.75, fall: 0.05,
+    range: 30, speed: 40, radius: 0.9, dmg: 28, pierce: true, root: 1.25, fall: 0.05,
   },
   storm: {
     name: 'フェザーストーム', en: 'FEATHERSTORM', aim: 'line', kind: 'shot', icon: 'leap', cd: 2, ult: true,
@@ -1223,7 +1229,7 @@ export const SKILLS = {
   },
   dreaded: {
     name: '戦慄の再臨', en: 'DREADED RETURN', aim: 'line', kind: 'shot', icon: 'hook', cd: 12,
-    tele: 0.1, charge: 0.5, root: true, range: 6.7, speed: 44, radius: 0.9, dmg: 36, chain: true, pull: 16, stun: 0.15,
+    tele: 0.1, charge: 0.5, root: true, range: 6.7, speed: 44, radius: 0.9, dmg: 36, chain: true, pull: 16, stun: 0.25,
     desc: '0.5秒構えて薙刀を突き出す。当たった相手を一瞬止め、手元へ引き寄せる。',
   },
   aureate: {
@@ -1238,7 +1244,7 @@ export const SKILLS = {
   },
   glaiveup: {
     name: 'ダーキングレイヴ', en: 'THE DARKIN GLAIVE', aim: 'self', kind: 'buff', hidden: true,
-    empower: 5, bonus: 30, kb: 5, up: 0.45,
+    empower: 5, bonus: 30, kb: 5, up: 0.75,
   },
   // ---- LUNAR ARSENAL: a gun for every range ----------------------------------
   arsenal: {
@@ -1266,7 +1272,7 @@ export const SKILLS = {
     name: '重力弾', en: 'GRAVITUM', aim: 'line', kind: 'shot', hidden: true, weapon: 2, cd: 5,
     tele: 0.4, range: 10, speed: 34, radius: 0.8, dmg: 30, slow: 2.5, slowPct: 0.3, eclipse: 2.5,
   },
-  bindeclipse: { name: '束縛のエクリプス', en: 'BINDING ECLIPSE', aim: 'self', hidden: true, ai: 'bindeclipse', dmg: 40, snareT: 0.6, bigSnare: 0.8 },
+  bindeclipse: { name: '束縛のエクリプス', en: 'BINDING ECLIPSE', aim: 'self', hidden: true, ai: 'bindeclipse', dmg: 40, snareT: 1, bigSnare: 1.35 },
   duskwave: {
     name: 'ダスクウェーブ', en: 'INFERNUM', aim: 'cone', kind: 'cone', hidden: true, weapon: 3, cd: 2.5,
     tele: 0.3, range: 5.6, half: 0.5, dmg: 42, kb: 3,
@@ -1300,13 +1306,13 @@ export const SKILLS = {
   },
   fallingstar: {
     name: '星の邂逅', en: 'FALLING STAR', aim: 'ground', kind: 'blast', icon: 'blast', cd: 2, ult: true,
-    tele: 0.1, range: 12.5, aoe: 5, delay: 0.9, dmg: 150, stun: 0.6, star: true, gain: 5, evolve: 'skies', evolveAt: 75,
+    tele: 0.1, range: 12.5, aoe: 5, delay: 0.9, dmg: 150, stun: 1, star: true, gain: 5, evolve: 'skies', evolveAt: 75,
     desc: '【必殺技】指定地点に星を落とし、巻き込んだ相手をスタンさせる。当てると星屑を5つ得る。星屑が多いほど広がり、75個で「崩れ落つ天穹」になって相手を打ち上げる。星屑は次のラウンドにも持ち越す。',
   },
   flightstop: { name: '着地', en: 'LAND', aim: 'self', hidden: true },
   skies: {
     name: '崩れ落つ天穹', en: 'THE SKIES DESCEND', aim: 'ground', kind: 'blast', hidden: true,
-    aoe: 6.5, delay: 0.9, dmg: 170, up: 0.6, slow: 1, slowPct: 0.5, star: true, gain: 5,
+    aoe: 6.5, delay: 0.9, dmg: 170, up: 1, slow: 1, slowPct: 0.5, star: true, gain: 5,
   },
   // ---- DARK SORCERER: it only gets worse for them ----------------------------
   balefulstrike: {
@@ -1321,8 +1327,8 @@ export const SKILLS = {
   },
   horizon: {
     name: 'イベントホライズン', en: 'EVENT HORIZON', aim: 'ground', kind: 'field', icon: 'trap', cd: 14,
-    range: 7.25, aoe: 4.25, dur: 3.5, cage: 1.5, arm: 0.5, dmg: 10,
-    desc: '0.5秒後に3秒間の輪が現れる。縁に触れた相手を1.5秒スタンさせる。突進で越えようとしても止める。',
+    range: 7.25, aoe: 4.25, dur: 3.5, cage: 2.5, arm: 0.5, dmg: 10,
+    desc: '0.5秒後に3秒間の輪が現れる。縁に触れた相手を2.5秒スタンさせる。突進で越えようとしても止める。',
   },
   primordial: {
     name: 'メテオバースト', en: 'PRIMORDIAL BURST', aim: 'self', kind: 'strike', icon: 'star', cd: 2, ult: true,
@@ -1346,7 +1352,7 @@ export const SKILLS = {
   },
   cease: {
     name: '突入捜査', en: 'CEASE AND DESIST', aim: 'self', kind: 'strike', icon: 'star', cd: 2, ult: true,
-    need: 'range', range: 9.25, tp: true, dmg: 115, up: 0.8,
+    need: 'range', range: 9.25, tp: true, dmg: 115, up: 1.3,
     desc: '【必殺技】近くの相手へ一瞬で詰め寄り、打ち上げる。',
   },
   relentwave: { name: '衝撃波', en: 'SHOCKWAVE', aim: 'cone', hidden: true, range: 4.5, half: 0.5, dmg: 20 },
@@ -1388,8 +1394,8 @@ export const SKILLS = {
   },
   shockorb: {
     name: 'ショックオーブ', en: 'SHOCKING ORB', aim: 'line', kind: 'shot', icon: 'orb', cd: 11,
-    tele: 0.4, range: 9.5, speed: 30, radius: 0.85, dmg: 44, stunFar: [0.45, 1.35],
-    desc: '弾を撃ち、当たった相手をスタンさせる。遠くまで飛んでから当たるほどスタンが長い（0.45〜1.35秒）。',
+    tele: 0.4, range: 9.5, speed: 30, radius: 0.85, dmg: 44, stunFar: [0.75, 2.25],
+    desc: '弾を撃ち、当たった相手をスタンさせる。遠くまで飛んでから当たるほどスタンが長い（0.75〜2.25秒）。',
   },
   arcanerite: {
     name: 'アーケーンライト', en: 'RITE OF THE ARCANE', aim: 'self', icon: 'star', cd: 2, ult: true, re: 'arcanefire', stance: true, ai: 'stance',
@@ -1401,8 +1407,8 @@ export const SKILLS = {
   // ---- CRIMSON HUNGER (Briar)
   headrush: {
     name: 'ヘッドラッシュ', en: 'HEAD RUSH', aim: 'self', kind: 'strike', icon: 'dash', cd: 9,
-    need: 'range', range: 5.2, tp: true, dmg: 46, stun: 0.5, shredT: 5, shredK: 1.2,
-    desc: 'カーソルに一番近い相手へ飛びかかる。0.5秒スタンさせ、5秒間その相手が受けるダメージを20%増やす。',
+    need: 'range', range: 5.2, tp: true, dmg: 46, stun: 0.85, shredT: 5, shredK: 1.2,
+    desc: 'カーソルに一番近い相手へ飛びかかる。0.85秒スタンさせ、5秒間その相手が受けるダメージを20%増やす。',
   },
   bloodfrenzy: {
     name: '血の狂乱', en: 'BLOOD FRENZY', aim: 'dash', icon: 'buff', cd: 10, re: 'snackattack', ai: 'dash',
@@ -1427,8 +1433,8 @@ export const SKILLS = {
   // ---- STEAM GOLEM (Blitzcrank)
   rocketgrab: {
     name: 'ロケットグラブ', en: 'ROCKET GRAB', aim: 'line', kind: 'shot', icon: 'hook', cd: 16,
-    tele: 0.45, range: 9.8, speed: 30, radius: 0.9, dmg: 60, chain: true, pull: 24, stun: 0.4,
-    desc: '腕を伸ばし、当たった相手を手元まで引きずり込む。0.4秒スタンさせる。',
+    tele: 0.45, range: 9.8, speed: 30, radius: 0.9, dmg: 60, chain: true, pull: 24, stun: 0.65,
+    desc: '腕を伸ばし、当たった相手を手元まで引きずり込む。0.65秒スタンさせる。',
   },
   overdrive: {
     name: 'オーバードライブ', en: 'OVERDRIVE', aim: 'self', icon: 'buff', cd: 15, ai: 'buff',
@@ -1437,13 +1443,13 @@ export const SKILLS = {
   },
   powerfist: {
     name: 'パワーフィスト', en: 'POWER FIST', aim: 'self', kind: 'buff', icon: 'burst', cd: 5,
-    empower: 5, bonus: 44, up: 0.6, kb: 3,
-    desc: '5秒以内の次の体当たりが2倍の重さになり、相手を0.6秒打ち上げる。',
+    empower: 5, bonus: 44, up: 1, kb: 3,
+    desc: '5秒以内の次の体当たりが2倍の重さになり、相手を1秒打ち上げる。',
   },
   staticfield: {
     name: 'イナズマフィールド', en: 'STATIC FIELD', aim: 'self', icon: 'burst', cd: 2, ult: true, ai: 'burst',
-    aoe: 5.5, dmg: 110, strip: true, silence: 0.3,
-    desc: '【必殺技】周囲に放電する。相手のバリアとガードを消し、0.3秒スキルを封じる。',
+    aoe: 5.5, dmg: 110, strip: true, silence: 0.5,
+    desc: '【必殺技】周囲に放電する。相手のバリアとガードを消し、0.5秒スキルを封じる。',
   },
   // ---- VOID EYE (Vel'Koz)
   decon: { name: '有機分解', en: 'DECONSTRUCTION', aim: 'self', hidden: true },
@@ -1462,7 +1468,7 @@ export const SKILLS = {
   riftz: { name: 'ヴォイドの裂谷', en: 'VOID RIFT', aim: 'line', hidden: true, range: 9.5, radius: 0.9, dmg: 28, delay: 0.25 },
   tectonic: {
     name: '地殻砕裂', en: 'TECTONIC DISRUPTION', aim: 'ground', kind: 'blast', icon: 'blast', cd: 10,
-    tele: 0.15, range: 7.2, aoe: 2.2, delay: 0.4, dmg: 44, kb: 8, tumble: 0.45, launch: 0.5, away: true,
+    tele: 0.15, range: 7.2, aoe: 2.2, delay: 0.4, dmg: 44, kb: 8, tumble: 0.75, launch: 0.5, away: true,
     desc: '狙った場所を少し遅れて爆発させ、そこにいた相手を自分から遠ざかる向きへ跳ね飛ばす。',
   },
   liferay: {
@@ -1514,7 +1520,7 @@ export const SKILLS = {
     tele: 0.3, range: 7.5, half: 0.5, dmg: 40,
     desc: '扇状に岩をまく（4秒）。上にいる相手は20%のスロウ。突進や吹き飛ばしで岩の上を通った相手は爆発に巻き込まれ、スタンする。',
   },
-  boulders: { name: 'アンレイベルアース', en: 'UNRAVELED EARTH', aim: 'cone', kind: 'field', hidden: true, range: 7.5, half: 0.5, aoe: 7.5, dur: 4, dmg: 36, stun: 0.6, slowPct: 0.2, again: 1 },
+  boulders: { name: 'アンレイベルアース', en: 'UNRAVELED EARTH', aim: 'cone', kind: 'field', hidden: true, range: 7.5, half: 0.5, aoe: 7.5, dur: 4, dmg: 36, stun: 1, slowPct: 0.2, again: 1 },
   weaverwall: {
     name: 'ウィーバーウォール', en: "WEAVER'S WALL", aim: 'line', icon: 'star', cd: 2, ult: true, re: 'wallstop', ai: 'none',
     tele: 0.4, len: 20, side: 1.7, speed: 17, dist: 20, minDist: 3, through: true, fly: true,

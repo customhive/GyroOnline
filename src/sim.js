@@ -1,6 +1,6 @@
 // Battle simulation. No rendering in here: the world steps the two tops and
 // pushes events that the renderer, audio and HUD react to.
-import { STAGES, ARENA, SKILLS, KEYS, BLEED, skillOf } from './config.js';
+import { STAGES, ARENA, SKILLS, KEYS, BLEED, CC, skillOf } from './config.js';
 
 export function mulberry32(a) {
   return function () {
@@ -1575,7 +1575,7 @@ export class World {
 
   stun(v, T) {
     if (fixed(v) || this.shrug(v)) return;
-    v.stun = Math.max(v.stun, T);
+    v.stun = Math.max(v.stun, T * CC.scale);
     v.vx = v.vz = 0;
     v.cmd = null; v.dash = null; v.cast = null; v.chan = null; v.hold = null;
     this.emit('say', { top: v, text: 'STUN', tone: 'red' });
@@ -1592,7 +1592,7 @@ export class World {
   snare(v, T) {
     if (this.shrug(v)) return;
     if (fixed(v)) return;
-    v.snare = Math.max(v.snare, T);
+    v.snare = Math.max(v.snare, T * CC.scale);
     v.vx = v.vz = 0;
     v.cmd = null; v.dash = null;
     this.emit('say', { top: v, text: 'SNARE', tone: 'red' });
@@ -1601,7 +1601,7 @@ export class World {
   // Knocked into the air: it hangs where it is and can do nothing.
   lift(v, T) {
     if (fixed(v) || this.shrug(v)) return;
-    v.up = Math.max(v.up, T);
+    v.up = Math.max(v.up, T * CC.scale);
     v.vx = v.vz = 0;
     v.cmd = null; v.dash = null; v.cast = null; v.chan = null; v.hold = null;
     this.emit('say', { top: v, text: 'KNOCK UP', tone: 'red' });
@@ -1634,14 +1634,14 @@ export class World {
     if (S.snare) this.snare(v, S.snare);
     if (S.shredT) { v.shred = Math.max(v.shred, S.shredT); v.shredK = S.shredK; }
     if (S.strip) { v.shield = v.shieldT = 0; if (v.guard > 0) { v.guard = 0; this.emit('guardEnd', { top: v }); } }
-    if (S.silence) v.silence = Math.max(v.silence, S.silence);
+    if (S.silence) v.silence = Math.max(v.silence, S.silence * CC.scale);
     if (S.pinT) v.pin = S.pinT;
     if (S.frost) v.frost = Math.max(v.frost, S.frost);
     if (S.up) this.lift(v, S.up);
     if (S.slow) this.slowBy(v, S.slow, S.slowPct);
     if (S.bleed) this.bleed(v, S.bleed, s);
     if ((S.charm || S.fear) && !fixed(v) && !this.shrug(v)) {
-      v.charm = S.charm || S.fear; v.charmDir = S.charm ? 1 : -1;
+      v.charm = (S.charm || S.fear) * CC.scale; v.charmDir = S.charm ? 1 : -1;
       v.cmd = null; v.dash = null; v.cast = null; v.chan = null; v.hold = null;
       this.emit('say', { top: v, text: S.charm ? 'CHARM' : 'FEAR', tone: 'red' });
     }
@@ -2148,7 +2148,7 @@ export class World {
       if (!gone) {
         const dmg = this.hurt(opp, (S.pop * t.blade.atk) / opp.blade.def, t, S.id);
         if (S.root) this.stun(opp, S.root);
-        if (S.sleep) opp.sleep = S.root;
+        if (S.sleep) opp.sleep = S.root * CC.scale;
         if (S.snareT) this.snare(opp, S.snareT);
         if (S.yank) this.pull(opp, t, S.yank);
         this.emit('strike', { top: opp, src: t, skill: S, x: opp.x, z: opp.z, dmg });
