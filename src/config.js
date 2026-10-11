@@ -949,7 +949,7 @@ export const SKILLS = {
   orange: {
     name: '壊血病治療', en: 'REMOVE SCURVY', aim: 'self', kind: 'buff', icon: 'heal', cd: 14,
     heal: 0.12, flat: 40, cleanse: true,
-    desc: '回転を回復し、スロウ・毒・出血などをすべて消す。',
+    desc: '回転を回復し、スタン・束縛・魅了・スロウ・毒・出血などをすべて消す。動けない間にも使える（打ち上げられている間は使えない）。',
   },
   keg: {
     name: '火薬樽', en: 'POWDER KEG', aim: 'ground', icon: 'trap', cd: 0.5, stock: { max: 3, every: 8 },

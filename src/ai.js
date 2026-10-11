@@ -130,6 +130,10 @@ export class CpuBrain {
   reflex(dt) {
     const { world: w, me, foe, level: L } = this;
     this.quick -= dt;
+    // Held fast with the cure to hand: take it.
+    if (this.quick <= 0 && (me.stun > 0.3 || me.snare > 0.3 || me.charm > 0.3)) {
+      for (const k of KEYS) if (skillOf(me, k).cleanse && w.canCast(me, k) && w.rng() < L.cast) { this.quick = 0.08 + L.think * 0.25; return w.cast(me, k, me.x, me.z); }
+    }
     if (this.quick > 0 || w.busy(me) || !targetable(foe)) return false;
     this.quick = 0.08 + L.think * 0.25;
     const d = Math.hypot(foe.x - me.x, foe.z - me.z);

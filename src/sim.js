@@ -400,10 +400,12 @@ export class World {
   }
 
   // States that block every skill, whatever its cooldown.
-  busy(t, firing = false) {
+  // `free`: the skill is one that shakes off whatever holds its user, so being
+  // stunned or silenced does not stop it (being in the air still does).
+  busy(t, firing = false, free = false) {
     // A top in flight is dashing, but free to use its skills.
     if (t.chan && firing) return !!(this.result || t.spin <= 0 || t.up > 0 || t.stun > 0);
-    return !!(this.result || t.spin <= 0 || t.air || t.out || t.cast || (t.dash && !t.dash.skill.fly) || t.blink || (t.charge && !t.charge.skill.loose) || t.chan || t.up > 0 || t.stun > 0 || t.silence > 0 || t.egg > 0);
+    return !!(this.result || t.spin <= 0 || t.air || t.out || t.cast || (t.dash && !t.dash.skill.fly) || t.blink || (t.charge && !t.charge.skill.loose) || t.chan || t.up > 0 || (!free && (t.stun > 0 || t.silence > 0)) || t.egg > 0);
   }
 
   // The skill a key would cast right now: its second stage while the recast
@@ -472,14 +474,14 @@ export class World {
     // CURTAIN CALL: braced, and each press of the key is one shot.
     const firing = !!this.aimSkill(t, key).fire;
     if (firing && (!t.chan || t.cd[key] > 0)) return false;
-    if (this.busy(t, firing) || !this.ready(t, key)) return false;
     const base = skillOf(t, key);
+    if (this.busy(t, firing, !!base.cleanse) || !this.ready(t, key)) return false;
     if (base.passive || (base.stock && t.stk <= 0)) return false;
     if (t.dash && this.aimSkill(t, key).aim === 'dash') return false;
     // In the middle of a swing, only a dash to shift its footing.
     if (t.charge && this.aimSkill(t, key).kind !== 'dash') return false;
     if (t.hold && t.hold.key !== key) return false;
-    if (skillOf(t, key).id !== 'aegis' && t.tumble > 0) return false;
+    if (base.id !== 'aegis' && !base.cleanse && t.tumble > 0) return false;
     return !this.blocked(t, key);
   }
 
@@ -1324,7 +1326,8 @@ export class World {
         if (S.empower) { t.empower = S.empower; t.empN = S.empN || 1; t.empS = S.bonus ? S : null; }
         if (S.heal) this.mend(t, S.heal * (t.spinMax - t.spin) + (S.flat || 0));
         if (S.healMax) this.mend(t, S.healMax * t.spinMax);
-        if (S.cleanse) t.slow = t.ground = t.poison = t.bleed = t.bleedT = t.mark = t.tag = t.tagT = t.charm = 0;
+        // Everything that holds or wears it down is gone, not only what slows it.
+        if (S.cleanse) t.slow = t.slowK = t.ground = t.poison = t.bleed = t.bleedT = t.mark = t.tag = t.tagT = t.charm = t.stun = t.snare = t.silence = t.sleep = t.frost = 0;
         if (S.storeShield) { t.shield = clamp(t.store, S.min, S.max); t.shieldT = S.hold; t.store = 0; }
         this.emit('buff', { top: t, skill: S });
         break;
