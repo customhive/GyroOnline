@@ -494,7 +494,7 @@ export const SKILLS = {
   sanctuary: {
     name: 'サンクチュアリ', en: 'SANCTUARY', aim: 'self', cd: 12,
     radius: 4.4, dur: 5, regen: 13,
-    desc: '足元に陽だまりを作る。中にいる間は回転が回復し続け、踏み込んだ相手はスロウになる。',
+    desc: '足元に陽だまりを作る。中にいる間は自分も味方も回転が回復し続け、踏み込んだ相手はスロウになる。',
   },
   satellite: {
     name: 'サテライト', en: 'SATELLITE', aim: 'self', cd: 9,
@@ -774,7 +774,7 @@ export const SKILLS = {
   verdict: {
     name: '守護者の鉄鎚', en: "KEEPER'S VERDICT", aim: 'line', icon: 'beam', cd: 2, ult: true, ai: 'shot',
     tele: 0.2, wind: { min: 0.5, full: 1, max: 4 }, tap: 'verdicttap', near: 4, range: 9.5, speed: 40, radius: 1.6,
-    desc: '【必殺技】長押しで溜める（溜め中は少し遅くなり、4秒で不発）。すぐ離すと目の前を打ち上げる。溜めるほど遠くまで届く衝撃波になり、当たった相手をほぼ場外まで吹き飛ばす。',
+    desc: '【必殺技】長押しで溜める（溜め中は少し遅くなり、4秒で不発）。すぐ離すと目の前を打ち上げる。溜めるほど遠くまで届く衝撃波になり、当たった相手と、そのすぐ近くにいる相手をほぼ場外まで吹き飛ばす。',
   },
   verdicttap: {
     name: '守護者の鉄鎚', en: "KEEPER'S VERDICT", aim: 'cone', hidden: true,
@@ -782,7 +782,7 @@ export const SKILLS = {
   },
   verdictwave: {
     name: '守護者の鉄鎚', en: "KEEPER'S VERDICT", aim: 'line', hidden: true,
-    range: 9.5, speed: 40, radius: 1.6, dmg: 90, kb: 40, tumble: 0.9, launch: 3,
+    range: 9.5, speed: 40, radius: 1.6, dmg: 90, kb: 40, tumble: 0.9, launch: 3, around: 3,
   },
   // ---- NINE TAIL CHARM: out, back, and three more times ----------------------
   orb: {
@@ -1372,9 +1372,9 @@ export const SKILLS = {
     desc: '7秒間、次の体当たりを強化する。当てると相手の後ろへ扇状の衝撃波が抜ける。2回ぶん溜めておける（8秒で1回ぶん戻る）。',
   },
   cease: {
-    name: '突入捜査', en: 'CEASE AND DESIST', aim: 'self', kind: 'strike', icon: 'star', cd: 2, ult: true,
-    need: 'range', range: 9.25, tp: true, dmg: 115, up: 1.3,
-    desc: '【必殺技】近くの相手へ一瞬で詰め寄り、打ち上げる。',
+    name: '突入捜査', en: 'CEASE AND DESIST', aim: 'self', icon: 'star', cd: 2, ult: true, ai: 'strike',
+    need: 'range', range: 9.25, speed: 34, homing: true, unstoppable: true, maxT: 1.5, dmg: 115, keep: 0, kb: 2, up: 1.3, aside: 0.75, asideKb: 9,
+    desc: '【必殺技】カーソルに一番近い相手へ突進する。相手が動いても追いかけ、突進中はスタンや吹き飛ばしで止まらない。届いたら打ち上げる。途中でぶつかった別の敵は、75%のダメージで横へ弾き飛ばす。',
   },
   relentwave: { name: '衝撃波', en: 'SHOCKWAVE', aim: 'cone', hidden: true, range: 4.5, half: 0.5, dmg: 20 },
   // ---- ARCANE SHOOTER: land the shot, get everything back --------------------
@@ -1448,9 +1448,9 @@ export const SKILLS = {
   certaindeath: {
     name: '迫りくる死', en: 'CERTAIN DEATH', aim: 'line', icon: 'star', cd: 2, ult: true, ai: 'shot',
     tele: 0.4, range: 30, speed: 42, radius: 0.9, dmg: 20, flyTo: 'certainland', frenzy: 8,
-    desc: '【必殺技】アリーナの端まで届く石を蹴る。当たった相手へ止められない勢いで飛びつき、着地で周りを吹き飛ばす。そのあと8秒間、その相手を追う狂乱になる。',
+    desc: '【必殺技】アリーナの端まで届く石を蹴る。当たった相手へ止められない勢いで飛びつき、着地で周りを吹き飛ばす。狙った相手以外で巻き込まれた敵は、1.5秒逃げ出す。そのあと8秒間、その相手を追う狂乱になる。',
   },
-  certainland: { name: '迫りくる死', en: 'CERTAIN DEATH', aim: 'leap', hidden: true, air: 0.55, height: 4, aoe: 3.2, dmg: 90, kb: 4, track: true },
+  certainland: { name: '迫りくる死', en: 'CERTAIN DEATH', aim: 'leap', hidden: true, air: 0.55, height: 4, aoe: 3.2, dmg: 90, kb: 4, track: true, scare: 1.5 },
   // ---- STEAM GOLEM (Blitzcrank)
   rocketgrab: {
     name: 'ロケットグラブ', en: 'ROCKET GRAB', aim: 'line', kind: 'shot', icon: 'hook', cd: 16,
@@ -1507,7 +1507,7 @@ export const SKILLS = {
   ardentblaze: {
     name: 'アーデントブレイズ', en: 'ARDENT BLAZE', aim: 'line', kind: 'shot', icon: 'cross', cd: 10,
     tele: 0.35, range: 8.2, speed: 32, radius: 0.8, dmg: 12, splash: 2.8, splashDmg: 34, markT: 6, rush: 1,
-    desc: '当たるか射程の端で弾ける弾。巻き込んだ相手に6秒間の印を付け、印の相手に攻撃を当てるたびに少しの間加速する。',
+    desc: '当たるか射程の端で弾ける弾。巻き込んだ相手に6秒間の印を付け、自分か味方が印の相手に攻撃を当てるたびに、自分が少しの間加速する。',
   },
   lightslide: {
     name: 'スライド', en: 'RELENTLESS PURSUIT', aim: 'dash', kind: 'dash', icon: 'dash', cd: 14,

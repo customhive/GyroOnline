@@ -587,8 +587,12 @@ console.log('VAULT BREAKER (Vi)');
   run(6);
   check(me.stk === 1 && w.canCast(me, 'E'), 'E: one comes back after 8 seconds');
   ({ w, me, foe, run, saw } = setup('gauntlet', 8));
-  w.cast(me, 'R', me.x, me.z);
-  check(Math.abs(foe.up - 1.3) < 0.01 && Math.hypot(me.x - foe.x, me.z - foe.z) < 3, 'R: closes in and knocks up for 1.3 seconds');
+  w.cast(me, 'R', me.x, me.z); w.step(DT);
+  check(!!me.dash && foe.up === 0 && Math.hypot(me.x - foe.x, me.z - foe.z) > 7, 'R: a charge at the target, not a jump to it');
+  w.stun(me, 1); w.knock(me, 1, 0, 20, 0.5, 1);
+  check(me.stun === 0 && !!me.dash, 'R: nothing stops the charge');
+  foe.x = 4; for (let i = 0; i < 40 && me.dash; i++) { w.step(DT); foe.x = 4; foe.z = -4; foe.vx = foe.vz = 0; }
+  check(foe.up > 1.1 && foe.up <= 1.3 && Math.hypot(me.x - foe.x, me.z - foe.z) < 3.2 && Math.abs(foe.stats.taken - (115 * BLADES.gauntlet.atk) / BLADES.gaia.def) < 1, 'R: it follows a target that moves, and on arriving hits and knocks up for 1.3 seconds');
 }
 
 console.log('SPARK SURGE (Zeri)');
@@ -1807,6 +1811,39 @@ console.log('WITH MORE THAN TWO');
   q.put(q.x, 0, -3); q.put(q.y, 1.5, -1.5);
   q.a.cd.W = 0; q.w.cast(q.a, 'W', 0, -1.5); q.run(0.6);
   check(q.x.stats.taken > 0 && q.y.stats.taken > 0, 'a soldier\'s stab goes through everyone within its reach');
+
+  q = quad('gauntlet');
+  q.put(q.a, 0, 6); q.put(q.y, 0.6, 2); q.put(q.x, 0, -2);
+  q.w.cast(q.a, 'R', q.x.x, q.x.z); q.run(0.5);
+  check(Math.abs(q.y.stats.taken - (115 * 0.75 * BLADES.gauntlet.atk) / BLADES.gaia.def) < 1 && q.y.up === 0 && q.x.up > 0, `CEASE AND DESIST: someone in the way takes 75% and is knocked aside; the charge goes on to its target (${q.y.stats.taken.toFixed(0)})`);
+
+  q = quad('hunger');
+  q.put(q.a, 0, 6); q.put(q.x, 0, -2); q.put(q.y, 2, -2);
+  q.w.cast(q.a, 'R', q.x.x, q.x.z); q.run(1.2);
+  check(q.y.charm > 0 && q.y.charmDir < 0 && q.x.charm === 0 && q.x.stats.taken > 0, 'CERTAIN DEATH: those it lands among run from it; the one it came for does not');
+
+  q = quad('hammer');
+  q.put(q.a, 0, 6); q.put(q.x, 0, 0); q.put(q.y, 2, -1);
+  q.w.cast(q.a, 'R', q.x.x, q.x.z, 1); q.run(0.3, [q.x, q.y]);
+  check(q.x.stats.taken > 50 && Math.abs(q.y.stats.taken - q.x.stats.taken) < 3 && q.y.launch > 0, "KEEPER'S VERDICT: whoever stands within 3 of the one it struck is sent flying with it");
+
+  q = quad('purifier', ['azure', 'gaia', 'gaia']);
+  q.put(q.x, 0, -2); q.a.haste = 0;
+  q.w.hurt(q.x, 10, q.a, 'ardentblaze');
+  q.w.hurt(q.x, 10, q.m, 'x');
+  check(q.a.haste > 0 && q.m.haste === 0, 'ARDENT BLAZE: a team mate striking the marked one quickens whoever marked it');
+
+  q = quad('sol');
+  q.put(q.m, 1, 6); q.a.spin = q.m.spin = q.x.spin = 500; q.put(q.m, 3, 6); q.put(q.x, 0, 2.4);
+  q.w.cast(q.a, 'W', q.a.x, q.a.z); q.run(1);
+  check(q.m.spin > 505 && q.a.spin > 505 && q.x.spin < 500 && q.x.slow > 0, 'SANCTUARY: a team mate mends in it as its maker does; an enemy is only slowed');
+
+  q = quad('sand');
+  q.put(q.a, 0, 6); q.put(q.x, 0, 0); q.put(q.y, 0, -3);
+  q.a.cd.W = 0; q.w.cast(q.a, 'W', 0, 3); q.run(0.3);
+  const y0 = q.y.stats.taken, x0 = q.x.stats.taken;
+  q.a.cd.Q = 0; q.w.cast(q.a, 'Q', 0, -4); q.run(0.4);
+  check(q.x.stats.taken > x0 + 20 && q.y.stats.taken > y0 + 20, 'CONQUERING SANDS: everyone the soldier passes is struck');
 
   q = quad('dragon');
   q.put(q.a, 0, 0); q.put(q.x, 0, -3); q.put(q.y, 3, 0);

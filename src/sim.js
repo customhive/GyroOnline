@@ -103,7 +103,7 @@ export const spinRatio = (t) => Math.max(0, t.spin / t.spinMax);
 // Tops with little spin left are thrown further.
 export const kbMul = (t) => 1 + 0.85 * (1 - spinRatio(t));
 // Nothing moves it: braced for a blast, or inside the egg.
-const fixed = (t) => !!((t.charge && t.charge.skill.root) || t.egg > 0);
+const fixed = (t) => !!((t.charge && t.charge.skill.root) || t.egg > 0 || (t.dash && t.dash.skill.unstoppable));
 // Held in place for now, though a hit may still throw it.
 export const rooted = (t) => fixed(t) || !!t.chan || t.up > 0;
 
@@ -839,6 +839,14 @@ export class World {
           this.emit('buff', { top: to, skill: S });
         }
         this.emit('buff', { top: t, skill: S });
+        break;
+      }
+      case 'cease': {
+        // A charge that nothing stops, straight at its target wherever that goes.
+        const dx = opp.x - t.x, dz = opp.z - t.z, d = Math.hypot(dx, dz) || 1;
+        t.prey = opp.side;
+        this.startDash(t, S, dx / d, dz / d, d);
+        t.dash.home = opp.side; t.dash.age = 0; t.dash.bumped = 0;
         break;
       }
       case 'cripplekick':
@@ -1668,7 +1676,11 @@ export class World {
       if (from.blade.bleedAll && kind !== 'decon') this.bleed(t, from.blade.bleedAll, from);
       // Hitting a top marked by ARDENT BLAZE quickens the one who marked it.
       if (kind === 'ardentblaze') { t.ardent = SKILLS.ardentblaze.markT; t.ardentBy = from.side; }
-      else if (t.ardent > 0 && t.ardentBy === from.side) from.haste = Math.max(from.haste, SKILLS.ardentblaze.rush);
+      else if (t.ardent > 0) {
+        // Whoever of its side strikes the marked one, it is the one who marked it that is quickened.
+        const mk = this.tops[t.ardentBy];
+        if (mk && !mk.gone && mk.team === from.team) mk.haste = Math.max(mk.haste, SKILLS.ardentblaze.rush);
+      }
       if (from.blade.decon && !['clash', 'dash', 'empower', 'parry', 'decon', 'liferay'].includes(kind)) this.decon(t, from);
     }
     // A shield that comes up by itself, once a round, when things look bad.
@@ -2092,6 +2104,13 @@ export class World {
     else if (t.re.R > 0 && skillOf(t, 'R').stance) t.re.R = 0;
     if (t.orbs) this.updateOrbs(t, opp, dt);
     if (t.tether) this.updateTether(t, opp, dt);
+    if (t.dash && t.dash.skill.homing) {
+      // It turns to follow its target for as long as the charge lasts, and gives up if the target is out of the world.
+      const h = t.dash, o = this.tops[h.home ?? t.prey];
+      h.age = (h.age || 0) + dt;
+      if (!o || o.gone || o.out || o.realm !== t.realm || h.age > h.skill.maxT || this.result) { t.dash = null; t.vx = t.vz = 0; }
+      else { const dx = o.x - t.x, dz = o.z - t.z, d = Math.hypot(dx, dz) || 1; h.dx = dx / d; h.dz = dz / d; h.t = d / h.speed + 0.1; }
+    }
     if (t.dash && t.dash.chase !== undefined) {
       const q = this.zones.find((z) => z.id === t.dash.chase && !z.dead);
       if (q) {
@@ -2165,6 +2184,8 @@ export class World {
       if (!S.dmg) { this.emit('blast', { top: t, skill: S, x, z, r: 1.6, hit: 0, target: null }); return; }
       const hit = this.burst(t, S, x, z, S.aoe);
       if (hit && S.healHit) this.mend(t, hit * S.healHit);
+      // CERTAIN DEATH: everyone it lands among but the one it came for runs from it.
+      if (S.scare) for (const o of this.foes(t)) if (o.side !== a.to && targetable(o) && o.guard <= 0 && Math.hypot(o.x - x, o.z - z) < S.aoe + o.radius * 0.5) this.affect(t, o, { fear: S.scare }, 0, 0);
       return;
     }
     t.tumble = 0.2;
@@ -2413,12 +2434,16 @@ export class World {
         case 'sanctuary':
           // a: spin healed since the last report, b: time since then
           if (z.t >= z.T || this.result) { this.endZone(z); break; }
-          if (!t.out && !t.air && t.spin > 0 && Math.hypot(t.x - z.x, t.z - z.z) < z.r) {
-            const h = Math.min(S.regen * dt, t.spinMax - t.spin);
-            t.spin += h; z.a += h; z.b += dt;
-            if (z.b >= 1) { if (z.a >= 1) this.emit('heal', { top: t, amount: z.a }); z.a = 0; z.b = 0; }
+          // Its whole side mends in it. (heal: what each has been given since the last report; kept here only.)
+          z.heal = z.heal || {};
+          for (const o of [t, ...this.mates(t)]) {
+            if (o.out || o.air || o.spin <= 0 || Math.hypot(o.x - z.x, o.z - z.z) >= z.r) continue;
+            const h = Math.min(S.regen * dt, o.spinMax - o.spin);
+            o.spin += h; z.heal[o.side] = (z.heal[o.side] || 0) + h;
           }
-          if (live && d < z.r) opp.slow = Math.max(opp.slow, 0.2);
+          z.b += dt;
+          if (z.b >= 1) { for (const o of this.tops) if (z.heal[o.side] >= 1) this.emit('heal', { top: o, amount: z.heal[o.side] }); z.heal = {}; z.b = 0; }
+          if (!this.result) for (const o of this.foes(t)) if (targetable(o) && Math.hypot(o.x - z.x, o.z - z.z) < z.r) o.slow = Math.max(o.slow, 0.2);
           break;
         case 'lotus':
           // c: sprung, a: when
@@ -2484,12 +2509,15 @@ export class World {
             const mx = z.dx - z.x, mz = z.dz - z.z, m = Math.hypot(mx, mz), st = C.speed * dt;
             if (m <= st) { z.x = z.dx; z.z = z.dz; z.c = 0; break; }
             z.x += (mx / m) * st; z.z += (mz / m) * st;
-            if (!(z.c & 2) && live && Math.hypot(opp.x - z.x, opp.z - z.z) < C.aoe + opp.radius * 0.5) {
-              for (const q of this.own(t, 'arise')) q.c |= 2;
-              const dmg = this.hurt(opp, (C.dmg * (opp.guard > 0 ? 0.3 : 1) * t.blade.atk) / opp.blade.def, t, 'conquer');
-              if (opp.guard <= 0) this.affect(t, opp, C, 0, 0);
+            // Everyone in the way is struck, once a march however many soldiers pass (bit 4 << side: already struck).
+            if (!this.result) for (const o of this.foes(t)) {
+              const bit = 4 << o.side;
+              if (z.c & bit || !targetable(o) || Math.hypot(o.x - z.x, o.z - z.z) >= C.aoe + o.radius * 0.5) continue;
+              for (const q of this.own(t, 'arise')) q.c |= bit;
+              const dmg = this.hurt(o, (C.dmg * (o.guard > 0 ? 0.3 : 1) * t.blade.atk) / o.blade.def, t, 'conquer');
+              if (o.guard <= 0) this.affect(t, o, C, 0, 0);
               t.stats.skillHits++;
-              this.emit('strike', { top: opp, src: t, skill: C, x: opp.x, z: opp.z, dmg });
+              this.emit('strike', { top: o, src: t, skill: C, x: o.x, z: o.z, dmg });
             }
             break;
           }
@@ -2891,6 +2919,24 @@ export class World {
     let nx = b.x - a.x, nz = b.z - a.z;
     const d = Math.hypot(nx, nz), min = a.radius + b.radius;
     if (d >= min) return;
+    // CEASE AND DESIST: anyone but its target is knocked aside, and the charge goes on.
+    for (const [s, v] of [[a, b], [b, a]]) {
+      const h = s.dash;
+      if (!h || !h.skill.homing || this.result) continue;
+      if (v.side === (h.home ?? s.prey)) continue;
+      if (!(h.bumped & (1 << v.side))) {
+        h.bumped |= 1 << v.side;
+        const D = h.skill, g = v.guard > 0 ? 0.3 : 1, prey = s.prey;
+        const dmg = this.hurt(v, (D.dmg * D.aside * g * s.blade.atk) / v.blade.def, s, D.id);
+        s.prey = prey;
+        // To whichever side of the charge they stood on.
+        const side = (v.x - s.x) * -h.dz + (v.z - s.z) * h.dx >= 0 ? 1 : -1;
+        if (g === 1) this.knock(v, -h.dz * side, h.dx * side, D.asideKb, 0.4, 0.6);
+        s.stats.skillHits++;
+        this.emit('strike', { top: v, src: s, skill: D, x: v.x, z: v.z, dmg });
+      }
+      return;
+    }
     // Some dashes go straight through, cutting once on the way.
     if (((a.dash && a.dash.skill.through) || (b.dash && b.dash.skill.through)) && a.guard <= 0 && b.guard <= 0) {
       for (const s of [a, b]) {
@@ -3052,7 +3098,7 @@ export class World {
   // Solid walls on the floor. Ice stops everyone; the emperor's line stops
   // only the other side, and shoves it along while it is still advancing.
   barriers(t) {
-    if (t.air || t.out || t.blink) return;
+    if (t.air || t.out || t.blink || (t.dash && t.dash.skill.unstoppable)) return;
     for (const z of this.zones) {
       const S = z.skill;
       // (The emperor's line lets its own side through, not only the emperor.)
@@ -3270,6 +3316,14 @@ export class World {
     if (S.permHit && o.perm < S.permHit) { o.perm++; this.emit('say', { top: o, text: '+' + o.perm, tone: 'gold' }); }
     if (S.spawn) this.zone(o, SKILLS[S.spawn], v.x, v.z);
     if (S.splash) this.burst(o, S, p.x, p.z, S.splash, { dmg: S.splashDmg, as: {} });
+    // KEEPER'S VERDICT: whoever stands close to the one it struck is sent flying with it.
+    if (S.around) for (const q of this.foes(o)) {
+      if (q === v || !targetable(q) || Math.hypot(q.x - v.x, q.z - v.z) > S.around) continue;
+      const g = q.guard > 0 ? 0.3 : 1, d2 = this.hurt(q, (p.dmg * g) / q.blade.def, o, S.id);
+      if (g === 1) this.affect(o, q, S, p.dx, p.dz);
+      o.stats.skillHits++;
+      this.emit('strike', { top: q, src: o, skill: S, x: q.x, z: q.z, dmg: d2 });
+    }
     // MOONLIGHT VIGIL does something more for each weapon in hand.
     if (S.id === 'vigil') {
       const A = S.arm[o.wm];
