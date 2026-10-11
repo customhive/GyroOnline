@@ -491,3 +491,13 @@ kbd { flex: none; width: 28px; height: 28px; display: grid; place-items: center;
 .pc-wait { min-height: 0; }
 .ghost { visibility: hidden; }
 .room-side { justify-content: flex-start; }
+
+/* The team, in a card's header. */
+.pc-team { flex: none; width: 24px; height: 22px; display: grid; place-items: center; font-size: 14px; font-weight: 700; font-style: italic; border: 1px solid; }
+.pc-team.a { color: #7fd4ff; border-color: #35a8ff; background: rgba(53, 168, 255, 0.2); }
+.pc-team.b { color: #ff9a8a; border-color: #ff5a4a; background: rgba(255, 90, 74, 0.2); }
+.pc-team.can { cursor: pointer; }
+.pc-team.can:hover { filter: brightness(1.5); box-shadow: 0 0 10px currentColor; }
+.pc-top { min-height: 36px; }
+.pc-who { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.pc-top em { white-space: nowrap; }

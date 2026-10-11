@@ -323,11 +323,11 @@ export class UI {
     const s = $('#lb-status');
     // Why the game cannot start yet is said here, not on the button.
     const lopsided = lb.teams && new Set(lb.slots.filter((p) => p.kind !== 'none').map((p) => p.team)).size < 2;
-    s.textContent = host && lopsided ? 'チーム戦は、AとBの両方に1人以上必要です。カードの下のボタンでチームを変えられます' : status;
+    s.textContent = host && lopsided ? 'チーム戦は、AとBの両方に1人以上必要です。カードの A / B を押すとチームを変えられます' : status;
     s.className = 'lb-status ' + lb.status;
-    // Hidden, the invitation keeps its place, so the panel does not jump.
-    $('#lb-invite').classList.remove('hidden');
-    $('#lb-invite').classList.toggle('ghost', !host || !lb.url || !waiting);
+    // The host always has the invitation to hand; it does not come and go with the seats.
+    $('#lb-invite').classList.toggle('hidden', !host);
+    $('#lb-invite').classList.toggle('ghost', host && !lb.url);
     if (lb.url && $('#lb-url').value !== lb.url) $('#lb-url').value = lb.url;
 
     // One tall card for each seat.
@@ -338,13 +338,13 @@ export class UI {
     lb.slots.forEach((p, i) => {
       const b = BLADES[p.blade], you = i === mine, empty = p.kind === 'open', off = p.kind === 'none';
       const can = !empty && !off && (editable(i) || (host && p.kind === 'cpu'));
-      const who = p.kind === 'cpu' ? 'CPU' : empty ? 'OPEN' : off ? '' : (you ? 'YOU' : 'PLAYER') + (i === 0 ? ' ／ HOST' : '');
+      const who = p.kind === 'cpu' ? 'CPU' : empty ? 'OPEN' : off ? '' : (you ? 'YOU' : i === 0 ? 'HOST' : 'PLAYER');
       const seat = el('div', 'seat');
       const card = el('button', 'pcard' + (empty || off ? ' empty' : '') + (off ? ' off' : '') + (!empty && !off && (p.kind === 'cpu' || p.ready) ? ' ready' : '') + (you ? ' mine' : ''));
       card.style.setProperty('--c', empty || off ? '#3a4566' : b ? b.css : '#8fa0c8');
       card.disabled = !can;
       const skills = b ? kitOf(b).map((S, k) => `<div class="pc-skill" data-k="${k}"><kbd>${KEYS[k]}</kbd><div class="how-icon">${iconOf(S)}</div><span>${S.name}</span></div>`).join('') : '';
-      card.innerHTML = `<div class="pc-top"><span class="pc-no">${i + 1}P</span><span class="pc-who">${who}${p.kind === 'cpu' ? ' ／ ' + DIFFICULTY[p.level].name : ''}</span><em>${empty || off ? '' : p.kind === 'cpu' || p.ready ? 'READY' : '準備中'}</em></div>`
+      card.innerHTML = `<div class="pc-top"><span class="pc-no">${i + 1}P</span>${lb.teams && !empty && !off ? `<span class="pc-team ${p.team ? 'b' : 'a'}">${p.team ? 'B' : 'A'}</span>` : ''}<span class="pc-who">${who}</span><em>${empty || off ? '' : p.kind === 'cpu' ? DIFFICULTY[p.level].name : p.ready ? 'READY' : '準備中'}</em></div>`
         + (off
           ? `<div class="pc-wait"><b>なし</b><span>この席は使いません。<br>下のボタンでCPUを入れられます。</span></div>`
           : empty
@@ -362,41 +362,39 @@ export class UI {
       });
       seat.appendChild(card);
 
-      // Under each card: its team, what the seat is, and a CPU's level. Every
-      // seat keeps all its rows, empty ones included, so nothing moves about
-      // as the choices change.
-      const ctl = el('div', 'lb-ctl');
-      const blank = (cls) => ctl.appendChild(el('div', cls + ' ghost'));
-      {
-        if (lb.teams && !empty && !off) {
-          const tb = el('button', 'lb-team ' + (p.team ? 'b' : 'a'), `チーム ${p.team ? 'B' : 'A'}`);
-          tb.disabled = !(host || you) || (p.kind === 'human' && p.ready);
-          tb.title = 'クリックでチームを変える';
-          tb.onclick = () => this.h.team(i);
-          ctl.appendChild(tb);
-        } else blank('lb-team');
+      // The team sits in the card's header; the host can move anyone, everyone else only themselves.
+      const tb = card.querySelector('.pc-team');
+      if (tb) {
+        const may = (host || you) && !(p.kind === 'human' && p.ready);
+        tb.classList.toggle('can', may);
+        tb.title = may ? 'クリックでチームを変える' : '';
+        tb.onclick = (e) => { e.stopPropagation(); if (may) this.h.team(i); };
       }
-      // What the host can make of each seat. One a guest is sitting in has nothing to set.
-      if (host && !(i !== mine && p.kind === 'human')) {
+      // Under each card, for the host: what the seat is, and a CPU's level. Both
+      // rows are always there (the level greyed out unless it is a CPU), so
+      // nothing moves about as the choices change.
+      const ctl = el('div', 'lb-ctl');
+      if (host) {
+        const taken = i !== mine && p.kind === 'human';
         const kinds = i === 0 ? [['human', '自分で操作'], ['cpu', 'CPU']] : [['open', '人間'], ['cpu', 'CPU'], ['none', 'なし']];
         const row = el('div', 'lb-seg');
         for (const [k, label] of kinds) {
-          const btn = el('button', p.kind === k ? 'on' : '', label);
+          const btn = el('button', p.kind === k || (taken && k === 'open') ? 'on' : '', label);
+          btn.disabled = taken;
           btn.onclick = () => this.h.slotKind(i, k);
           row.appendChild(btn);
         }
         ctl.appendChild(row);
-      } else if (host) blank('lb-seg');
-      if (host && p.kind === 'cpu') {
         const lv = el('div', 'lb-seg small');
         DIFFICULTY.forEach((d, n) => {
-          const btn = el('button', p.level === n ? 'on' : '', d.name);
+          const btn = el('button', p.kind === 'cpu' && p.level === n ? 'on' : '', d.name);
           btn.title = d.ja;
+          btn.disabled = p.kind !== 'cpu';
           btn.onclick = () => this.h.slotLevel(i, n);
           lv.appendChild(btn);
         });
         ctl.appendChild(lv);
-      } else if (host) blank('lb-seg small');
+      }
       seat.appendChild(ctl);
       cards.appendChild(seat);
     });
@@ -438,7 +436,7 @@ export class UI {
     // Every person readies up; the host then starts the game.
     const r = $('#lb-ready'), go = $('#lb-start');
     const human = me.kind === 'human';
-    r.classList.toggle('hidden', !human);
+    // Always there: with a CPU in your own seat there is simply nothing to ready.
     r.disabled = !human || (!host && !linked);
     r.textContent = me.ready ? '準備を取り消す' : '準備完了';
     r.classList.toggle('armed', !!me.ready);
