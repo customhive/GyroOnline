@@ -57,6 +57,8 @@ export function makeTop(side, blade) {
     pin: 0,                // shoved hard: hitting the wall now stuns
     store: 0,              // damage banked by blades that turn it into a shield
     tag: 0, tagT: 0,       // nails stuck in this top
+    gone: null,            // out of this round: how ('over', 'burst', 'spin'), or null while still in it
+    team: side,            // tops on the same team do not fight each other
     perm: 0,               // growth that lasts the whole match, not just the round
     // LUNAR ARSENAL: main and off-hand weapon, the ones waiting, shots left in each, each one's cooldown.
     // Like `perm`, the weapons carry over from round to round.
@@ -72,7 +74,7 @@ export function makeTop(side, blade) {
   };
 }
 
-export const targetable = (t) => !t.air && !t.out && !t.blink && !(t.charge && t.charge.skill.veil);
+export const targetable = (t) => !t.air && !t.out && !t.blink && !t.gone && !(t.charge && t.charge.skill.veil);
 export const spinRatio = (t) => Math.max(0, t.spin / t.spinMax);
 // Tops with little spin left are thrown further.
 export const kbMul = (t) => 1 + 0.85 * (1 - spinRatio(t));
@@ -267,11 +269,16 @@ export function wallOf(z) {
 }
 
 export class World {
+  // new World(bladeA, bladeB, seed, stage) for a duel, or
+  // new World([blades...], { seed, stage, teams }) for two to four tops.
   constructor(bladeA, bladeB, seed = 1, stage = 0) {
+    let blades = [bladeA, bladeB], teams = null;
+    if (Array.isArray(bladeA)) { const o = bladeB || {}; blades = bladeA; seed = o.seed ?? 1; stage = o.stage ?? 0; teams = o.teams || null; }
     this.stage = stage;
     setStage(stage);
     this.rng = mulberry32(seed);
-    this.tops = [makeTop(0, bladeA), makeTop(1, bladeB)];
+    this.tops = blades.map((b, i) => makeTop(i, b));
+    if (teams) this.tops.forEach((t, i) => { t.team = teams[i] ?? i; });
     this.projectiles = [];
     this.zones = [];
     this.events = [];
@@ -281,8 +288,27 @@ export class World {
     this.resetRound();
   }
 
-  other(t) { return this.tops[1 - t.side]; }
+  // Everyone still in the round that `t` fights against.
+  foes(t) { return this.tops.filter((o) => o !== t && o.team !== t.team && !o.gone); }
+  // The one `t` is fighting right now: the nearest enemy still in the round.
+  // In a duel that is simply the other top, in or out.
+  other(t) { return this.near(t, t.x, t.z); }
+  // The enemy of `t` nearest a point (one that can be hit, if any can).
+  near(t, x, z) {
+    let best = null, bd = Infinity;
+    for (const o of this.tops) {
+      if (o === t || o.team === t.team) continue;
+      const d = Math.hypot(o.x - x, o.z - z) + (o.gone ? 1e6 : targetable(o) ? 0 : 1e3);
+      if (d < bd) { bd = d; best = o; }
+    }
+    return best || this.tops.find((o) => o !== t);
+  }
+  // Tops, or teams, still standing.
+  sidesLeft() { return new Set(this.tops.filter((t) => !t.gone).map((t) => t.team)).size; }
   emit(type, data) { this.events.push({ type, ...data }); }
+  // Whoever struck `t` last, if that was recent enough to be the reason it is flying.
+  lastBy(t) { const h = t.lastHit; return h && h.by >= 0 && this.time - h.time < 4 ? this.tops[h.by] : null; }
+
   // Live zones of one kind placed by `t`.
   own(t, kind) { return this.zones.filter((q) => q.owner === t && q.kind === kind && !q.dead); }
 
@@ -292,9 +318,13 @@ export class World {
     this.result = null;
     this.time = 0;
     for (const t of this.tops) {
-      const s = t.side === 0 ? 1 : -1;
-      t.x = 0; t.z = 7.5 * s;
-      t.vx = t.blade.speed * 0.75 * s; t.vz = 0;
+      // Evenly round the ring, each moving off along it. Two tops start near and far.
+      const ph = (Math.PI * 2 * t.side) / this.tops.length;
+      t.x = 7.5 * Math.sin(ph); t.z = 7.5 * Math.cos(ph);
+      t.vx = t.blade.speed * 0.75 * Math.cos(ph); t.vz = -t.blade.speed * 0.75 * Math.sin(ph);
+      if (Math.abs(t.x) < 1e-9) t.x = 0;
+      if (Math.abs(t.vz) < 1e-9) t.vz = 0;
+      t.gone = null;
       t.spin = t.spinMax;
       t.cmd = t.cast = t.dash = t.air = t.out = t.blink = t.charge = t.orbs = t.tether = t.chan = t.ret = t.hold = null;
       t.tumble = t.launch = t.guard = t.slow = t.hitCd = t.empower = 0;
@@ -457,9 +487,9 @@ export class World {
 
   fire(t, S, dx, dz, o = {}) {
     const p = {
-      id: t.side * 30000 + (t.projN = (t.projN + 1) % 30000), skill: S, owner: t,
+      id: t.side * 16000 + (t.projN = (t.projN + 1) % 16000), skill: S, owner: t,
       x: (o.x ?? t.x) + dx * 0.9, z: (o.z ?? t.z) + dz * 0.9, dx, dz,
-      speed: S.speed, left: o.left ?? S.range, r: S.radius, dmg: (o.dmg ?? S.dmg) * t.blade.atk, hit: false, back: false, crawl: false, dead: false, x2: !!o.x2,
+      speed: S.speed, left: o.left ?? S.range, r: S.radius, dmg: (o.dmg ?? S.dmg) * t.blade.atk, hit: 0, back: false, crawl: false, dead: false, x2: !!o.x2,
     };
     this.projectiles.push(p);
     if (!o.quiet) this.emit('shoot', { top: t, proj: p });
@@ -480,7 +510,7 @@ export class World {
       const mine = this.own(t, S.id);
       while (mine.length >= S.max) this.endZone(mine.shift());
     }
-    const q = initZone({ id: t.side * 30000 + (t.zoneN = (t.zoneN + 1) % 30000), kind: S.id, owner: t, x, z, dx: 0, dz: 0, t: 0, a: 0, b: 0, c: 0, ...o });
+    const q = initZone({ id: t.side * 16000 + (t.zoneN = (t.zoneN + 1) % 16000), kind: S.id, owner: t, x, z, dx: 0, dz: 0, t: 0, a: 0, b: 0, c: 0, ...o });
     this.zones.push(q);
     if (!quiet) this.emit('zone', { zone: q, top: t });
     return q;
@@ -567,9 +597,9 @@ export class World {
 
   // Hits the other top if it stands within `r` of (x, z). Returns the damage.
   burst(t, S, x, z, r, o = {}) {
-    const opp = this.other(t);
-    let hit = 0;
-    if (targetable(opp) && !this.result) {
+    let hit = 0, target = null;
+    for (const opp of this.foes(t)) {
+      if (!targetable(opp) || this.result) continue;
       let dx = opp.x - x, dz = opp.z - z;
       const d = Math.hypot(dx, dz);
       if (d < r + opp.radius * 0.5) {
@@ -577,14 +607,15 @@ export class World {
         const g = opp.guard > 0 ? 0.3 : 1;
         // Some blasts bite harder the less spin the target has left.
         const ex = S.exec && !o.as ? 1 + S.exec * (1 - spinRatio(opp)) : 1;
-        hit = this.hurt(opp, ((o.dmg ?? S.dmg) * ex * g * t.blade.atk) / opp.blade.def, t, S.id);
+        hit += this.hurt(opp, ((o.dmg ?? S.dmg) * ex * g * t.blade.atk) / opp.blade.def, t, S.id);
+        target = target || opp;
         if (g === 1) this.affect(t, opp, o.as || S, dx, dz);
         // Dragged from where it stood toward whoever reached for it.
         if (g === 1 && S.pull && !o.as) this.pull(opp, t, S.pull);
         t.stats.skillHits++;
       }
     }
-    this.emit('blast', { top: t, skill: S, x, z, r, hit, target: hit ? opp : null });
+    this.emit('blast', { top: t, skill: S, x, z, r, hit, target: hit ? target : null });
     this.hitKegs(t, S, (q) => Math.hypot(q.x - x, q.z - z) < r + 0.6);
     return hit;
   }
@@ -1184,16 +1215,17 @@ export class World {
 
   // Everything standing in a strip from (x, z) along (dx, dz) is hit at once.
   lineHit(t, S, x, z, dx, dz, mul = 1) {
-    const opp = this.other(t);
-    let hit = 0;
-    const rx = opp.x - x, rz = opp.z - z, along = rx * dx + rz * dz, side = Math.abs(-rx * dz + rz * dx);
-    if (targetable(opp) && !this.result && along > -1 && along < S.range + opp.radius && side < S.radius + opp.radius * 0.6) {
+    let hit = 0, target = null;
+    for (const opp of this.foes(t)) {
+      const rx = opp.x - x, rz = opp.z - z, along = rx * dx + rz * dz, side = Math.abs(-rx * dz + rz * dx);
+      if (!(targetable(opp) && !this.result && along > -1 && along < S.range + opp.radius && side < S.radius + opp.radius * 0.6)) continue;
       const g = opp.guard > 0 ? 0.3 : 1;
-      hit = this.hurt(opp, (S.dmg * mul * g * t.blade.atk) / opp.blade.def, t, S.id);
+      hit += this.hurt(opp, (S.dmg * mul * g * t.blade.atk) / opp.blade.def, t, S.id);
       if (g === 1) this.affect(t, opp, S, dx, dz);
       t.stats.skillHits++;
+      target = target || opp;
     }
-    this.emit('beam', { top: t, skill: S, x, z, dx, dz, hit, target: hit ? opp : null });
+    this.emit('beam', { top: t, skill: S, x, z, dx, dz, hit, target: hit ? target : null });
     this.hitKegs(t, S, (q) => { const ax = q.x - x, az = q.z - z, al = ax * dx + az * dz; return al > -1 && al < S.range + 1 && Math.abs(az * dx - ax * dz) < S.radius + 0.7; });
     return hit;
   }
@@ -1201,14 +1233,15 @@ export class World {
   // A cone from the top. Some carry banked damage, and some cut through
   // defence along their centre line.
   coneHit(t, S, dx, dz) {
-    const opp = this.other(t);
-    let hit = 0;
-    if (this.inCone(t, opp, dx, dz, S)) {
+    let hit = 0, target = null;
+    for (const opp of this.foes(t)) {
+      if (!this.inCone(t, opp, dx, dz, S)) continue;
+      target = target || opp;
       const g = opp.guard > 0 ? 0.3 : 1;
       const extra = S.storeHit ? t.store * S.storeHit : 0;
       const ox = opp.x - t.x, oz = opp.z - t.z, od = Math.hypot(ox, oz) || 1;
       const core = S.core && Math.acos(clamp((ox * dx + oz * dz) / od, -1, 1)) < S.half * S.core;
-      hit = this.hurt(opp, ((S.dmg * t.blade.atk + extra) * g) / (core ? 1 : opp.blade.def), t, S.id);
+      hit += this.hurt(opp, ((S.dmg * t.blade.atk + extra) * g) / (core ? 1 : opp.blade.def), t, S.id);
       if (g === 1) { if (S.pull) this.pull(opp, t, S.pull); this.affect(t, opp, S, dx, dz); }
       // A breath held on one target flares up every so many ticks.
       if (S.tick) {
@@ -1219,7 +1252,7 @@ export class World {
     }
     // Banked damage goes out with the punch and comes back as a shield.
     if (S.storeHit) { t.shield = t.store; t.shieldT = S.hold; t.store = 0; }
-    this.emit('cone', { top: t, skill: S, dx, dz, hit, target: hit ? opp : null });
+    this.emit('cone', { top: t, skill: S, dx, dz, hit, target: hit ? target : null });
     this.hitKegs(t, S, (q) => this.inCone(t, { x: q.x, z: q.z, radius: 1 }, dx, dz, S));
     return hit;
   }
@@ -1417,34 +1450,47 @@ export class World {
     this.emit('finish', { winner, loser, kind });
   }
 
+  // `t` is out of the round. The round itself ends when one top, or one team, is left.
+  eliminate(t, kind, by) {
+    if (this.result || t.gone) return;
+    t.gone = kind;
+    if (this.sidesLeft() > 1) {
+      t.cmd = t.dash = t.cast = t.charge = t.tether = t.orbs = t.chan = t.hold = null; t.guard = 0; t.toggle = false;
+      this.emit('ko', { top: t, kind, by: by || null });
+      return;
+    }
+    const left = this.tops.filter((o) => !o.gone);
+    const winner = (by && !by.gone && by.team !== t.team ? by : null) || left[0] || this.tops.find((o) => o !== t);
+    this.finish(winner, t, kind);
+  }
+
   timeUp() {
-    const [a, b] = this.tops;
-    const w = spinRatio(a) >= spinRatio(b) ? a : b;
-    this.finish(w, this.other(w), 'time');
+    if (this.result) return;
+    // Whoever has kept the most of its spin.
+    const left = this.tops.filter((o) => !o.gone).sort((p, q) => spinRatio(q) - spinRatio(p) || p.side - q.side);
+    const w = left[0];
+    this.finish(w, left.find((o) => o.team !== w.team) || this.tops.find((o) => o !== w), 'time');
   }
 
   step(dt) {
     this.time += dt;
-    const [a, b] = this.tops;
-    this.updateTop(a, dt, b);
-    this.updateTop(b, dt, a);
-    this.collide(a, b);
-    this.barriers(a);
-    this.barriers(b);
-    this.walls(a);
-    this.walls(b);
+    const T = this.tops;
+    for (const t of T) this.updateTop(t, dt, this.other(t));
+    for (let i = 0; i < T.length; i++) for (let j = i + 1; j < T.length; j++) this.collide(T[i], T[j]);
+    for (const t of T) this.barriers(t);
+    for (const t of T) this.walls(t);
     this.updateProjectiles(dt);
     this.updateZones(dt);
     if (!this.result) {
       for (const t of this.tops) {
-        if (t.spin > 0 || t.out) continue;
+        if (t.spin > 0 || t.out || t.gone) continue;
         // FROST PHOENIX gets one second chance per round.
         if (t.blade.egg && !t.eggUsed && t.stack >= (t.blade.egg.needStack || 0)) { this.layEgg(t); continue; }
         t.spin = 0;
         const h = t.lastHit;
         const burst = h && this.time - h.time < 0.35 && h.dmg >= 55;
-        this.finish(this.other(t), t, burst ? 'burst' : 'spin');
-        break;
+        this.eliminate(t, burst ? 'burst' : 'spin', h && h.by >= 0 ? this.tops[h.by] : null);
+        if (this.result) break;
       }
     }
   }
@@ -1723,20 +1769,22 @@ export class World {
       // THE DARKIN BLADE: a line, then a fan, then a slam; the edge (or the middle of the slam) is the sweet spot.
       const { dx, dz } = t.charge;
       t.charge = null;
-      const rx = opp.x - t.x, rz = opp.z - t.z, d = Math.hypot(rx, rz), along = rx * dx + rz * dz, side = Math.abs(rz * dx - rx * dz);
-      const cx = t.x + dx * (S.ahead || 0), cz = t.z + dz * (S.ahead || 0), m = Math.hypot(opp.x - cx, opp.z - cz);
-      let inside, tip;
-      if (S.kind === 'beam') { inside = along > -1 && along < S.range + opp.radius * 0.6 && side < S.radius + opp.radius * 0.6; tip = along >= S.tip; }
-      else if (S.kind === 'cone') { inside = this.inCone(t, opp, dx, dz, S); tip = d >= S.tip; }
-      else { inside = m < S.aoe + opp.radius * 0.5; tip = m < S.tip; }
-      let hit = 0;
-      if (targetable(opp) && inside) {
+      const cx = t.x + dx * (S.ahead || 0), cz = t.z + dz * (S.ahead || 0);
+      let hit = 0, tg = null;
+      for (const opp of this.foes(t)) {
+        const rx = opp.x - t.x, rz = opp.z - t.z, d = Math.hypot(rx, rz), along = rx * dx + rz * dz, side = Math.abs(rz * dx - rx * dz);
+        const m = Math.hypot(opp.x - cx, opp.z - cz);
+        let inside, tip;
+        if (S.kind === 'beam') { inside = along > -1 && along < S.range + opp.radius * 0.6 && side < S.radius + opp.radius * 0.6; tip = along >= S.tip; }
+        else if (S.kind === 'cone') { inside = this.inCone(t, opp, dx, dz, S); tip = d >= S.tip; }
+        else { inside = m < S.aoe + opp.radius * 0.5; tip = m < S.tip; }
+        if (!(targetable(opp) && inside)) continue;
         const g = opp.guard > 0 ? 0.3 : 1;
-        hit = this.hurt(opp, (S.dmg * (tip ? 1 + S.tipMul : 1) * g * t.blade.atk) / opp.blade.def, t, S.id);
+        hit += this.hurt(opp, (S.dmg * (tip ? 1 + S.tipMul : 1) * g * t.blade.atk) / opp.blade.def, t, S.id);
         if (g === 1 && tip) this.lift(opp, S.tipUp);
         t.stats.skillHits++;
+        tg = tg || opp;
       }
-      const tg = hit ? opp : null;
       if (S.kind === 'beam') this.emit('beam', { top: t, skill: S, x: t.x, z: t.z, dx, dz, hit, target: tg });
       else if (S.kind === 'cone') this.emit('cone', { top: t, skill: S, dx, dz, hit, target: tg });
       else this.emit('blast', { top: t, skill: S, x: cx, z: cz, r: S.aoe, hit, target: tg });
@@ -1748,31 +1796,35 @@ export class World {
       // Everything along the line is hit at once.
       const { dx, dz } = t.charge;
       t.charge = null;
-      let hit = 0;
-      const rx = opp.x - t.x, rz = opp.z - t.z, along = rx * dx + rz * dz, side = Math.abs(-rx * dz + rz * dx);
-      if (targetable(opp) && along > -1 && along < S.range && side < S.radius + opp.radius * 0.6) {
+      let hit = 0, tg = null;
+      for (const opp of this.foes(t)) {
+        const rx = opp.x - t.x, rz = opp.z - t.z, along = rx * dx + rz * dz, side = Math.abs(-rx * dz + rz * dx);
+        if (!(targetable(opp) && along > -1 && along < S.range && side < S.radius + opp.radius * 0.6)) continue;
         const g = opp.guard > 0 ? 0.3 : 1;
-        hit = this.hurt(opp, (S.dmg * (S.litBonus && opp.scar > 0 ? 1 + S.litBonus : 1) * g * t.blade.atk) / opp.blade.def, t, S.id);
+        hit += this.hurt(opp, (S.dmg * (S.litBonus && opp.scar > 0 ? 1 + S.litBonus : 1) * g * t.blade.atk) / opp.blade.def, t, S.id);
         if (g === 1) this.affect(t, opp, S, dx, dz);
         t.stats.skillHits++;
+        tg = tg || opp;
       }
-      this.emit('beam', { top: t, skill: S, x: t.x, z: t.z, dx, dz, hit, target: hit ? opp : null });
+      this.emit('beam', { top: t, skill: S, x: t.x, z: t.z, dx, dz, hit, target: tg });
       return;
     }
     t.charge = null;
     // DECIMATE: the edge of the axe is the outer ring.
-    let hit = 0, heal = 0;
-    if (targetable(opp)) {
+    let hit = 0, heal = 0, tg = null;
+    for (const opp of this.foes(t)) {
+      if (!targetable(opp)) continue;
       const d = Math.hypot(opp.x - t.x, opp.z - t.z);
-      if (d < S.aoe + opp.radius * 0.5) {
-        const outer = d >= S.inner, g = opp.guard > 0 ? 0.3 : 1;
-        hit = this.hurt(opp, ((outer ? S.dmg : S.weak) * g * t.blade.atk) / opp.blade.def, t, 'decimate');
-        if (g === 1) this.affect(t, opp, S, 0, 0);
-        if (outer) { heal = S.heal * (t.spinMax - t.spin); t.spin += heal; }
-        t.stats.skillHits++;
-      }
+      if (d >= S.aoe + opp.radius * 0.5) continue;
+      const outer = d >= S.inner, g = opp.guard > 0 ? 0.3 : 1;
+      hit += this.hurt(opp, ((outer ? S.dmg : S.weak) * g * t.blade.atk) / opp.blade.def, t, 'decimate');
+      if (g === 1) this.affect(t, opp, S, 0, 0);
+      // Every enemy the blade's edge catches heals a share of what is missing.
+      if (outer) { const h = S.heal * (t.spinMax - t.spin); heal += h; t.spin += h; }
+      t.stats.skillHits++;
+      tg = tg || opp;
     }
-    this.emit('blast', { top: t, skill: S, x: t.x, z: t.z, r: S.aoe, hit, target: hit ? opp : null });
+    this.emit('blast', { top: t, skill: S, x: t.x, z: t.z, r: S.aoe, hit, target: tg });
     if (heal >= 1) this.emit('heal', { top: t, amount: heal });
   }
 
@@ -1879,7 +1931,7 @@ export class World {
     for (const z of this.zones) {
       if (z.dead) continue;
       z.t += dt;
-      const t = z.owner, opp = this.other(t), S = z.skill;
+      const t = z.owner, opp = this.near(t, z.x, z.z), S = z.skill;
       const live = targetable(opp) && !this.result;
       if (z.kind === 'shadow' && z.c & 2) {
         // A shadow thrown out: it flies to its spot and stays there.
@@ -2190,29 +2242,37 @@ export class World {
       this.emit('blast', { top: t, skill: S, x: z.x, z: z.z, r: z.r, hit, target: hit ? opp : null });
       this.hitKegs(t, S, (q) => Math.hypot(q.x - z.x, q.z - z.z) < z.r);
     }
-    if (inside) {
-      // Despair deepens: the slow grows with every beat spent inside.
-      if (S.slowGrow) this.slowBy(opp, 0.3, Math.min(S.slowMax, S.slowGrow * Math.floor(z.t / 0.25)));
-      if (S.slowIn) this.slowBy(opp, 0.3, S.slowPct);
-      if (S.dps) this.dot(opp, (S.dps * dt * t.blade.atk) / opp.blade.def, t);
-      // SEVERUM drinks what it cuts.
-      if (S.leechIn && !this.result) t.spin = Math.min(t.spinMax, t.spin + ((S.dps * dt * t.blade.atk) / opp.blade.def) * S.leechIn);
-      if (S.pullIn && d > 0.3) this.push(opp, (z.x - opp.x) / d, (z.z - opp.z) / d, S.pullIn * dt);
-      // No dashing through a planted guard.
-      if (S.block && (opp.dash || opp.blink)) {
-        opp.dash = opp.blink = null;
-        const dmg = this.hurt(opp, (S.dmg * t.blade.atk) / opp.blade.def, t, S.id);
-        this.lift(opp, S.blockUp);
-        opp.ground = Math.max(opp.ground, S.groundT);
-        this.slowBy(opp, S.groundT, S.slowPct);
-        this.emit('strike', { top: opp, src: t, skill: S, x: opp.x, z: opp.z, dmg });
-      }
+    // What a field does to those inside it, it does to every enemy inside.
+    for (const o of this.foes(t)) {
+      if (o === opp ? !inside : !(live && targetable(o) && Math.hypot(o.x - z.x, o.z - z.z) < z.r + o.radius * 0.3)) continue;
+      const d = Math.hypot(o.x - z.x, o.z - z.z);
+      this.fieldOn(z, t, o, S, d, dt);
     }
     if (!t.out && !t.air && t.spin > 0 && Math.hypot(t.x - z.x, t.z - z.z) < z.r) {
       if (S.regen) { const h = Math.min(S.regen * dt, t.spinMax - t.spin); t.spin += h; z.a += h; z.b += dt; if (z.b >= 1) { if (z.a >= 1) this.emit('heal', { top: t, amount: z.a }); z.a = 0; z.b = 0; } }
       if (S.hasteIn) t.haste = Math.max(t.haste, 0.3);
       // POOL OF REFLECTION: a shield that builds while standing in it.
       if (S.shieldIn) { t.shield = Math.min(S.shieldIn.max, Math.max(t.shield, S.shieldIn.first) + S.shieldIn.per * dt); t.shieldT = 0.5; }
+    }
+  }
+
+  // One step of a field on one enemy standing in it, `d` from its centre.
+  fieldOn(z, t, opp, S, d, dt) {
+    // Despair deepens: the slow grows with every beat spent inside.
+    if (S.slowGrow) this.slowBy(opp, 0.3, Math.min(S.slowMax, S.slowGrow * Math.floor(z.t / 0.25)));
+    if (S.slowIn) this.slowBy(opp, 0.3, S.slowPct);
+    if (S.dps) this.dot(opp, (S.dps * dt * t.blade.atk) / opp.blade.def, t);
+    // SEVERUM drinks what it cuts.
+    if (S.leechIn && !this.result) t.spin = Math.min(t.spinMax, t.spin + ((S.dps * dt * t.blade.atk) / opp.blade.def) * S.leechIn);
+    if (S.pullIn && d > 0.3) this.push(opp, (z.x - opp.x) / d, (z.z - opp.z) / d, S.pullIn * dt);
+    // No dashing through a planted guard.
+    if (S.block && (opp.dash || opp.blink)) {
+      opp.dash = opp.blink = null;
+      const dmg = this.hurt(opp, (S.dmg * t.blade.atk) / opp.blade.def, t, S.id);
+      this.lift(opp, S.blockUp);
+      opp.ground = Math.max(opp.ground, S.groundT);
+      this.slowBy(opp, S.groundT, S.slowPct);
+      this.emit('strike', { top: opp, src: t, skill: S, x: opp.x, z: opp.z, dmg });
     }
   }
 
@@ -2254,13 +2314,15 @@ export class World {
 
   collide(a, b) {
     if (!targetable(a) || !targetable(b)) return;
+    // Team mates roll through each other.
+    if (a.team === b.team) return;
     let nx = b.x - a.x, nz = b.z - a.z;
     const d = Math.hypot(nx, nz), min = a.radius + b.radius;
     if (d >= min) return;
     // Some dashes go straight through, cutting once on the way.
     if (((a.dash && a.dash.skill.through) || (b.dash && b.dash.skill.through)) && a.guard <= 0 && b.guard <= 0) {
       for (const s of [a, b]) {
-        const h = s.dash, v = this.other(s);
+        const h = s.dash, v = (s === a ? b : a);
         if (!h || !h.skill.through || h.hit || !h.skill.pass || this.result) continue;
         h.hit = true;
         const dmg = this.hurt(v, (h.skill.pass * (h.again ? h.skill.againMul || 1 : 1) * s.blade.atk) / v.blade.def, s, h.skill.id);
@@ -2317,14 +2379,14 @@ export class World {
     if (!live) {
       special = false;
     } else if (a.guard > 0 !== b.guard > 0) {
-      const g = a.guard > 0 ? a : b, v = this.other(g);
+      const g = a.guard > 0 ? a : b, v = (g === a ? b : a);
       kind = 'parry'; power += 10;
       thrown(g, v, 11.5, 0.65);
       g.guard = 0; g.stats.parries++;
       this.emit('guardEnd', { top: g });
       bonus(g, v, SKILLS.aegis.parryDmg, 0.5);
     } else if (!!a.dash !== !!b.dash && (a.dash || b.dash).skill.dmg) {
-      const s = a.dash ? a : b, v = this.other(s), h = s.dash, D = h.skill;
+      const s = a.dash ? a : b, v = (s === a ? b : a), h = s.dash, D = h.skill;
       kind = 'dash'; power += 14;
       bonus(s, v, D.dmg * (h.pow || 1) * (D.perBleed ? 1 + D.perBleed * v.bleed : 1), D.keep ?? 1, !!D.trueDmg);
       // Landing it hands back part of what is left of its cooldown.
@@ -2337,7 +2399,7 @@ export class World {
       // Carried along the line of the charge, toward whatever wall is there.
       if (D.carry && !fixed(v)) { const k = Math.hypot(v.vx, v.vz); v.vx = h.dx * k; v.vz = h.dz * k; v.pin = D.carry; v.launch = Math.max(v.launch, 1); }
     } else if (a.empower > 0 !== b.empower > 0 && ((a.empower > 0 ? a : b).empS || (a.empower > 0 ? a : b).blade.emp)) {
-      const s = a.empower > 0 ? a : b, v = this.other(s), E = s.empS || s.blade.emp;
+      const s = a.empower > 0 ? a : b, v = (s === a ? b : a), E = s.empS || s.blade.emp;
       kind = 'empower'; power += 10;
       thrown(s, v, E.kb, 0.45);
       // Some skills empower more than one hit.
@@ -2436,7 +2498,7 @@ export class World {
         t.out = { t: 0, y: 0, vy: 2 + Math.max(0, c.vn) * 0.25 };
         t.cmd = t.dash = t.cast = t.charge = t.tether = t.orbs = t.chan = null; t.guard = 0; t.toggle = false;
         this.emit('ringout', { top: t, x: t.x, z: t.z, nx: c.nx, nz: c.nz, power: Math.max(6, c.vn) });
-        this.finish(this.other(t), t, 'over');
+        this.eliminate(t, 'over', this.lastBy(t));
       } else if (t.egg > 0 && c.r > ARENA.R - t.radius) { const lim = ARENA.R - t.radius; t.x = c.nx * lim; t.z = c.nz * lim; }
       return;
     }
@@ -2448,7 +2510,7 @@ export class World {
       t.out = { t: 0, y: 0, vy: 7 + c.vn * 0.35 };
       t.cmd = t.dash = t.cast = t.charge = t.tether = t.orbs = t.chan = null; t.guard = 0; t.toggle = false;
       this.emit('ringout', { top: t, x: t.x, z: t.z, nx: c.nx, nz: c.nz, power: c.vn });
-      this.finish(this.other(t), t, 'over');
+      this.eliminate(t, 'over', this.lastBy(t));
       return;
     }
     bounce(t, c);
@@ -2544,7 +2606,7 @@ export class World {
     // Only one blade of a wind slash can land.
     if (S.id === 'windslash') for (const q of this.projectiles) if (q !== p && q.skill === S && q.owner === o) q.dead = true;
     o.stats.skillHits++;
-    if (S.pierce) p.hit = true; else p.dead = true;
+    if (S.pierce) p.hit |= 1 << v.side; else p.dead = true;
     this.emit('projHit', { proj: p, top: v, x: p.x, z: p.z, dx: p.dx, dz: p.dz, dmg });
   }
 
@@ -2559,8 +2621,9 @@ export class World {
         p.dx = hx / hd; p.dz = hz / hd;
       }
       p.x += p.dx * st; p.z += p.dz * st; p.left -= st;
-      const v = this.other(p.owner);
-      if (p.crawl && targetable(v) && Math.hypot(v.x - p.x, v.z - p.z) < S.field) this.slowBy(v, 0.3, S.fieldPct);
+      if (p.crawl) for (const q of this.foes(p.owner)) if (targetable(q) && Math.hypot(q.x - p.x, q.z - p.z) < S.field) this.slowBy(q, 0.3, S.fieldPct);
+      // Whichever enemy it is touching and has not yet gone through.
+      const v = this.foes(p.owner).find((q) => targetable(q) && !(p.hit & (1 << q.side)) && Math.hypot(q.x - p.x, q.z - p.z) < p.r + q.radius) || this.other(p.owner);
       // A shot strikes any keg it passes; the captain's own pistol shot stops there.
       const keg = this.zones.find((q) => q.kind === 'keg' && !q.dead && q.id !== p.keg && Math.hypot(q.x - p.x, q.z - p.z) < 1.2 + p.r);
       if (keg) {
@@ -2572,7 +2635,7 @@ export class World {
         p.dead = true;
         if (S.re) this.unre(p.owner, S.id);
         this.emit('projEnd', { proj: p, x: p.x, z: p.z });
-      } else if (!this.result && !p.hit && !S.friendly && targetable(v) && Math.hypot(v.x - p.x, v.z - p.z) < p.r + v.radius) {
+      } else if (!this.result && !(p.hit & (1 << v.side)) && !S.friendly && !v.gone && v.team !== p.owner.team && targetable(v) && Math.hypot(v.x - p.x, v.z - p.z) < p.r + v.radius) {
         if (v.guard > 0) {
           // Guard sends it straight back.
           p.owner = v; p.dx = -p.dx; p.dz = -p.dz; p.left = S.range; p.dmg *= 1.2;
@@ -2584,7 +2647,7 @@ export class World {
       } else if (p.left <= 0 || Math.hypot(p.x, p.z) > ARENA.R + 0.5) {
         if (S.id === 'flashfrost') this.shatter(p);
         else if (S.crawl && !p.crawl && !p.back) { p.crawl = true; p.speed = S.crawl; p.left = S.crawl * S.linger; }
-        else if (S.ret && !p.back) { p.back = true; p.crawl = false; p.hit = false; p.left = 60; p.speed = S.speed * 1.3; }
+        else if (S.ret && !p.back) { p.back = true; p.crawl = false; p.hit = 0; p.left = 60; p.speed = S.speed * 1.3; }
         else {
           p.dead = true;
           // A star that met nothing waits where it stopped, to be sent on.

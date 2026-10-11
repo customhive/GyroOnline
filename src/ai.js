@@ -12,7 +12,6 @@ export class CpuBrain {
   constructor(world, me, level) {
     this.world = world;
     this.me = me;
-    this.foe = world.other(me);
     this.level = level;
     this.t = 0.6 + world.rng() * 0.4;
     this.quick = 0;
@@ -25,6 +24,9 @@ export class CpuBrain {
     const r = this.world.rng, e = this.level.aimErr * scale;
     return { x: p.x + (r() * 2 - 1) * e, z: p.z + (r() * 2 - 1) * e };
   }
+
+  // Whoever it is fighting right now: the nearest enemy still in the round.
+  get foe() { return this.world.other(this.me); }
 
   has(id) { const k = this.keyOf[id]; return k && this.world.canCast(this.me, k); }
   // The skill's recast window is open (so `use` would fire its second stage).

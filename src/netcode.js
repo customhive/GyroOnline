@@ -8,7 +8,7 @@
 import { SKILLS, KEYS } from './config.js';
 import { initZone } from './sim.js';
 
-export const PROTOCOL = 12;
+export const PROTOCOL = 13;
 export const PKT_SNAPSHOT = 1, PKT_PING = 2, PKT_PONG = 3;
 
 const SKILL_IDS = Object.keys(SKILLS);
@@ -138,11 +138,14 @@ export function encodeSnapshot(world, meta) {
   const w = new Writer();
   w.u8(PKT_SNAPSHOT); w.u16(meta.seq & 0xffff); w.u16(meta.ack & 0xffff); w.u16(Math.max(0, meta.timeLeft) * 100);
   const res = world.result;
-  w.u8(res ? 1 + res.winner.side + 2 * KINDS.indexOf(res.kind) : 0);
+  // Who won (two bits), how (two bits), and who went down last (two bits).
+  w.u8(res ? 1 + res.winner.side + 4 * KINDS.indexOf(res.kind) + 16 * res.loser.side : 0);
+  // Who is already out of the round, and how.
+  for (const t of world.tops) w.u8(t.gone ? 1 + KINDS.indexOf(t.gone) : 0);
   for (const t of world.tops) writeTop(w, t);
   w.u8(world.projectiles.length);
   for (const p of world.projectiles) {
-    w.u16(p.id); w.u8(skillNo(p.skill)); w.u8(p.owner.side | (p.hit ? 2 : 0) | (p.back ? 4 : 0) | (p.crawl ? 8 : 0));
+    w.u16(p.id); w.u8(skillNo(p.skill)); w.u8(p.owner.side | (p.back ? 4 : 0) | (p.crawl ? 8 : 0) | ((p.hit & 15) << 4)); // side in two bits, then who it has pierced
     w.i16(p.x * POS); w.i16(p.z * POS); w.i16(p.dx * DIR); w.i16(p.dz * DIR); w.u16(p.left * 1000); w.u16(p.dmg * 100);
   }
   w.u8(world.zones.length);
@@ -167,9 +170,10 @@ export function applySnapshot(world, buf) {
   const meta = { seq: r.u16(), ack: r.u16(), timeLeft: r.u16() / 100 };
   const res = r.u8();
   if (res) {
-    const winner = world.tops[(res - 1) & 1];
-    world.result = { winner, loser: world.other(winner), kind: KINDS[(res - 1) >> 1] };
+    const winner = world.tops[(res - 1) & 3];
+    world.result = { winner, loser: world.tops[((res - 1) >> 4) & 3] || world.other(winner), kind: KINDS[((res - 1) >> 2) & 3] };
   } else world.result = null;
+  for (const t of world.tops) { const g = r.u8(); t.gone = g ? KINDS[g - 1] : null; }
   for (const t of world.tops) readTop(r, t);
 
   const old = new Map(world.projectiles.map((p) => [p.id, p]));
@@ -178,7 +182,7 @@ export function applySnapshot(world, buf) {
   for (let i = 0; i < n; i++) {
     const id = r.u16(), sk = r.u8(), b = r.u8();
     const p = old.get(id) || { id, dead: false };
-    p.owner = world.tops[b & 1]; p.skill = skillAt(sk); p.hit = !!(b & 2); p.back = !!(b & 4); p.crawl = !!(b & 8);
+    p.owner = world.tops[b & 3]; p.skill = skillAt(sk); p.hit = b >> 4; p.back = !!(b & 4); p.crawl = !!(b & 8);
     p.x = r.i16() / POS; p.z = r.i16() / POS;
     Object.assign(p, readDir(r));
     p.left = r.u16() / 1000; p.dmg = r.u16() / 100;
@@ -191,7 +195,7 @@ export function applySnapshot(world, buf) {
   for (let i = 0; i < zn; i++) {
     const id = r.u16(), sk = r.u8(), b = r.u8();
     const z = zones.get(id) || { id };
-    z.kind = SKILL_IDS[sk]; z.owner = world.tops[b & 1]; z.dead = false;
+    z.kind = SKILL_IDS[sk]; z.owner = world.tops[b & 3]; z.dead = false;
     z.x = r.i16() / POS; z.z = r.i16() / POS; z.dx = r.i16() / POS; z.dz = r.i16() / POS;
     z.t = r.u16() / 1000; z.a = r.u16() / 100; z.b = r.u8() / 50; z.c = r.u8();
     world.zones.push(initZone(z));
@@ -223,14 +227,14 @@ export function reviveEvent(o, world) {
   for (const k in o) {
     const v = o[k];
     if (v == null || typeof v !== 'object') { e[k] = v; continue; }
-    if ('$t' in v) e[k] = world.tops[v.$t & 1];
+    if ('$t' in v) e[k] = world.tops[v.$t & 3] || world.tops[0];
     else if ('$s' in v) e[k] = SKILLS[v.$s];
     else if ('$p' in v) {
       const [id, side, skill, x, z, dx, dz] = v.$p;
-      e[k] = world.projectiles.find((p) => p.id === id) || { id, owner: world.tops[side & 1], skill: SKILLS[skill], x, z, dx, dz, left: 0 };
+      e[k] = world.projectiles.find((p) => p.id === id) || { id, owner: world.tops[side & 3] || world.tops[0], skill: SKILLS[skill], x, z, dx, dz, left: 0 };
     } else if ('$z' in v) {
       const [kind, side, x, z, id, dx, dz, c] = v.$z;
-      e[k] = world.zones.find((q) => q.id === id) || initZone({ id, kind, owner: world.tops[side & 1], x, z, dx, dz, t: 0, a: 0, b: 0, c });
+      e[k] = world.zones.find((q) => q.id === id) || initZone({ id, kind, owner: world.tops[side & 3] || world.tops[0], x, z, dx, dz, t: 0, a: 0, b: 0, c });
     }
   }
   return e;
