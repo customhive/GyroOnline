@@ -350,8 +350,9 @@ export class UI {
     s.textContent = host && lopsided ? 'チーム戦は、AとBの両方に1人以上必要です。カードの下の TEAM を押すとチームを変えられます' : status;
     s.className = 'lb-status ' + lb.status;
     // The host always has the invitation to hand; it does not come and go with the seats.
-    $('#lb-invite').classList.toggle('hidden', !host);
-    $('#lb-invite').classList.toggle('ghost', host && !lb.url);
+    // Host-only controls keep their place for a guest (unseen, not removed),
+    // so the room is laid out the same on every screen.
+    $('#lb-invite').classList.toggle('ghost', !lb.url);
     if (lb.url && $('#lb-url').value !== lb.url) $('#lb-url').value = lb.url;
 
     // One tall card for each seat. Everything about a seat is on its card:
@@ -435,8 +436,8 @@ export class UI {
     $('#st-name').textContent = g.name + (g.soon ? '（準備中）' : '');
     $('#st-ja').textContent = g.ja;
     $('#st-prev').disabled = $('#st-next').disabled = !host;
-    $('#st-prev').classList.toggle('hidden', !host);
-    $('#st-next').classList.toggle('hidden', !host);
+    $('#st-prev').classList.toggle('ghost', !host);
+    $('#st-next').classList.toggle('ghost', !host);
 
     // The blade picker, laid over the room, edits one seat.
     const open = !!lb.picking && lb.slots[lb.edit].kind !== 'open' && lb.slots[lb.edit].kind !== 'none';
@@ -457,7 +458,8 @@ export class UI {
     r.disabled = !human || (!host && !linked);
     r.textContent = me.ready ? '準備を取り消す' : '準備完了';
     r.classList.toggle('armed', !!me.ready);
-    go.classList.toggle('hidden', !host);
+    go.classList.toggle('ghost', !host);
+    if (!host) go.disabled = true;
     if (host) {
       const all = lb.slots.every((p) => p.kind === 'none' || p.kind === 'cpu' || (p.kind === 'human' && p.ready))
         && (!lb.teams || new Set(lb.slots.filter((p) => p.kind !== 'none').map((p) => p.team)).size === 2);

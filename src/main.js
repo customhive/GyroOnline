@@ -317,6 +317,8 @@ function openRoom() {
 
 function joinRoom(code) {
   enterLobby('guest');
+  // A guest can pass the invitation on too: the room takes up to four.
+  game.lobby.url = inviteUrl(code);
   newNet().join(code);
 }
 
