@@ -1102,6 +1102,9 @@ export class World {
         // To the soldier nearest the point given (the cursor), not the nearest to itself.
         for (const q of this.own(t, 'arise')) { const d = Math.hypot(q.x - c.ax, q.z - c.az); if (d < bd) { bd = d; best = q; } }
         bd = best ? Math.hypot(best.x - t.x, best.z - t.z) : 0;
+        // Shielded from the moment it sets off, whether or not it meets anyone on the way.
+        t.shield = S.shield; t.shieldT = S.hold;
+        this.emit('buff', { top: t, skill: S });
         if (best && bd > 0.5) { this.startDash(t, S, (best.x - t.x) / bd, (best.z - t.z) / bd, bd); t.dash.to = best.id; }
         break;
       }
@@ -3013,7 +3016,8 @@ export class World {
       s.stats.skillHits++;
       this.affect(s, v, D, 0, 0, false);
       // SHIFTING SANDS: the emperor arrives behind a shield, the target goes up.
-      if (D.liftUp) { this.lift(v, D.liftUp); s.shield = D.shield; s.shieldT = D.hold; }
+      // SHIFTING SANDS: running into someone hands the emperor one more soldier to set.
+      if (D.stockHit) { const K = KEYS.map((k) => skillOf(s, k)).find((q) => q.stock); if (K) s.stk = Math.min(K.stock.max, s.stk + 1); }
       // Carried along the line of the charge, toward whatever wall is there.
       if (D.carry && !fixed(v)) { const k = Math.hypot(v.vx, v.vz); v.vx = h.dx * k; v.vz = h.dz * k; v.pin = D.carry; v.launch = Math.max(v.launch, 1); }
     } else if (a.empower > 0 !== b.empower > 0 && ((a.empower > 0 ? a : b).empS || (a.empower > 0 ? a : b).blade.emp)) {

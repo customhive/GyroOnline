@@ -685,6 +685,26 @@ console.log('STAR FORGER (Aurelion Sol)');
 
 console.log('SAND EMPEROR (Azir): the shuffle');
 {
+  {
+    let s = setup('sand', 20), n = 0;
+    for (let i = 0; i < 3; i++) { if (s.w.cast(s.me, 'W', s.me.x + i * 2, s.me.z - 5)) n++; s.run(1.55); }
+    check(n === 2 && s.me.stk === 0 && s.w.own(s.me, 'arise').length === 2, 'W: two soldiers in store, set a second and a half apart');
+    s.run(1.5);
+    check(s.me.stk === 1, 'W: one comes back six seconds after the first was set');
+    s.run(4);
+    const left = s.w.own(s.me, 'arise').length; s.run(1.6);
+    check(left === 1 && s.w.own(s.me, 'arise').length === 0, 'W: a soldier stands for ten seconds');
+    s = setup('sand', 20);
+    for (let i = 0; i < 5; i++) { s.me.stk = 1; s.me.cd.W = 0; s.w.cast(s.me, 'W', s.me.x + i * 1.5 - 3, s.me.z - 5); }
+    check(s.w.own(s.me, 'arise').length === 4, 'W: four at once and no more (a fifth takes the place of the oldest)');
+    s = setup('sand', 20);
+    s.w.cast(s.me, 'W', s.me.x, s.me.z - 6); s.me.cd.E = 0; s.w.cast(s.me, 'E', s.me.x, s.me.z - 6);
+    check(s.me.shield === 60 && Math.abs(s.me.shieldT - 1.5) < 1e-9 && !!s.me.dash, 'E: shielded for 1.5s from the moment it sets off');
+    s = setup('sand', 5);
+    s.w.cast(s.me, 'W', s.me.x, s.me.z - 7); s.me.cd.E = 0; const st = s.me.stk;
+    s.w.cast(s.me, 'E', s.me.x, s.me.z - 7); s.run(0.3, false);
+    check(s.foe.stats.taken > 0 && s.foe.up === 0 && !s.me.dash && s.me.stk === st + 1, 'E: running into someone stops it there, with no knock-up, and gives back one soldier');
+  }
   const { w, me, foe } = setup('sand', 20);
   w.cast(me, 'W', me.x, me.z - 7);
   me.cd.E = 0; w.cast(me, 'E', me.x, me.z);

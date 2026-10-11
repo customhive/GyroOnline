@@ -577,9 +577,13 @@ export class UI {
       // While the recast window is open the key is live again, whatever the cooldown says.
       const again = !!S.re && me.re[k] > 0;
       const charging = !again && S.ult && me.ult < 100;
-      const ready = again || (cd <= 0 && !charging);
-      s.cd.style.setProperty('--p', charging || again ? 0 : Math.min(1, cd / total));
-      s.num.textContent = again ? '' : charging ? Math.floor(me.ult) + '%' : cd > 0 ? (cd < 1 ? cd.toFixed(1) : Math.ceil(cd)) : '';
+      // A stocked skill with nothing left in store is waiting for the next one to
+      // come back, however short its own cooldown: it shows that wait, and is not lit.
+      const empty = !!S.stock && me.stk <= 0;
+      const wait = empty ? Math.max(cd, S.stock.every - me.stkT) : cd, span = empty ? S.stock.every : total;
+      const ready = again || (wait <= 0 && !charging);
+      s.cd.style.setProperty('--p', charging || again ? 0 : Math.min(1, wait / span));
+      s.num.textContent = again ? '' : charging ? Math.floor(me.ult) + '%' : wait > 0 ? (wait < 1 ? wait.toFixed(1) : Math.ceil(wait)) : '';
       s.root.classList.toggle('again', again);
       // LUNAR ARSENAL: each of the three keys wears the colour of the weapon it stands for
       // (in hand, in the other hand, next to come).
@@ -631,7 +635,7 @@ export class UI {
       case 'guillotine': return foe.bleed ? '出血' + foe.bleed : '';
       case 'poison': return me.toggle ? 'ON' : '';
       case 'insanity': case 'upgrade': return me.buff > 0 ? Math.ceil(me.buff) + 's' : '';
-      case 'lotus': case 'turret': case 'arise': { const n = world.own(me, S.id).length; return n ? String(n) : ''; }
+      case 'lotus': case 'turret': { const n = world.own(me, S.id).length; return n ? String(n) : ''; }
       case 'conquer': case 'shift': return world.own(me, 'arise').length ? '' : '—';
     }
     // Skills described by fields (see `kind` in config.js).

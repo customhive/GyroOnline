@@ -740,15 +740,15 @@ export const SKILLS = {
     desc: 'すべての砂兵を指定地点へ突進させる。通り道の相手にダメージとスロウ。',
   },
   arise: {
-    name: '目覚めよ！', en: 'ARISE!', aim: 'ground', cd: 3.5,
-    range: 8, aoe: 2.7, reach: 2.7, leash: 10, dur: 9, max: 2, rate: 1.0, dmg: 18, kb: 3,
-    desc: '分身の砂兵を置く（最大2体）。近づいた相手を自動で突く。自分が離れすぎると動かない。',
+    name: '目覚めよ！', en: 'ARISE!', aim: 'ground', cd: 1.5, stock: { max: 2, every: 6 },
+    range: 8, aoe: 2.7, reach: 2.7, leash: 10, dur: 10, max: 4, rate: 1.0, dmg: 18, kb: 3,
+    desc: '分身の砂兵を置く。2体ぶん溜めておける（6秒で1体ぶん戻る）。砂兵は10秒残り、同時に4体まで立てられる。近づいた相手を自動で突く。自分が離れすぎると動かない。',
   },
   shift: {
     name: '流砂', en: 'SHIFTING SANDS', aim: 'self', cd: 9, need: 'soldier',
-    speed: 36, dmg: 30, keep: 0.5, kb: 3, liftUp: 0.7, shield: 60, hold: 2, fly: true,
+    speed: 36, dmg: 30, keep: 0.5, kb: 3, stockHit: true, shield: 60, hold: 1.5, fly: true,
     cursor: true,
-    desc: 'カーソルに一番近い砂兵へ突進する。途中で相手に当たると打ち上げ、バリアを得る。突進中にQで砂兵を動かすと、その砂兵を追いかけて飛び続ける。',
+    desc: 'カーソルに一番近い砂兵へ突進する。使った瞬間に1.5秒のバリアを得る。途中で相手に当たるとそこで止まり、砂兵を1体ぶん置けるようになる。突進中にQで砂兵を動かすと、その砂兵を追いかけて飛び続ける。',
   },
   divide: {
     name: '皇帝の分砂嶺', en: "EMPEROR'S DIVIDE", aim: 'line', cd: 2, ult: true, tele: 0.3,
