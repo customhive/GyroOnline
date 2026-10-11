@@ -374,16 +374,16 @@ kbd { flex: none; width: 28px; height: 28px; display: grid; place-items: center;
 .room-side #lb-invite { padding: 10px 12px; background: #080c18; border: 1px solid var(--line); }
 .room-side #lb-invite label { font-size: 11px; letter-spacing: 0.2em; color: var(--cyan); }
 .room-go { display: grid; gap: 8px; margin-top: auto; }
-/* The room's three buttons: one shape and size, told apart by colour alone. */
-.room-btn { width: 100%; height: 50px; padding: 0 10px; font-size: 18px; font-weight: 700; font-style: italic; letter-spacing: 0.12em; border: 0; clip-path: polygon(12px 0, 100% 0, calc(100% - 12px) 100%, 0 100%); transition: transform 0.1s, filter 0.1s; }
-.room-btn:hover:not(:disabled) { transform: scale(1.03); filter: brightness(1.14); }
-.room-btn:active:not(:disabled) { transform: scale(0.98); }
-.room-btn:disabled { cursor: default; color: #7f8cab; background: #141c30; }
-.room-btn.gold { color: #1b1200; background: linear-gradient(180deg, #fff3b0, var(--gold) 45%, #ff9d00); }
-.room-btn.cyan { color: #04101c; background: linear-gradient(180deg, #c9f1ff, var(--cyan) 50%, #1b8fd1); }
-.room-btn.cyan.armed { color: #7dffb0; background: linear-gradient(180deg, #123524, #0b2418); }
-.room-btn.dark { color: #c9d5f0; background: linear-gradient(180deg, #1c2744, #131b30); }
-.room-btn.gold:disabled, .room-btn.cyan:disabled { color: #7f8cab; background: #141c30; }
+/* The room's three buttons: one plain rectangle, told apart by colour alone. */
+.room-btn { width: 100%; height: 46px; padding: 0 10px; font-size: 16px; font-weight: 700; letter-spacing: 0.1em; color: #c9d5f0; background: #080c18; border: 1px solid var(--line); transition: border-color 0.1s, background 0.1s, box-shadow 0.1s, color 0.1s; }
+.room-btn:hover:not(:disabled) { border-color: var(--cyan); }
+.room-btn:disabled { cursor: default; color: #5f6c8c; border-color: #1a2440; }
+.room-btn.cyan { color: var(--cyan); border-color: var(--cyan); background: rgba(53, 200, 255, 0.1); }
+.room-btn.cyan:hover:not(:disabled) { background: rgba(53, 200, 255, 0.2); box-shadow: 0 0 18px rgba(53, 200, 255, 0.3); }
+.room-btn.cyan.armed { color: #7dffb0; border-color: #24c46a; background: rgba(80, 255, 150, 0.1); }
+.room-btn.gold { color: var(--gold); border-color: var(--gold); background: rgba(255, 216, 74, 0.12); }
+.room-btn.gold:hover:not(:disabled) { border-color: var(--gold); background: rgba(255, 216, 74, 0.24); box-shadow: 0 0 18px rgba(255, 216, 74, 0.35); }
+.room-btn.gold:disabled, .room-btn.cyan:disabled { color: #5f6c8c; border-color: #1a2440; background: #080c18; }
 
 .screen.overlay { z-index: 30; background: rgba(3, 6, 14, 0.78); backdrop-filter: blur(4px); }
 .panel.picker { width: min(1180px, 94vw); }
