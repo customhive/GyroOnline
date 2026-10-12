@@ -227,11 +227,16 @@ export class UI {
       this.sheets[b.id] = `${this.bars[b.id]}<p>${b.desc}</p>`;
       c.onclick = () => this.h.pick(b.id);
       c.dataset.id = b.id;
+      // The sheet beside the grid follows the pointer, and goes back to the blade chosen when it leaves.
+      c.onmouseenter = () => this.showBlade(b.id);
+      c.onmouseleave = () => this.showBlade(this.picked);
       cards.appendChild(c);
     }
     const any = el('button', 'blade any', '<div class="b-disc"><div class="b-disc-in"></div></div><div class="b-type">？？？</div><div class="b-en">RANDOM</div><div class="b-name">おまかせ</div>');
     any.dataset.id = 'random';
     any.onclick = () => this.h.pick('random');
+    any.onmouseenter = () => this.showBlade('random');
+    any.onmouseleave = () => this.showBlade(this.picked);
     cards.prepend(any);
   }
 
@@ -365,6 +370,7 @@ export class UI {
     if (!open) return;
     $('#lb-editing').textContent = '　' + who;
     document.querySelectorAll('.blade').forEach((c) => c.classList.toggle('on', c.dataset.id === id));
+    this.picked = id;
     this.showBlade(id);
   }
 
