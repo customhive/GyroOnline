@@ -1064,6 +1064,8 @@ function onEvent(e) {
       if (e.hit) { dmgPop(e.target, e.hit); game.hitstop = e.skill.ult ? 0.18 : 0.1; }
       break;
     case 'strike':
+      // (Something coming back to its owner: seen, nothing more.)
+      if (e.back) break;
       audio.projHit();
       dmgPop(e.top, e.dmg);
       game.hitstop = e.big ? 0.18 : 0.07;

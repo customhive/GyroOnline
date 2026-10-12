@@ -1266,14 +1266,15 @@ export const SKILLS = {
   // ---- LUNAR ARSENAL: a gun for every range ----------------------------------
   arsenal: {
     name: 'ウェポンスキル', en: 'WEAPON SKILL', aim: 'line', icon: 'beam', cd: 4, re: 'bindeclipse',
-    weapons: ['moonshot', 'onslaught', 'gravshot', 'duskwave', 'sentry'], ammo: 5, short: ['狙', '鎌', '重', '炎', '輪'],
+    weapons: ['moonshot', 'onslaught', 'gravshot', 'duskwave', 'chakram'], ammo: 5, short: ['狙', '鎌', '重', '炎', '輪'],
     // Each weapon has a colour of its own, on its key and on everything it fires.
     tints: [0x4fe08a, 0xff4a5a, 0xb46bff, 0x4aa8ff, 0xf2f6ff],
     // What the weapon in the other hand adds when it joins in: a light blow, and something of its own.
     off: { dmg: 14, fx: [{ mul: 2 }, { leech: 1 }, { slow: 2.5, slowPct: 0.3 }, { mul: 1.5, splash: 2.4 }, { chak: 1 }] },
-    // CRESCENDUM: each of its follow-ups that lands leaves a chakram circling its owner (up to `max`, for `dur` seconds
-    // since the last). Every one held flies out with the next follow-up and adds `dmg` to it.
-    chak: { max: 5, dur: 6, dmg: 10 },
+    // CRESCENDUM: chakrams circle whoever holds them (up to `max`). A follow-up of its own that lands adds one; its
+    // skill adds one and then throws them all, one after another. One that strikes comes back; one that misses is lost.
+    // With none gained and none landed for `dur` seconds they all go; they flicker for the last `warn` of it.
+    chak: { max: 5, dur: 8, warn: 2 },
     // Where no match is on, a skill of this kit is described by its text and then a line for each weapon, in that
     // weapon's colour (`lines` names the field of the weapon the line is taken from). In a match the key says only
     // what it does with the weapons in hand right now.
@@ -1330,19 +1331,23 @@ export const SKILLS = {
     offLine: '追撃：1.5倍のダメージ。近くのほかの相手にも当たる。',
     ultLine: '強化追撃：追加ダメージを与える。',
   },
+  chakram: {
+    name: 'ガードチャクラム', en: 'GUARD CHAKRAM', aim: 'line', hidden: true, weapon: 4, cd: 3, ai: 'shot', tint: 0xf2f6ff,
+    tele: 0.3, range: 9, speed: 36, radius: 0.6, dmg: 26, every: 0.12, kb: 1, tumble: 0, launch: 0,
+    desc: '円月輪を1つ得て、持っている円月輪をすべて、狙った方向へ続けて撃つ。当たった円月輪は戻り、外れた円月輪は失う。',
+    briefLine: '円月輪を1つ得て、持っている分を続けて撃つ。当たれば戻る。',
+    offLine: '追撃：円月輪を1つ得る（5つまで）。',
+    ultLine: '強化追撃：円月輪を5つ得る。',
+  },
   sentry: {
-    name: 'ガードチャクラム', en: 'GUARD CHAKRAM', aim: 'ground', hidden: true, weapon: 4, cd: 3, ai: 'ground', tint: 0xf2f6ff,
+    name: 'ガードチャクラム', en: 'GUARD CHAKRAM', aim: 'ground', hidden: true, cd: 3, ai: 'ground', tint: 0xf2f6ff,
     range: 4.75, aoe: 1.1, dur: 20, live: 4, reach: 5, wake: 0.35, rate: 0.8, max: 3,
-    desc: '狙った地点に見張りを置く。近づいた相手を4秒間撃つ。',
-    briefLine: '近づいた相手を撃つ見張りを置く。',
-    offLine: '追撃：周囲を回る円月輪を1つ得る（5つまで）。持っている円月輪も一緒に飛び、その数だけダメージが増える。',
-    ultLine: '強化追撃：円月輪を3つ得る。',
   },
   sentryshot: { name: 'ガードチャクラム', en: 'GUARD CHAKRAM', aim: 'line', hidden: true, tint: 0xf2f6ff, range: 9, speed: 32, radius: 0.55, dmg: 20, kb: 1.5, tumble: 0, launch: 0 },
   vigil: {
     name: 'ムーンバースト', en: 'MOON BURST', aim: 'line', kind: 'shot', icon: 'star', cd: 2, ult: true,
     tele: 0.4, range: 13, speed: 24, radius: 1.4, dmg: 70, splash: 4, splashDmg: 70, onHit: true,
-    arm: [{ mark: 4.5 }, { heal: 90 }, { slow: 2.5, slowPct: 0.99 }, { dmg: 50 }, { chak: 3 }],
+    arm: [{ mark: 4.5 }, { heal: 90 }, { slow: 2.5, slowPct: 0.99 }, { dmg: 50 }, { chak: 5 }],
     lines: 'ultLine',
     desc: '【必殺技】遅い弾を撃つ。相手に当たると爆発し、当たった相手と周囲の相手に、主の武器が強化された追撃をする。',
   },

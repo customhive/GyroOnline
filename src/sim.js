@@ -45,7 +45,7 @@ export function makeTop(side, blade) {
     streamT: 0,            // a held stream of fire: time left before it counts as let go
     markK: 1,              // how hard the mark on this top goes off
     markHold: false,       // the mark waits for the follow-up that was promised it: no other skill sets it off
-    chak: 0, chakT: 0,     // chakrams circling this top, and how long they have left
+    chak: 0, chakT: 0,     // chakrams this top holds (those in flight still count until they miss), and how long before they all go
     empN: 0, empS: null,   // empowered body hits left, and the skill that empowered them
     ret2: null,            // a second place to return to, left by a mimicked jump
     shield: 0, shieldT: 0, buff: 0,
@@ -939,6 +939,11 @@ export class World {
         // ONSLAUGHT: quicker on its feet, and nothing to do but move while the blows land.
         t.haste = S.haste;
         t.volley = { skill: S, n: S.shots, every: S.dur / S.shots, acc: S.dur / S.shots, off: t.wo };
+        break;
+      case 'chakram':
+        // One more chakram, then every one it holds is thrown, one after another, the way it was aimed.
+        this.gainChak(t, 1);
+        t.spray = { skill: S, n: t.chak, every: S.every, acc: S.every, dx: c.dx, dz: c.dz, chak: true };
         break;
       case 'longshot': {
         // The rifle's follow-up: wherever the marked target is, the mark goes off and the other hand lands its blow.
@@ -2073,7 +2078,7 @@ export class World {
     if (t.spray && !this.result && t.spin > 0 && !t.out && !t.gone) {
       const sp = t.spray;
       sp.acc += dt;
-      while (sp.n > 0 && sp.acc >= sp.every) { sp.acc -= sp.every; sp.n--; if (t.stun <= 0 && t.up <= 0 && !t.air) this.fire(t, sp.skill, sp.dx, sp.dz, { quiet: sp.n % 3 !== 0 }); }
+      while (sp.n > 0 && sp.acc >= sp.every) { sp.acc -= sp.every; sp.n--; if (t.stun <= 0 && t.up <= 0 && !t.air) { const p = this.fire(t, sp.skill, sp.dx, sp.dz, { quiet: sp.n % 3 !== 0 }); if (sp.chak) p.chakOf = t.side; } }
       if (sp.n <= 0) t.spray = null;
     } else if (t.spray) t.spray = null;
     if (t.volley && !this.result && t.spin > 0 && !t.out && !t.gone) {
@@ -2933,16 +2938,14 @@ export class World {
   offhand(o, v, wi = o.wo, fly = false) {
     const A = SKILLS.arsenal, F = A.off.fx[wi];
     if (this.result || !F || !targetable(v) || v.guard > 0) return;
-    // The chakrams it holds fly with the blow, each adding to it; landing, the blow leaves one more.
-    const n = F.chak ? o.chak : 0;
-    const dmg = this.hurt(v, ((A.off.dmg * (F.mul || 1) + n * A.chak.dmg) * o.blade.atk) / v.blade.def, o, 'offhand');
-    // (The ultimate's blow leaves three.)
-    if (F.chak) { o.chak = Math.min(A.chak.max, o.chak + (fly === 2 ? SKILLS.vigil.arm[wi].chak : F.chak)); o.chakT = A.chak.dur; }
+    const dmg = this.hurt(v, (A.off.dmg * (F.mul || 1) * o.blade.atk) / v.blade.def, o, 'offhand');
+    // The chakram's blow leaves one more circling (the ultimate's, a handful).
+    if (F.chak) this.gainChak(o, fly === 2 ? SKILLS.vigil.arm[wi].chak : F.chak);
     if (F.slow) this.slowBy(v, F.slow, F.slowPct);
     if (F.leech) this.mend(o, dmg * F.leech);
     // The flamethrower's blow washes over whoever else stands close behind.
     if (F.splash) for (const q of this.foes(o)) if (q !== v && targetable(q) && Math.hypot(q.x - v.x, q.z - v.z) < F.splash + q.radius * 0.5) this.hurt(q, (A.off.dmg * o.blade.atk) / q.blade.def, o, 'offhand');
-    this.emit('strike', { top: v, src: o, skill: SKILLS[A.weapons[wi]], x: v.x, z: v.z, dmg, light: fly !== 2, ...(fly ? { fx: o.x, fz: o.z } : {}), ...(fly === 2 ? { strong: 1 } : {}), ...(n ? { n } : {}) });
+    this.emit('strike', { top: v, src: o, skill: SKILLS[A.weapons[wi]], x: v.x, z: v.z, dmg, light: fly !== 2, ...(fly ? { fx: o.x, fz: o.z } : {}), ...(fly === 2 ? { strong: 1 } : {}) });
   }
 
   // PLASMA FISSION parting: two bolts at right angles to the way it was going.
@@ -3340,6 +3343,21 @@ export class World {
 
   // True if a wall stands where the shot is: ice stops all of them, a wind
   // wall only the other side's.
+  // More chakrams (or none: one that struck has come back). Either way they are good for a while longer.
+  gainChak(t, n) {
+    const C = SKILLS.arsenal.chak;
+    t.chak = Math.min(C.max, t.chak + n);
+    t.chakT = C.dur;
+  }
+
+  // A chakram that struck nothing does not come back.
+  lostChak(p) {
+    if (p.chakOf === undefined) return;
+    const o = this.tops[p.chakOf];
+    p.chakOf = undefined;
+    if (o && o.chak > 0) o.chak--;
+  }
+
   stopped(p) {
     for (const z of this.zones) {
       if (z.dead) continue;
@@ -3385,6 +3403,8 @@ export class World {
     o.x2 = !!p.x2;
     this.affect(o, v, S, p.dx, p.dz);
     o.x2 = false;
+    // A chakram that strikes is seen flying back to the hand that threw it.
+    if (p.chakOf !== undefined) { const h = this.tops[p.chakOf]; p.chakOf = undefined; if (h && !h.gone) { this.gainChak(h, 0); this.emit('strike', { top: h, src: h, skill: S, x: h.x, z: h.z, dmg: 0, light: true, back: 1, fx: v.x, fz: v.z }); } }
     // LUNAR ARSENAL: the other hand follows up, or the weapon mounted on a sentry does.
     if (S.offhand) this.offhand(o, v, o.wo, true);
     if (p.off !== undefined) this.offhand(o, v, p.off);
@@ -3481,11 +3501,13 @@ export class World {
       }
       if (this.stopped(p)) {
         p.dead = true;
+        this.lostChak(p);
         if (S.re) this.unre(p.owner, S.id);
         this.emit('projEnd', { proj: p, x: p.x, z: p.z });
       } else if (!this.result && !(p.hit & (1 << v.side)) && !S.friendly && !v.gone && (this.ff || v.team !== p.owner.team) && v !== p.owner && targetable(v) && Math.hypot(v.x - p.x, v.z - p.z) < p.r + v.radius) {
         if (v.guard > 0) {
           // Guard sends it straight back.
+          this.lostChak(p);
           p.owner = v; p.dx = -p.dx; p.dz = -p.dz; p.left = S.range; p.dmg *= 1.2;
           v.stats.parries++;
           this.emit('reflect', { top: v, proj: p, x: p.x, z: p.z });
@@ -3498,6 +3520,7 @@ export class World {
         else if (S.ret && !p.back) { p.back = true; p.crawl = false; p.hit = 0; p.left = 60; p.speed = S.speed * 1.3; }
         else {
           p.dead = true;
+          this.lostChak(p);
           // A star that met nothing waits where it stopped, to be sent on.
           // (Just inside the wall if it flew that far, so it can be seen waiting there.)
           if (S.rest) { const k = this.keyOf(p.owner, S.id), lim = ARENA.R - 0.6, pr = Math.hypot(p.x, p.z), f = pr > lim ? lim / pr : 1; this.zone(p.owner, SKILLS[S.rest], p.x * f, p.z * f, null, true); if (k) p.owner.re[k] = SKILLS[S.rest].dur; }

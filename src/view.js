@@ -109,7 +109,7 @@ export class View {
         v.orbs.push(o);
       }
       // LUNAR ARSENAL: the chakrams that circle it, smaller and white, parked the same way.
-      v.chaks = []; v.chakFly = null;
+      v.chaks = [];
       if (t.blade.id === 'lunar') for (let i = 0; i < SKILLS.arsenal.chak.max; i++) {
         const o = new THREE.Group();
         o.add(new THREE.Mesh(this.orbGeo, this.orbMat));
@@ -295,7 +295,6 @@ export class View {
       case 'strike': {
         const y = groundY(e.x, e.z) + 0.9, c = this.tintOf(e.src, e.skill);
         // A light blow (a second weapon joining in): a flick of its colour, no more.
-        if (e.n && this.tops[e.src.side]) this.tops[e.src.side].chakFly = { n: e.n, x: e.x, z: e.z, t: 0, T: 0.34 };
         // A shot from far off: a streak from where it was fired to where it lands.
         if (e.fx !== undefined) for (let i = 1; i < 24; i++) { const u = i / 24; P.burst(e.fx + (e.x - e.fx) * u, y, e.fz + (e.z - e.fz) * u, 3, c, 1.5, { up: 0.2, life: 0.3, size: 0.22, gravity: 0 }); }
         // The ultimate's follow-up: a heavier streak with a white core, and a ring where it leaves.
@@ -1067,17 +1066,22 @@ export class View {
         o.children[1].material.opacity = t.orbs.t < 1 ? 0.5 + 0.5 * Math.sin(this.time * 30) : 1;
         if (dt > 0) P.emit(p.x, y, p.z, (Math.random() - 0.5) * 2, Math.random() * 1.5, (Math.random() - 0.5) * 2, 0.35, 0.3, c, 0, 1);
       }
-      // The chakrams circle; those thrown with a follow-up go out to where it landed and come back.
-      if (v.chakFly && (v.chakFly.t += dt) >= v.chakFly.T) v.chakFly = null;
-      for (let i = 0; i < v.chaks.length; i++) {
-        const o = v.chaks[i];
-        o.visible = i < t.chak && !t.out;
-        if (!o.visible) continue;
-        const a = this.time * 3.4 + (i / Math.max(1, t.chak)) * Math.PI * 2;
-        let x = t.x + Math.cos(a) * 2.2, z = t.z + Math.sin(a) * 2.2;
-        const f = v.chakFly;
-        if (f && i < f.n) { const u = Math.sin((Math.PI * f.t) / f.T); x += (f.x - x) * u; z += (f.z - z) * u; if (dt > 0) P.emit(x, groundY(x, z) + 0.95, z, 0, 0, 0, 0.25, 0.3, 0xf2f6ff, 0, 1); }
-        o.position.set(x, groundY(x, z) + 0.95, z);
+      // The chakrams circle; one that has been thrown is away until it comes back (or does not).
+      if (v.chaks.length) {
+        let n = t.chak;
+        for (const q of w.projectiles) if (q.chakOf === t.side) n--;
+        if (t.spray && t.spray.chak) n -= t.spray.n;
+        for (let i = 0; i < v.chaks.length; i++) {
+          const o = v.chaks[i];
+          o.visible = i < n && !t.out;
+          if (!o.visible) continue;
+          const a = this.time * 3.4 + (i / Math.max(1, t.chak)) * Math.PI * 2, x = t.x + Math.cos(a) * 2.2, z = t.z + Math.sin(a) * 2.2;
+          o.position.set(x, groundY(x, z) + 0.95, z);
+          // They flicker when they are about to go.
+          const warn = t.chakT < SKILLS.arsenal.chak.warn, lit = !warn || Math.sin(this.time * 30) > -0.2;
+          o.children[0].visible = lit;
+          o.children[1].material.opacity = warn ? 0.5 + 0.5 * Math.sin(this.time * 30) : 1;
+        }
       }
       if (t.tether) {
         const o = w.tops[t.tether.to] || w.other(t), wob = 0.5 + 0.5 * Math.sin(this.time * 26);

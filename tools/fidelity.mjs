@@ -1293,13 +1293,25 @@ console.log('LUNAR ARSENAL (Aphelios)');
   ({ w, me, foe, run, saw } = setup('lunar', 6));
   me.wm = 3; w.cast(me, 'Q', foe.x, foe.z);
   check(saw('cone') || setup.last.w.events.some((e) => e.type === 'cone'), 'Q with the flame: a fan');
-  ({ w, me, foe, run, saw } = setup('lunar', 14));
-  me.wm = 4; w.cast(me, 'Q', me.x, me.z - 3); run(1);
-  const sn = w.own(me, 'sentry')[0];
-  check(!!sn && !sn.c && foe.stats.taken === 0, 'Q with the chakram: a sentry that sleeps until something comes near');
-  foe.x = sn.x + 3; foe.z = sn.z; run(1.5);
-  check(sn.c === 1 && foe.stats.taken > 0, 'the sentry wakes and shoots');
-  run(3); check(!w.own(me, 'sentry').length, 'and is gone four seconds after waking');
+  ({ w, me, foe, run, saw } = setup('lunar', 6));
+  {
+    // The chakram: one more is gained, then all held are thrown; what strikes comes back, what misses is lost.
+    const C = SKILLS.chakram, k = BLADES.lunar.atk / BLADES.gaia.def, hold = () => { me.x = 0; me.z = 6; me.vx = me.vz = 0; me.cmd = null; foe.x = 0; foe.z = 0; foe.vx = foe.vz = 0; foe.still = true; };
+    const go = (x, z, T = 1.2) => { hold(); me.cd.Q = 0; const t0 = foe.stats.taken; w.cast(me, 'Q', x, z); for (let i = 0; i < T / DT; i++) { hold(); w.step(DT); } w.events.length = 0; return foe.stats.taken - t0; };
+    me.wm = 4; me.wo = 2;
+    let got = go(0, 0);
+    check(me.chak === 1 && Math.abs(got - C.dmg * k) < 1, 'Q with the chakram: one gained, one thrown; it strikes and comes back');
+    got = go(0, 0);
+    check(me.chak === 2 && Math.abs(got - 2 * C.dmg * k) < 1 && foe.slow === 0, 'again: two now, both thrown, both back (and the other hand adds nothing)');
+    got = go(0, 12);
+    check(me.chak === 0 && got === 0, 'thrown the wrong way: all three miss, and none is left');
+    me.chak = 5; got = go(0, 0);
+    check(me.chak === 5 && Math.abs(got - 5 * C.dmg * k) < 1, 'holding five: no sixth is gained, and five are thrown');
+    for (let i = 0; i < 7 / DT; i++) { hold(); w.step(DT); }
+    got = go(0, 0, 0.6); const left = me.chakT;
+    check(me.chak === 5 && left > SKILLS.arsenal.chak.dur - 0.6, 'each one that strikes gives all of them their eight seconds again');
+  }
+  me.wa[4] = 5; me.wm = 4; me.cd.Q = 0; w.cast(me, 'Q', me.x, me.z - 3); run(1);
   w.resetRound();
   check(me.wm === 4 && me.wa[4] === 4, 'the weapons carry into the next round');
   const vig = (wm) => { const s = setup('lunar', 6); s.me.wm = wm; s.me.spin = 500; s.w.cast(s.me, 'R', s.foe.x, s.foe.z); s.run(0.5); return s; };
@@ -1308,7 +1320,7 @@ console.log('LUNAR ARSENAL (Aphelios)');
   check(v1.me.spin > 580, 'R with the scythe: heals');
   check(v2.foe.slowK === 0.99 && v2.w.aimSkill(v2.me, 'Q').id === 'bindeclipse', 'R with gravity: all but stopped, and open to the root');
   check(v3.foe.stats.taken > v1.foe.stats.taken + 20, 'R with the flame: more damage');
-  check(v4.me.chak === 3 && !v4.w.own(v4.me, 'sentry').length, 'R with the chakram: the follow-up leaves three chakrams, not one');
+  check(v4.me.chak === 5 && !v4.w.own(v4.me, 'sentry').length, 'R with the chakram: the follow-up leaves five chakrams, not one');
   check(!w.canCast(me, 'E'), 'E: there is none');
   {
     // The ultimate bursts on whoever it strikes, and on nothing else.
@@ -1363,17 +1375,14 @@ console.log('LUNAR ARSENAL (Aphelios)');
       s = setup('lunar', 3.2); s.me.wm = 1; s.me.wo = 4;
       s.w.cast(s.me, 'Q', s.me.x, s.me.z); s.run(1.7);
       const lights = s.seen.filter((e) => e.type === 'strike' && e.light).map((e) => Math.round(e.dmg / k));
-      check(s.me.chak === 3 && lights.join() === [off.dmg, off.dmg + C.dmg, off.dmg + 2 * C.dmg].join(), `scythe with the chakram in the other hand: 0, 1, then 2 chakrams fly with its three blows (${lights})`);
-      s.run(C.dur + 0.1);
-      check(s.me.chak === 0, 'left alone, the chakrams are gone after six seconds');
-      s.me.cd.Q = 0; for (let i = 0; i < 4; i++) { s.me.cd.Q = 0; s.me.wm = 1; s.foe.x = s.me.x; s.foe.z = s.me.z - 3; s.w.cast(s.me, 'Q', s.me.x, s.me.z); s.run(1.8); }
+      check(s.me.chak === 3 && lights.join() === [off.dmg, off.dmg, off.dmg].join(), `scythe with the chakram in the other hand: each of its three blows leaves one circling (${lights})`);
+      s.run(C.dur - 1.5);
+      check(s.me.chak === 3 && s.me.chakT < C.warn, 'and they stay for eight seconds after the last was gained (flickering for the last two)');
+      s.run(1.6);
+      check(s.me.chak === 0, 'then all of them are gone');
+      for (let i = 0; i < 2; i++) { s.me.cd.Q = 0; s.me.wm = 1; s.foe.x = s.me.x; s.foe.z = s.me.z - 3; s.w.cast(s.me, 'Q', s.me.x, s.me.z); s.run(1.8); }
       check(s.me.chak === C.max, 'never more than five');
     }
-    s = setup('lunar', 14); s.me.wm = 4; s.me.wo = 2;
-    s.w.cast(s.me, 'Q', s.me.x, s.me.z - 3); s.run(0.2);
-    const sn2 = s.w.own(s.me, 'sentry')[0];
-    s.foe.x = sn2.x + 3; s.foe.z = sn2.z; s.run(1.2);
-    check(sn2.dx === 3 && s.foe.slowK === 0.3, 'a sentry carries the weapon that was in the other hand: its shots slow');
     s = setup('lunar', 3.2); s.me.wm = 1; s.me.wo = 4;
     s.w.cast(s.me, 'Q', s.me.x, s.me.z); s.run(1.7);
     const hits = s.seen.filter((e) => e.type === 'strike' && e.src === s.me).map((e) => (e.light ? 'o' : 's')).join('');
