@@ -1270,44 +1270,81 @@ export const SKILLS = {
     // Each weapon has a colour of its own, on its key and on everything it fires.
     tints: [0x4fe08a, 0xff4a5a, 0xb46bff, 0x4aa8ff, 0xf2f6ff],
     // What the weapon in the other hand adds when it joins in: a light blow, and something of its own.
-    off: { dmg: 14, fx: [{ mark: 4.5 }, { leech: 1 }, { slow: 2.5, slowPct: 0.3 }, { mul: 1.5, splash: 2.4 }, { mul: 2 }] },
-    desc: '主の武器のスキルを使う。武器は5回使うと次の武器に替わる。狙撃銃（緑）＝長射程の弾と印／鎌（赤）＝1.75秒間加速し、周囲を斬り続けて回復／重力砲（紫）＝スロウの弾。スロウ中にもう一度押すと移動を封じる／火炎（青）＝扇状の炎／円月輪（白）＝近づいた相手を撃つ見張りを置く。狙撃銃・鎌・火炎を当てると、副の武器も追撃する（狙撃銃＝印、鎌＝回復、重力砲＝スロウ、火炎・円月輪＝追加ダメージ）。見張りには、置いたときの副の武器の効果が付く。',
+    off: { dmg: 14, fx: [{ mul: 2 }, { leech: 1 }, { slow: 2.5, slowPct: 0.3 }, { mul: 1.5, splash: 2.4 }, { chak: 1 }] },
+    // CRESCENDUM: each of its follow-ups that lands leaves a chakram circling its owner (up to `max`, for `dur` seconds
+    // since the last). Every one held flies out with the next follow-up and adds `dmg` to it.
+    chak: { max: 5, dur: 6, dmg: 10 },
+    // Where no match is on, a skill of this kit is described by its text and then a line for each weapon, in that
+    // weapon's colour (`lines` names the field of the weapon the line is taken from). In a match the key says only
+    // what it does with the weapons in hand right now.
+    lines: 'briefLine',
+    desc: '5回使うと次の武器に替わる。',
   },
   phase: {
     name: 'スイッチ', en: 'SWITCH', aim: 'self', icon: 'buff', cd: 0.8, ai: 'phase',
-    desc: '主の武器と副の武器を入れ替える。クールダウンは武器ごとに別なので、使ったあと入れ替えてもう一方を使える。',
+    lines: 'offLine',
+    desc: '主の武器と副の武器を入れ替える。副の武器は追撃する。',
+    nowLine: '主の武器と副の武器を入れ替える。',
   },
   nextweapon: {
     name: 'ネクストウェポン', en: 'NEXT WEAPON', aim: 'self', icon: 'orb', cd: 0, passive: true,
-    desc: '【常時効果】使い切った武器の代わりに、次に手元へ来る武器。武器は次のラウンドに持ち越す。',
+    lines: 'order',
+    desc: '【常時効果】主の武器を5回使うと、次に来る武器。武器は次のラウンドに持ち越す。',
+    nowLine: '主の武器を5回使うと、次にこの武器が来る。',
+    orderLine: '最初の順番：',
   },
   moonshot: {
     name: 'ロングライフル', en: 'LONG RIFLE', aim: 'line', kind: 'shot', hidden: true, weapon: 0, cd: 4, tint: 0x4fe08a,
-    tele: 0.45, range: 13.5, speed: 52, radius: 0.7, dmg: 46, mark: 4.5, offhand: true,
+    tele: 0.45, range: 13.5, speed: 52, radius: 0.7, dmg: 46, mark: 4.5, again: 'longshot',
+    desc: '長射程の弾を撃つ。当てると、4.5秒以内にもう一度押して追撃できる。',
+    briefLine: '長射程の弾。当てると、もう一度押して追撃できる。',
+    offLine: '追撃：追加ダメージを与える。',
+    ultLine: '強化追撃：Qをもう一度押して追撃できる。その追撃のダメージは2倍。',
   },
+  // The follow-up on a marked target, on the same key: it reaches however far off the target is,
+  // sets the mark off, and the weapon in the other hand lands its blow with it.
+  longshot: { name: 'ロングライフル', en: 'LONG RIFLE', aim: 'self', hidden: true, tint: 0x4fe08a, ai: 'longshot' },
   onslaught: {
-    name: 'ドレインサイス', en: 'DRAIN SCYTHE', aim: 'self', kind: 'field', hidden: true, weapon: 1, cd: 4, tint: 0xff4a5a,
-    follow: true, dur: 1.75, aoe: 4.6, dps: 44, leechIn: 0.35, haste: 1.75, offEvery: 0.5,
+    name: 'ドレインサイス', en: 'DRAIN SCYTHE', aim: 'self', hidden: true, weapon: 1, cd: 4, tint: 0xff4a5a, ai: 'volley',
+    // Six blows in 1.75 seconds at whoever is nearest: the other hand, then the scythe, by turns.
+    dur: 1.75, shots: 6, range: 5.5, dmg: 26, leech: 0.35, haste: 1.75,
+    desc: '1.75秒間加速し、いちばん近い相手を6回攻撃する。その間は移動とフラッシュしかできない。',
+    briefLine: '加速し、いちばん近い相手を6回攻撃する。',
+    offLine: '追撃：与えたダメージぶん回転が回復する。',
+    ultLine: '強化追撃：回転が大きく回復する。',
   },
   gravshot: {
     name: 'グラビティキャノン', en: 'GRAVITY CANNON', aim: 'line', kind: 'shot', hidden: true, weapon: 2, cd: 5, tint: 0xb46bff,
     tele: 0.4, range: 10, speed: 34, radius: 0.8, dmg: 30, slow: 2.5, slowPct: 0.3, eclipse: 2.5,
+    desc: '弾を撃ち、2.5秒間30%のスロウを与える。スロウ中の相手がいるときに押すと、その全員の移動を1秒間封じる。',
+    briefLine: 'スロウの弾。スロウ中の相手全員の移動を封じる。',
+    offLine: '追撃：2.5秒間30%のスロウを与える。',
+    ultLine: '強化追撃：2.5秒間99%のスロウを与える。',
   },
-  bindeclipse: { name: 'グラビティキャノン', en: 'GRAVITY CANNON', aim: 'self', hidden: true, tint: 0xb46bff, ai: 'bindeclipse', dmg: 40, snareT: 1, bigSnare: 1.35 },
+  bindeclipse: { name: 'グラビティキャノン', en: 'GRAVITY CANNON', aim: 'self', hidden: true, tint: 0xb46bff, ai: 'bindeclipse', weapon: 2, cd: 5, dmg: 40, snareT: 1, bigSnare: 1.35 },
   duskwave: {
     name: 'フレイムスロワー', en: 'FLAME THROWER', aim: 'cone', kind: 'cone', hidden: true, weapon: 3, cd: 2.5, tint: 0x4aa8ff,
-    tele: 0.3, range: 5.6, half: 0.5, dmg: 42, kb: 3, offhand: true,
+    tele: 0.3, range: 6.5, half: 0.5, dmg: 42, offhand: true,
+    desc: '前方に扇状の炎を放つ。',
+    briefLine: '前方に扇状の炎を放つ。',
+    offLine: '追撃：1.5倍のダメージ。近くのほかの相手にも当たる。',
+    ultLine: '強化追撃：追加ダメージを与える。',
   },
   sentry: {
     name: 'ガードチャクラム', en: 'GUARD CHAKRAM', aim: 'ground', hidden: true, weapon: 4, cd: 3, ai: 'ground', tint: 0xf2f6ff,
-    range: 4, aoe: 1.1, dur: 20, live: 4, reach: 5, wake: 0.35, rate: 0.8, max: 3,
+    range: 4.75, aoe: 1.1, dur: 20, live: 4, reach: 5, wake: 0.35, rate: 0.8, max: 3,
+    desc: '狙った地点に見張りを置く。近づいた相手を4秒間撃つ。',
+    briefLine: '近づいた相手を撃つ見張りを置く。',
+    offLine: '追撃：周囲を回る円月輪を1つ得る（5つまで）。持っている円月輪も一緒に飛び、その数だけダメージが増える。',
+    ultLine: '強化追撃：円月輪を3つ得る。',
   },
   sentryshot: { name: 'ガードチャクラム', en: 'GUARD CHAKRAM', aim: 'line', hidden: true, tint: 0xf2f6ff, range: 9, speed: 32, radius: 0.55, dmg: 20, kb: 1.5, tumble: 0, launch: 0 },
   vigil: {
     name: 'ムーンバースト', en: 'MOON BURST', aim: 'line', kind: 'shot', icon: 'star', cd: 2, ult: true,
-    tele: 0.4, range: 12, speed: 24, radius: 1.4, dmg: 70, splash: 4, splashDmg: 70,
-    arm: [{ mark: 4.5 }, { heal: 90 }, { slow: 2.5, slowPct: 0.99 }, { dmg: 50 }, { sentry: true }],
-    desc: '【必殺技】遅い弾を撃つ。当たるか射程の端で爆発する。主の武器で追加効果が変わる：狙撃銃＝2倍のダメージで爆発する印／鎌＝回復／重力砲＝2.5秒間99%のスロウ／火炎＝追加ダメージ／円月輪＝見張りをその場に置く。',
+    tele: 0.4, range: 13, speed: 24, radius: 1.4, dmg: 70, splash: 4, splashDmg: 70, onHit: true,
+    arm: [{ mark: 4.5 }, { heal: 90 }, { slow: 2.5, slowPct: 0.99 }, { dmg: 50 }, { chak: 3 }],
+    lines: 'ultLine',
+    desc: '【必殺技】遅い弾を撃つ。相手に当たると爆発し、当たった相手と周囲の相手に、主の武器が強化された追撃をする。',
   },
   // ---- STAR FORGER: breath, gravity, a falling star --------------------------
   breath: {

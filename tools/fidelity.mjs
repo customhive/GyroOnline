@@ -181,6 +181,8 @@ console.log('STUN AND SLOW (all blades)');
   for (let i = 0; i < 60; i++) w.step(DT);
   check(Math.hypot(foe.x - at.x, foe.z - at.z) < 0.3, 'stun: the top stops where it stands');
   check(!w.issueMove(foe, 5, 5) && !w.canCast(foe, 'Q'), 'stun: no moving, no skills');
+  // (The other top is kept out of the way: only the hit is being measured.)
+  me.x = 0; me.z = 9; me.vx = me.vz = 0;
   w.knock(foe, 1, 0, 10, 0.3, 0);
   for (let i = 0; i < 40; i++) w.step(DT);
   check(foe.x - at.x > 1.5, 'stun: a hit still knocks it away');
@@ -1274,10 +1276,13 @@ console.log('LUNAR ARSENAL (Aphelios)');
   check(foe.mark > 0 && me.wa[0] === 4 && me.cd.Q > 3, 'Q with the rifle: a long shot that marks; one of five shots used');
   check(w.cast(me, 'W', me.x, me.z) && w.aimSkill(me, 'Q').id === 'onslaught' && me.wo === 0 && me.cd.Q === 0, 'W: swaps the two; the other weapon has its own cooldown');
   me.x = 0; me.z = 1.6; foe.x = 0; foe.z = -1.6; me.spin = 500;
-  w.cast(me, 'Q', me.x, me.z); run(1.5);
-  check(me.spin > 505 && me.haste > 0 && foe.stats.taken > 60, 'Q with the scythe: cuts whatever is near for 1.75 seconds, healing and faster');
+  w.cast(me, 'Q', me.x, me.z); run(0.2);
+  check(!w.canCast(me, 'W') && !w.canCast(me, 'R') && w.canFlash(me) && w.issueMove(me, 0, 3), 'Q with the scythe: nothing but moving and FLASH while it lasts');
+  run(1.3);
+  check(me.spin > 505 && me.haste > 0 && foe.stats.taken > 60, 'Q with the scythe: blows at whoever is nearest for 1.75 seconds, healing and faster');
   run(1); w.cast(me, 'W', me.x, me.z);
-  check(w.aimSkill(me, 'Q').id === 'moonshot' && me.cd.Q > 0 && me.cd.Q < 2, 'W back: the rifle is still cooling down from before');
+  check(SKILLS.arsenal.weapons[me.wm] === 'moonshot' && me.cd.Q > 0 && me.cd.Q < 2, 'W back: the rifle is still cooling down from before');
+  check(foe.mark > 0 && w.aimSkill(me, 'Q').id === 'longshot' && w.canCast(me, 'Q'), 'and its mark is still on the target: the follow-up is there to be taken');
   ({ w, me, foe, run, saw } = setup('lunar', 10));
   for (let i = 0; i < 5; i++) { me.cd.Q = 0; w.cast(me, 'Q', me.x + 9, me.z); run(0.1); }
   check(me.wm === 2 && me.wq.join() === '3,4,0' && me.wa[0] === 5 && w.aimSkill(me, 'Q').id === 'gravshot', 'five shots: the rifle goes to the back of the line, reloaded, and the gravity cannon comes to hand');
@@ -1303,20 +1308,67 @@ console.log('LUNAR ARSENAL (Aphelios)');
   check(v1.me.spin > 580, 'R with the scythe: heals');
   check(v2.foe.slowK === 0.99 && v2.w.aimSkill(v2.me, 'Q').id === 'bindeclipse', 'R with gravity: all but stopped, and open to the root');
   check(v3.foe.stats.taken > v1.foe.stats.taken + 20, 'R with the flame: more damage');
-  check(v4.w.own(v4.me, 'sentry').some((q) => q.c), 'R with the chakram: a sentry, already awake, where it hit');
+  check(v4.me.chak === 3 && !v4.w.own(v4.me, 'sentry').length, 'R with the chakram: the follow-up leaves three chakrams, not one');
   check(!w.canCast(me, 'E'), 'E: there is none');
+  {
+    // The ultimate bursts on whoever it strikes, and on nothing else.
+    const s = setup('lunar', 6); s.me.ult = 100;
+    const ax = s.me.x - s.foe.x, az = s.me.z - s.foe.z; s.w.cast(s.me, 'R', s.me.x + ax * 9, s.me.z + az * 9); s.run(1.5);
+    check(s.me.ult < 100 && !s.seen.some((e) => e.type === 'blast') && s.seen.some((e) => e.type === 'projEnd'), 'R fired away from everyone, into the wall: it goes out without a burst');
+  }
+  {
+    // The ultimate's extra is for everyone its burst catches, not only the one it struck.
+    const w4 = new World([BLADES.lunar, BLADES.gaia, BLADES.sol], {}), m = w4.tops[0], [a, b] = w4.tops.slice(1);
+    m.x = 0; m.z = 8; m.vx = m.vz = 0; a.x = 0; a.z = 0; b.x = 2.6; b.z = 0; a.vx = a.vz = b.vx = b.vz = 0; a.still = b.still = true;
+    m.wm = 2; m.ult = 100; w4.cast(m, 'R', a.x, a.z);
+    for (let i = 0; i < 90; i++) { m.x = 0; m.z = 8; m.vx = m.vz = 0; w4.step(DT); }
+    check(a.slowK === 0.99 && b.slowK === 0.99, 'R with gravity, two close together: both are all but stopped');
+  }
   {
     // The weapon in the other hand joins in.
     const off = SKILLS.arsenal.off, k = BLADES.lunar.atk / BLADES.gaia.def;
     let s = setup('lunar', 10); s.me.spin = 500;
     s.w.cast(s.me, 'Q', s.foe.x, s.foe.z); s.run(0.3);
-    check(Math.abs(s.foe.stats.taken - (SKILLS.moonshot.dmg + off.dmg) * k) < 1 && s.foe.mark > 0 && s.me.spin > 500 + off.dmg * k - 2, 'rifle with the scythe in the other hand: a light second blow that heals, and the mark is left for later');
+    check(Math.abs(s.foe.stats.taken - SKILLS.moonshot.dmg * k) < 1 && s.foe.mark > 0 && s.w.aimSkill(s.me, 'Q').id === 'longshot' && s.w.canCast(s.me, 'Q'), 'rifle: the shot marks its target, and the key opens again');
+    {
+      const am = s.me.wa[0], cd = s.me.cd.Q;
+      s.foe.x = -9; s.foe.z = -9; s.me.spin = 500;
+      s.w.cast(s.me, 'Q', s.me.x, s.me.z); s.w.step(DT);
+      check(Math.abs(s.foe.stats.taken - (SKILLS.moonshot.dmg + SKILLS.sigil.pop + off.dmg) * k) < 1 && s.foe.mark === 0 && s.me.spin > 500 + off.dmg * k - 2 && s.me.wa[0] === am && s.me.cd.Q > cd - 0.1 && s.me.re.Q === 0,
+        'Q again: however far off, the mark goes off and the scythe in the other hand lands a blow that heals; no shot used, once only');
+      s.run(5); s.me.cd.Q = 0; s.w.cast(s.me, 'Q', s.foe.x, s.foe.z); s.run(0.6); s.run(4.5);
+      check(s.foe.mark === 0 && s.w.aimSkill(s.me, 'Q').id === 'moonshot', 'left alone, the mark and the second press both run out after 4.5 seconds');
+    }
     s = setup('lunar', 5); s.me.wm = 3; s.me.wo = 2;
     s.w.cast(s.me, 'Q', s.foe.x, s.foe.z); s.w.step(DT);
     check(s.foe.slowK === 0.3 && Math.abs(s.foe.stats.taken - (SKILLS.duskwave.dmg + off.dmg) * k) < 1, 'flame with gravity in the other hand: whoever the fan catches is slowed too');
+    s.run(0.3); s.w.cast(s.me, 'W', s.me.x, s.me.z);
+    check(s.w.aimSkill(s.me, 'Q').id === 'bindeclipse' && s.w.canCast(s.me, 'Q'), 'W to gravity with someone already slowed: the key roots straight away');
+    s.foe.x = 9; s.foe.z = -9; s.w.cast(s.me, 'Q', s.me.x, s.me.z);
+    check(s.foe.snare > 0.5 && s.foe.slow === 0 && s.me.wa[2] === 4 && Math.abs(s.me.cd.Q - SKILLS.bindeclipse.cd) < 0.1 && s.w.aimSkill(s.me, 'Q').id === 'gravshot', 'rooted from afar; that is one use of the cannon, and its cooldown begins');
+    {
+      // Everyone slowed is rooted, not only the nearest.
+      const w4 = new World([BLADES.lunar, BLADES.gaia, BLADES.sol], {}), m = w4.tops[0];
+      m.wm = 2; m.wo = 0; m.cd.Q = 0;
+      for (const o of w4.tops.slice(1)) w4.slowBy(o, 2.5, 0.3);
+      w4.cast(m, 'Q', m.x, m.z);
+      check(w4.tops[1].snare > 0.5 && w4.tops[2].snare > 0.5 && m.wa[2] === 4, 'two slowed at once: both are rooted by the one press');
+    }
     s = setup('lunar', 5); s.me.wm = 3; s.me.wo = 0;
     s.w.cast(s.me, 'Q', s.foe.x, s.foe.z); s.w.step(DT);
-    check(s.foe.mark > 0, 'flame with the rifle in the other hand: marked');
+    check(s.foe.mark === 0 && Math.abs(s.foe.stats.taken - (SKILLS.duskwave.dmg + off.dmg * 2) * k) < 1, 'flame with the rifle in the other hand: a heavier second blow, and no mark');
+    {
+      // The chakram in the other hand: every blow that lands leaves one circling, and those held fly with the next.
+      const C = SKILLS.arsenal.chak;
+      s = setup('lunar', 3.2); s.me.wm = 1; s.me.wo = 4;
+      s.w.cast(s.me, 'Q', s.me.x, s.me.z); s.run(1.7);
+      const lights = s.seen.filter((e) => e.type === 'strike' && e.light).map((e) => Math.round(e.dmg / k));
+      check(s.me.chak === 3 && lights.join() === [off.dmg, off.dmg + C.dmg, off.dmg + 2 * C.dmg].join(), `scythe with the chakram in the other hand: 0, 1, then 2 chakrams fly with its three blows (${lights})`);
+      s.run(C.dur + 0.1);
+      check(s.me.chak === 0, 'left alone, the chakrams are gone after six seconds');
+      s.me.cd.Q = 0; for (let i = 0; i < 4; i++) { s.me.cd.Q = 0; s.me.wm = 1; s.foe.x = s.me.x; s.foe.z = s.me.z - 3; s.w.cast(s.me, 'Q', s.me.x, s.me.z); s.run(1.8); }
+      check(s.me.chak === C.max, 'never more than five');
+    }
     s = setup('lunar', 14); s.me.wm = 4; s.me.wo = 2;
     s.w.cast(s.me, 'Q', s.me.x, s.me.z - 3); s.run(0.2);
     const sn2 = s.w.own(s.me, 'sentry')[0];
@@ -1324,8 +1376,11 @@ console.log('LUNAR ARSENAL (Aphelios)');
     check(sn2.dx === 3 && s.foe.slowK === 0.3, 'a sentry carries the weapon that was in the other hand: its shots slow');
     s = setup('lunar', 3.2); s.me.wm = 1; s.me.wo = 4;
     s.w.cast(s.me, 'Q', s.me.x, s.me.z); s.run(1.7);
-    const n = s.seen.filter((e) => e.type === 'strike' && e.light).length;
-    check(n === 3, `scythe: the other hand gets a blow in every half second (${n})`);
+    const hits = s.seen.filter((e) => e.type === 'strike' && e.src === s.me).map((e) => (e.light ? 'o' : 's')).join('');
+    check(hits === 'ososos', `scythe: six blows, the other hand and the scythe by turns (${hits})`);
+    s = setup('lunar', 8); s.me.wm = 1;
+    s.w.cast(s.me, 'Q', s.me.x, s.me.z); s.run(1.8);
+    check(s.foe.stats.taken === 0 && s.me.wa[1] === 4, 'scythe: nothing within 5.5 is nothing struck (the use is still spent)');
   }
 }
 

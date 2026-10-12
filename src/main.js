@@ -56,6 +56,9 @@ const game = {
   lobby: { role: null, status: 'opening', url: '', error: '', slots: [], me: 0, edit: 0, stage: 0, size: 0, teams: false, ff: false },
   peers: [],           // host, in a match: the guests playing, as { id, side, ack }
   spectate: false,     // nobody here is playing: both tops are CPUs
+  // Practice, alone in the room: how the dummy behaves, which blades are out, whose blade the picker is choosing
+  // (-1: closed), and what the dummy has taken lately (the whole string of hits, the last one, time until it is forgotten).
+  practice: null,      // { dummy: 'still' | 'move' | 'cpu', level, blades, picking, combo, last, t, seen }
   outbox: [],          // host: events waiting to be sent
   snapT: 0, snapSeq: 0, tail: 0,
   inSeq: 0, ack: 0,    // guest: last input sent / host: last guest input applied
@@ -72,7 +75,7 @@ const ui = new UI({
   again: () => { audio.ui(); if (online()) backToLobby(true); else if (game.lobby.role === 'host' && roomIsLocal() && !seats().some((p) => p.kind === 'open')) startLocalMatch(); else backToLobby(false); },
   lobby: () => { audio.ui(); backToLobby(false); },
   back: () => { audio.ui(); if (online() && game.mode === 'guest') { leaveOnline(); toTitle(); } else backToLobby(false); },
-  quit: () => { audio.ui(); leaveOnline(); toTitle(); },
+  quit: () => { audio.ui(); if (game.practice) return backToLobby(false); leaveOnline(); toTitle(); },
   pause: () => togglePause(),
   mute: () => { audio.unlock(); audio.setMuted(!audio.muted); ui.setMuted(audio.muted); },
   ui: () => { audio.unlock(); audio.ui(); },
@@ -80,9 +83,21 @@ const ui = new UI({
   host: () => { audio.unlock(); audio.ui(); openRoom(); },
   ready: () => { audio.unlock(); audio.ui(); pressReady(); },
   start: () => { audio.unlock(); audio.ui(); pressStart(); },
-  pick: (id) => { audio.unlock(); audio.ui(); pickBlade(id); },
+  pick: (id) => { audio.unlock(); audio.ui(); if (game.practice) practiceBlade(id); else pickBlade(id); },
   // Opens the blade picker on a seat (-1 closes it).
-  edit: (i) => { audio.ui(); const lb = game.lobby; if (i < 0) lb.picking = false; else { lb.edit = i; lb.picking = true; } lobbyRefresh(); },
+  edit: (i) => { audio.ui(); if (game.practice) return practicePicker(-1); const lb = game.lobby; if (i < 0) lb.picking = false; else { lb.edit = i; lb.picking = true; } lobbyRefresh(); },
+  // The practice panel: a switch, how the dummy behaves, everything back to the start, a change of blade.
+  drill: (what, a, b) => {
+    audio.ui();
+    const P = game.practice, w = game.world;
+    if (!P || !w || !w.practice) return;
+    if (what === 'noCd' || what === 'fullUlt') w.practice[what] = !w.practice[what];
+    else if (what === 'keep') w.practice.keep[a] = !w.practice.keep[a];
+    else if (what === 'dummy') { P.dummy = a; if (b !== undefined) P.level = b; setDummy(); }
+    else if (what === 'reset') resetPractice();
+    else if (what === 'blade') return practicePicker(a);
+    ui.showPractice(P, w.practice);
+  },
   slotKind: (i, kind) => { audio.ui(); setSlotKind(i, kind); },
   // Who sits in a seat, chosen from its menu: a kind and, for a CPU, a level.
   seat: (i, kind, level) => { audio.ui(); const p = game.lobby.slots[i]; if (p && level !== undefined && game.lobby.role === 'host' && p.link === undefined) p.level = level; setSlotKind(i, kind); },
@@ -106,6 +121,7 @@ function showScreen(name) {
 
 function toTitle() {
   game.state = 'title'; game.mode = 'cpu'; game.side = 0; game.spectate = false; game.lobby.role = null;
+  game.practice = null; ui.showPractice(null);
   game.paused = false; game.world = null; game.aimKey = null; game.seq = null;
   setArenaSize(0);
   view.setMatch(null, 0);
@@ -129,7 +145,7 @@ function beginMatch(world, side, labels, notes) {
   view.setMatch(world, side);
   view.orbiting = false;
   showScreen('hud');
-  ui.setMenuMode(online());
+  ui.setMenuMode(online(), !!game.practice);
   ui.startMatch(world, side, labels, notes);
   audio.startMusic();
 }
@@ -184,6 +200,86 @@ function startLocalMatch() {
   game.brain = game.autoBrain = null;
   game.brains = S.map((p, i) => (p.kind === 'cpu' ? cpuFor(w, w.tops[i], DIFFICULTY[p.level]) : null)).filter(Boolean);
   startRound(1);
+}
+
+// Alone in the room: no match to win, only a dummy to try things on. Nothing
+// here goes over the network. Called again with other blades, it carries on
+// with the panel as it was set.
+function startPractice(blades) {
+  const lb = game.lobby, was = game.practice, old = was && game.world && game.world.practice;
+  for (const p of lb.slots) p.ready = false;
+  game.mode = 'cpu';
+  game.peers = [];
+  game.spectate = false; ui.meLabel = '';
+  blades = drawBlades(blades || [lb.slots[0].blade, 'azure']);
+  const w = new World(blades.map((b) => BLADES[b]), { seed: (Date.now() & 0xffffff) + 1, stage: lb.stage, size: lb.size, practice: true });
+  // Spin that never falls is on for both to begin with.
+  if (old) Object.assign(w.practice, old); else w.practice.keep.fill(true);
+  game.practice = { dummy: 'still', level: 1, ...was, blades, picking: -1, combo: 0, last: 0, t: 0, seen: 0 };
+  beginMatch(w, 0, ['YOU', 'DUMMY'], []);
+  game.brain = game.autoBrain = null;
+  setDummy();
+  w.events.length = 0;
+  for (const v of view.tops) { v.hold = false; v.drop = 7; v.dropV = 0; }
+  game.state = 'fight'; game.seq = null;
+  game.timeLeft = ROUND_TIME; game.acc = 0; game.hitstop = 0; game.slow.t = 0; game.aimKey = null; game.buffer = null;
+  ui.showPractice(game.practice, w.practice);
+  if (!was) ui.announce('PRACTICE', 'プラクティス', 'round', 1.4);
+}
+
+// The dummy stands still, wanders as any top does, or is played by a CPU.
+function setDummy() {
+  const P = game.practice, w = game.world, d = w.tops[1];
+  d.still = P.dummy === 'still';
+  d.cmd = null;
+  for (const k of KEYS) d.windup[k] = 0;
+  game.brains = P.dummy === 'cpu' ? [cpuFor(w, d, DIFFICULTY[P.level])] : [];
+}
+
+// Both tops back where they started, whole.
+function resetPractice() {
+  const P = game.practice, w = game.world;
+  w.resetRound();
+  w.events.length = 0;
+  view.clearRound();
+  game.acc = 0; game.hitstop = 0; game.slow.t = 0; game.aimKey = null; game.buffer = null; game.holding = false;
+  P.combo = P.last = P.t = 0;
+}
+
+// The blade picker over the practice floor, for one of the two tops (-1 closes it).
+// Time stands still while it is open; a blade that was changed starts the practice over.
+function practicePicker(side) {
+  const P = game.practice;
+  if (side < 0) {
+    if (P.picking < 0) return;
+    P.picking = -1; game.paused = false;
+    ui.picker(false);
+    const now = game.world.tops.map((t) => t.blade.id);
+    if (P.blades.some((b, i) => b !== now[i])) {
+      if (BLADES[P.blades[0]]) game.lobby.slots[0].blade = ui.blade = P.blades[0];
+      startPractice(P.blades);
+    }
+    return;
+  }
+  P.picking = side; game.paused = true; game.aimKey = null; game.rapidKey = null;
+  ui.picker(true, side ? 'ダミー' : 'あなた', P.blades[side]);
+}
+
+function practiceBlade(id) {
+  const P = game.practice;
+  if (P.picking < 0 || (id !== 'random' && !BLADES[id])) return;
+  P.blades[P.picking] = id;
+  ui.picker(true, P.picking ? 'ダミー' : 'あなた', id);
+}
+
+// What the dummy has taken since it was last left alone for a few seconds.
+function practiceMeter(rdt) {
+  const P = game.practice, d = game.world.tops[1];
+  const got = d.stats.taken - P.seen;
+  P.seen = d.stats.taken;
+  if (got > 0.01) { P.combo += got; P.t = 3; }
+  else if (P.t > 0 && (P.t -= rdt) <= 0) P.combo = P.last = 0;
+  ui.meter(game.world, view, P.combo, P.last);
 }
 
 // Host and guest both build the same world: side 0 is the host's top.
@@ -353,6 +449,8 @@ function lobbyRefresh() {
 }
 
 // Every seat is filled, every person in the room is ready, and in a team match both teams have someone.
+// The host alone, in its own seat and ready, every other seat left out: that is a practice.
+const roomSolo = () => { const S = seats(); return game.lobby.role === 'host' && S.length === 1 && S[0].kind === 'human' && S[0].ready; };
 const roomReady = () => {
   const S = seats();
   if (S.length < 2 || !S.every((p) => p.kind === 'cpu' || (p.kind === 'human' && p.ready))) return false;
@@ -405,6 +503,7 @@ function pressStart() {
   const lb = game.lobby;
   lb.picking = false;
   if (lb.role !== 'host' || game.state !== 'lobby' || STAGES[lb.stage].soon) return;
+  if (roomSolo()) return startPractice();
   if (!roomReady()) return;
   if (roomIsLocal()) startLocalMatch(); else startOnline();
 }
@@ -446,6 +545,7 @@ function backToLobby(ready) {
   if (!lb.role || (lb.role === 'guest' && !(game.net && game.net.connected))) { leaveOnline(); toTitle(); return; }
   game.mode = lb.role;
   game.state = 'lobby'; game.world = null; game.seq = null; game.paused = false; game.spectate = false;
+  game.practice = null; ui.showPractice(null);
   setArenaSize(lb.size);
   view.setMatch(null, 0);
   view.orbiting = true;
@@ -479,6 +579,7 @@ const FAILS = {
   'server-error': '仲介サーバーに接続できません。少し待ってからもう一度お試しください。',
   'browser-incompatible': 'このブラウザはオンライン対戦（WebRTC）に対応していません。',
   full: 'このルームは満員です。',
+  busy: 'ホストはプラクティス中です。少し待ってからもう一度お試しください。',
   version: '相手とゲームのバージョンが違います。両方のページを再読み込みしてください。',
 };
 
@@ -532,6 +633,8 @@ function netClosed(reason, id) {
     lobbyChanged();
   } else if (lb.role === 'guest') {
     ui.setNet('');
+    // Turned away at the door: the room stays on screen to say why.
+    if (lb.status === 'failed' && game.state === 'lobby') { leaveOnline(); return; }
     ui.toast(reason === 'timeout' ? '接続がタイムアウトしました' : 'ホストとの接続が切れました');
     leaveOnline();
     toTitle();
@@ -560,6 +663,8 @@ function netMessage(m, id) {
       let i = lb.slots.findIndex((p) => p.link === id);
       const fresh = i < 0;
       if (fresh) {
+        // Practising alone: nobody is let in until the host is back in the room.
+        if (game.practice) { game.net.send({ t: 'busy' }, id); setTimeout(() => game.net && game.net.drop('busy', id), 400); ui.toast('招待した相手が来ましたが、プラクティス中のため入れませんでした'); return; }
         i = lb.slots.findIndex((p, k) => k > 0 && p.kind === 'open');
         if (i < 0) i = lb.slots.findIndex((p, k) => k > 0 && p.kind === 'none');
         if (i < 0) { game.net.send({ t: 'full' }, id); setTimeout(() => game.net && game.net.drop('full', id), 400); return; }
@@ -595,6 +700,7 @@ function netMessage(m, id) {
     }
     case 'version': netStatus('failed', 'version'); break;
     case 'full': netStatus('failed', 'full'); break;
+    case 'busy': netStatus('failed', 'busy'); break;
     case 'bye': if (game.net) game.net.drop('bye', id); break;
 
     // ---- host -> guest ----
@@ -882,6 +988,7 @@ window.addEventListener('blur', () => {
 // Offline this pauses. Online it only opens the menu: the match goes on.
 function togglePause() {
   if (!['countdown', 'fight', 'finish'].includes(game.state)) return;
+  if (game.practice && game.practice.picking >= 0) return practicePicker(-1);
   game.paused = !game.paused;
   game.aimKey = null;
   ui.show('pause', game.paused);
@@ -896,6 +1003,7 @@ function popAt(top, text, cls) {
 }
 function dmgPop(top, dmg) {
   if (dmg < 1) return;
+  if (game.practice && top.side) game.practice.last = dmg;
   const size = dmg >= 90 ? 'huge' : dmg >= 45 ? 'big' : '';
   popAt(top, Math.round(dmg), `dmg ${top.side === game.side ? 'taken' : 'dealt'} ${size}`);
 }
@@ -1069,11 +1177,20 @@ function onEvent(e) {
       if (mine(e.top) || mine(e.target)) { audio.blink(); ui.flash('#fff', 0.35); }
       break;
     case 'ko':
+      // Practice: it will be back in a moment.
+      if (game.practice) { if (mine(e.top)) { game.aimKey = null; game.buffer = null; } if (e.kind !== 'over') popAt(e.top, 'DOWN', 'word dim'); audio.clash(22); break; }
       // One top is out; the round goes on for the rest.
       ui.toast(`${e.top.blade.name} 脱落（${{ over: 'オーバー', burst: 'バースト', spin: 'スピン', time: '判定' }[e.kind]}）`);
       ui.flash('#fff', 0.25);
       audio.clash(22);
       break;
+    case 'back': {
+      // Practice: a top that went down drops in again.
+      const v = view.tops[e.top.side];
+      v.drop = 7; v.dropV = 0;
+      audio.blink();
+      break;
+    }
     case 'finish':
       endRound(e);
       break;
@@ -1142,7 +1259,7 @@ function frame(rdt, draw = true) {
           if (game.brain) game.brain.update(STEP);
           for (const b of game.brains) if (!b.me.gone) b.update(STEP);
           if (game.autoBrain) game.autoBrain.update(STEP);
-          game.timeLeft -= STEP;
+          if (!game.practice) game.timeLeft -= STEP;
           if (game.mode !== 'guest' && game.timeLeft <= 0 && !w.result) w.timeUp();
         }
         w.step(STEP);
@@ -1178,7 +1295,8 @@ function frame(rdt, draw = true) {
   document.body.classList.toggle('realm', !!w && ['fight', 'finish'].includes(game.state) && player().realm > 0);
   view.update(dt, frozen() ? 0 : rdt, aim);
   if (w && ['countdown', 'fight', 'finish'].includes(game.state)) {
-    ui.update(w, view, game.timeLeft, game.aimKey || game.rapidKey, rdt);
+    ui.update(w, view, game.practice ? Infinity : game.timeLeft, game.aimKey || game.rapidKey, rdt);
+    if (game.practice) practiceMeter(frozen() ? 0 : rdt);
     audio.intensity = 1 - Math.min(...w.tops.filter((t) => !t.gone).map(spinRatio), 1);
   }
   if (net && net.connected && net.rttKnown) {
@@ -1222,7 +1340,7 @@ toTitle();
 ui.setMuted(false);
 document.getElementById('version').textContent = VERSION;
 // Test hook: lets a script drive frames by hand and inspect the match.
-window.__gc = { game, view, ui, audio, frame, startMatch: startCpuMatch, openRoom, joinRoom, BLADES };
+window.__gc = { game, view, ui, audio, frame, startMatch: startCpuMatch, openRoom, joinRoom, startPractice, BLADES };
 const room = cleanCode(params.get('room'));
 if (room.length === 6) joinRoom(room);
 else if (params.has('host')) openRoom();

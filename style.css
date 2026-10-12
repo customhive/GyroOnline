@@ -60,7 +60,7 @@ button { font-family: inherit; color: inherit; cursor: pointer; }
 .bottom { position: absolute; left: 0; right: 0; bottom: 14px; display: flex; flex-direction: column; align-items: center; gap: 8px; }
 #skillbar { --c: var(--cyan); display: flex; gap: 12px; padding: 10px 14px; background: linear-gradient(180deg, rgba(14, 20, 40, 0.9), rgba(6, 9, 20, 0.92)); border: 1px solid var(--line); border-top-color: color-mix(in srgb, var(--c) 60%, transparent); box-shadow: 0 10px 40px rgba(0, 0, 0, 0.6); pointer-events: auto; clip-path: polygon(14px 0, calc(100% - 14px) 0, 100% 14px, 100% 100%, 0 100%, 0 14px); }
 .skill { position: relative; width: 66px; height: 66px; color: var(--c); background: radial-gradient(circle at 50% 35%, color-mix(in srgb, var(--c) 28%, #0b1226), #070b18 75%); border: 2px solid color-mix(in srgb, var(--c) 70%, #fff); cursor: default; transition: transform 0.08s; }
-.skill.ult { width: 76px; height: 76px; margin-top: -10px; color: var(--gold); border-color: var(--gold); background: radial-gradient(circle at 50% 35%, #4b3a10, #0a0b16 75%); }
+.skill.ult { color: var(--gold); border-color: var(--gold); background: radial-gradient(circle at 50% 35%, #4b3a10, #0a0b16 75%); }
 .s-icon { position: absolute; inset: 11px; filter: drop-shadow(0 0 6px currentColor); }
 .s-icon svg { width: 100%; height: 100%; display: block; }
 .s-cd { --p: 0; position: absolute; inset: 0; background: conic-gradient(rgba(3, 5, 12, 0.86) calc(var(--p) * 360deg), transparent 0); }
@@ -86,12 +86,6 @@ button { font-family: inherit; color: inherit; cursor: pointer; }
 @keyframes ring { from { opacity: 1; transform: scale(1); } to { opacity: 0; transform: scale(1.55); } }
 .skill.denied { animation: shake 0.22s linear; }
 @keyframes shake { 20% { transform: translateX(-4px); } 40% { transform: translateX(4px); } 60% { transform: translateX(-3px); } 80% { transform: translateX(3px); } }
-.s-tip { position: absolute; bottom: calc(100% + 18px); left: 50%; width: 280px; transform: translateX(-50%) translateY(6px); padding: 12px 14px; background: var(--panel); border: 1px solid var(--line); border-left: 3px solid var(--c); color: var(--ink); opacity: 0; transition: opacity 0.12s, transform 0.12s; pointer-events: none; backdrop-filter: blur(6px); }
-.skill:hover .s-tip { opacity: 1; transform: translateX(-50%); }
-.s-tip b { display: block; font-size: 16px; }
-.s-tip i { display: block; font-style: normal; font-size: 10px; letter-spacing: 0.22em; color: var(--c); margin-bottom: 6px; }
-.s-tip p { margin: 0 0 8px; font-size: 13px; line-height: 1.55; color: #c9d5f0; }
-.s-tip span { font-size: 11px; color: var(--dim); }
 .hint { font-size: 12px; color: var(--dim); text-shadow: 0 1px 4px #000; letter-spacing: 0.03em; }
 .hint b { color: var(--ink); font-weight: 600; padding: 1px 6px; margin-left: 6px; background: rgba(255, 255, 255, 0.08); border: 1px solid var(--line); }
 
@@ -148,6 +142,31 @@ button { font-family: inherit; color: inherit; cursor: pointer; }
 .ci-text span { font-size: 11px; letter-spacing: 0.4em; }
 .ci-text b { font-size: 46px; font-style: italic; line-height: 1; }
 .ci-text i { font-style: normal; font-size: 14px; letter-spacing: 0.3em; }
+
+/* A line of a description that stands by itself: one weapon's part, in that weapon's colour. */
+.wl { display: block; font-style: normal; }
+.wl u { text-decoration: none; margin-right: 3px; }
+
+/* ---- practice ---------------------------------------------------------- */
+#practice { position: fixed; left: 12px; top: 50%; transform: translateY(-50%); z-index: 15; display: grid; gap: 5px; width: 250px; padding: 12px; background: rgba(7, 11, 22, 0.82); border: 1px solid var(--line); }
+#practice h3 { margin: 0 0 3px; font-size: 12px; letter-spacing: 0.3em; color: var(--gold); }
+#practice h3.sub { margin-top: 7px; color: var(--dim); }
+#practice .rule { grid-template-columns: 16px 1fr auto; width: 100%; height: 34px; background: rgba(11, 17, 34, 0.9); }
+#practice .rule b { font-size: 13px; }
+#practice .seat-sel { width: 100%; margin: 0; }
+.pr-act { height: 34px; padding: 0 10px; font-size: 13px; letter-spacing: 0.05em; text-align: left; color: #c9d5f0; background: rgba(11, 17, 34, 0.9); border: 1px solid var(--line); }
+.pr-act:hover { border-color: var(--cyan); }
+.pr-act:last-child { margin-top: 7px; color: var(--dim); }
+body.practice .pips { visibility: hidden; }
+/* With the menu open in practice, the skill bar stays in front of it so each skill can still be read. */
+body.practice:has(#pause:not(.hidden)) #hud { z-index: 21; }
+body.practice:has(#pause:not(.hidden)) #hud .top-bar, body.practice:has(#pause:not(.hidden)) #hud .hint { opacity: 0.3; }
+.meter { position: absolute; left: 0; top: 0; width: 0; height: 0; transition: opacity 0.25s; }
+.meter b, .meter span, .meter i { position: absolute; left: -90px; width: 180px; text-align: center; white-space: nowrap; text-shadow: 0 2px 0 #000, 0 0 8px rgba(0, 0, 0, 0.9); }
+.meter b { bottom: 26px; font-size: 30px; font-style: italic; line-height: 1; color: var(--gold); font-variant-numeric: tabular-nums; }
+.meter span { bottom: 14px; font-size: 10px; letter-spacing: 0.2em; color: var(--dim); }
+.meter i { bottom: 0; font-size: 11px; font-style: normal; color: #fff6c8; font-variant-numeric: tabular-nums; }
+@media (max-height: 620px), (max-width: 900px) { #practice { top: 96px; transform: none; width: 210px; padding: 8px; } }
 
 /* ---- system buttons --------------------------------------------------- */
 #sys { position: fixed; right: 12px; bottom: 12px; display: flex; gap: 6px; z-index: 30; }

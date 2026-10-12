@@ -44,6 +44,8 @@ export function makeTop(side, blade) {
     stk: 0, stkT: 0,       // uses stored up for the blade's stocked skill, and time to the next
     streamT: 0,            // a held stream of fire: time left before it counts as let go
     markK: 1,              // how hard the mark on this top goes off
+    markHold: false,       // the mark waits for the follow-up that was promised it: no other skill sets it off
+    chak: 0, chakT: 0,     // chakrams circling this top, and how long they have left
     empN: 0, empS: null,   // empowered body hits left, and the skill that empowered them
     ret2: null,            // a second place to return to, left by a mimicked jump
     shield: 0, shieldT: 0, buff: 0,
@@ -62,6 +64,7 @@ export function makeTop(side, blade) {
     shredK: 1,             // how much more a softened top takes
     bleedBy: -1,           // who made it bleed
     spray: null,           // a burst of shots being fired one after another: { skill, n, every, acc, dx, dz }
+    volley: null,          // blows landing one after another on whoever is nearest: { skill, n, every, acc, off }
     rayA: null,            // the bearing of a beam that turns to follow the cursor
     dbl: 0,                // the next body hit lands twice
     kickT: 0, kickBy: -1, kickHit: 0, // kicked away by DRAGON'S RAGE: time left in flight, by whom, and whom it has already bowled over
@@ -77,6 +80,8 @@ export function makeTop(side, blade) {
     gone: null,            // out of this round: how ('over', 'burst', 'spin'), or null while still in it
     team: side,            // tops on the same team do not fight each other
     perm: 0,               // growth that lasts the whole match, not just the round
+    still: false,          // practice: a dummy that stays where it is put
+    back: 0,               // practice: time until a top that went down is put back
     realm: 0,              // shut in a REALM OF DEATH: 1 + the side of whoever made it (0: in the ordinary world)
     flash: 1,              // FLASH: uses left this round
     // LUNAR ARSENAL: main and off-hand weapon, the ones waiting, shots left in each, each one's cooldown.
@@ -151,11 +156,15 @@ export function moveTop(t, dt, opp) {
   // Steeper near the middle than a plain bowl, so orbits of different size drift out of step.
   const well = ARENA.K * (0.55 + 3.2 / (Math.hypot(t.x, t.z) + 1.5));
   let ax = -well * t.x, az = -well * t.z;
+  // Stunned or snared, it stays exactly where it is: the slope of the bowl does not carry it off.
+  if ((t.stun > 0 || t.snare > 0) && t.tumble <= 0) ax = az = 0;
   let drag = 0.15;
   if (t.spin <= 0) {
     drag = 2.2;
   } else if (held) {
     drag = 9;
+  } else if (t.still && t.tumble <= 0) {
+    drag = 5;
   } else if (t.tumble > 0) {
     drag = 0.55;
   } else if (t.cmd) {
@@ -173,7 +182,7 @@ export function moveTop(t, dt, opp) {
       ax = sx; az = sz;
     }
   }
-  if (t.spin > 0 && t.tumble <= 0 && !t.cmd && !held) {
+  if (t.spin > 0 && t.tumble <= 0 && !t.cmd && !held && !t.still) {
     const sp = Math.hypot(t.vx, t.vz);
     const cruise = t.blade.speed * (0.3 + 0.7 * sr) * slow;
     t.phase += dt;
@@ -249,7 +258,7 @@ function ghost(t) {
   return {
     blade: t.blade, x: t.x, z: t.z, vx: t.vx, vz: t.vz, spin: t.spin, spinMax: t.spinMax,
     dir: t.dir, radius: t.radius, tumble: t.tumble, slow: t.slow, phase: t.phase, stack: t.stack,
-    ground: t.ground, buff: t.buff, haste: t.haste, up: t.up, egg: t.egg, chan: t.chan, hold: t.hold, stun: t.stun, snare: t.snare, slowK: t.slowK,
+    ground: t.ground, buff: t.buff, haste: t.haste, up: t.up, egg: t.egg, chan: t.chan, hold: t.hold, stun: t.stun, snare: t.snare, slowK: t.slowK, still: t.still,
     cmd: t.cmd ? { ...t.cmd } : null, dash: t.dash ? { ...t.dash } : null,
     blink: t.blink ? { ...t.blink } : null, charge: t.charge,
   };
@@ -319,11 +328,14 @@ export function wallOf(z) {
 
 export class World {
   // new World(bladeA, bladeB, seed, stage) for a duel, or
-  // new World([blades...], { seed, stage, size, teams, ff }) for two to four tops.
+  // new World([blades...], { seed, stage, size, teams, ff, practice }) for two to four tops.
   constructor(bladeA, bladeB, seed = 1, stage = 0) {
     let blades = [bladeA, bladeB], teams = null;
-    let ff = false, size = 0;
-    if (Array.isArray(bladeA)) { const o = bladeB || {}; blades = bladeA; seed = o.seed ?? 1; stage = o.stage ?? 0; size = o.size ?? 0; teams = o.teams || null; ff = !!o.ff; }
+    let ff = false, size = 0, practice = false;
+    if (Array.isArray(bladeA)) { const o = bladeB || {}; blades = bladeA; seed = o.seed ?? 1; stage = o.stage ?? 0; size = o.size ?? 0; teams = o.teams || null; ff = !!o.ff; practice = !!o.practice; }
+    // Practice: no round to win. Side 0 is the player, the rest are dummies; a top that goes down is put back.
+    // `noCd` and `fullUlt` are the player's, `keep` says whose spin never falls (by side).
+    this.practice = practice ? { noCd: false, fullUlt: false, keep: blades.map(() => false) } : null;
     // Friendly fire: with it on, a team's own attacks land on its own tops too.
     this.ff = ff;
     this.stage = stage;
@@ -394,32 +406,38 @@ export class World {
     this.zones.length = 0;
     this.result = null;
     this.time = 0;
-    for (const t of this.tops) {
-      // Evenly round the ring, each moving off along it. Two tops start near and far.
-      const ph = (Math.PI * 2 * t.side) / this.tops.length, r0 = (7.5 * ARENA.R) / 13;
-      t.x = r0 * Math.sin(ph); t.z = r0 * Math.cos(ph);
-      t.vx = t.blade.speed * 0.75 * Math.cos(ph); t.vz = -t.blade.speed * 0.75 * Math.sin(ph);
-      if (Math.abs(t.x) < 1e-9) t.x = 0;
-      if (Math.abs(t.vz) < 1e-9) t.vz = 0;
-      t.gone = null; t.prey = t.dmarkTo = -1; t.quills = t.quillT = 0; t.realm = 0; t.flash = 1;
-      t.silence = t.dbl = t.odT = t.deN = t.deT = t.ardent = t.shrugCd = t.rockT = t.kickT = t.kickHit = 0; t.shredK = 1; t.bleedBy = t.ardentBy = -1; t.spray = null; t.rayA = null; t.once = false;
-      t.spin = t.spinMax;
-      t.cmd = t.cast = t.dash = t.air = t.out = t.blink = t.charge = t.orbs = t.tether = t.chan = t.ret = t.hold = null;
-      t.tumble = t.launch = t.guard = t.slow = t.hitCd = t.empower = 0;
-      t.up = t.ground = t.mark = t.scar = t.poison = t.bleed = t.bleedT = t.shield = t.shieldT = t.buff = t.frost = t.doom = t.empN = t.shred = t.stkT = t.streamT = 0;
-      const stocked = KEYS.map((k) => skillOf(t, k)).find((S) => S.stock);
-      t.stk = stocked ? stocked.stock.max : 0;
-      t.markK = 1;
-      t.ret2 = t.empS = null;
-      t.stack = t.stackT = t.last = t.dmark = t.dacc = t.egg = t.eggHp = t.dot = t.dotT = t.drop = 0;
-      t.sleep = 0; t.styleLast = ''; t.subj = t.lights = t.lightsT = 0;
-      t.wcd.fill(0);
-      t.haste = t.charm = t.pin = t.store = t.tag = t.tagT = t.histT = t.stun = t.snare = t.slowK = 0;
-      t.hist = [];
-      t.toggle = t.eggUsed = false;
-      t.lastHit = null;
-      for (const k of KEYS) { t.cd[k] = k === 'R' ? 0 : 1.2; t.re[k] = 0; }
-    }
+    for (const t of this.tops) this.resetTop(t);
+  }
+
+  // One top as it starts a round: where it stands, and nothing left over from before.
+  resetTop(t) {
+    // Evenly round the ring, each moving off along it. Two tops start near and far.
+    const ph = (Math.PI * 2 * t.side) / this.tops.length, r0 = (7.5 * ARENA.R) / 13;
+    t.x = r0 * Math.sin(ph); t.z = r0 * Math.cos(ph);
+    t.vx = t.blade.speed * 0.75 * Math.cos(ph); t.vz = -t.blade.speed * 0.75 * Math.sin(ph);
+    if (Math.abs(t.x) < 1e-9) t.x = 0;
+    if (Math.abs(t.vz) < 1e-9) t.vz = 0;
+    // Practice: the dummies wait in the middle.
+    if (this.practice && t.side) { t.x = (t.side - 1) * 3; t.z = 0; t.vx = t.vz = 0; }
+    t.back = 0;
+    t.gone = null; t.prey = t.dmarkTo = -1; t.quills = t.quillT = 0; t.realm = 0; t.flash = 1;
+    t.silence = t.dbl = t.odT = t.deN = t.deT = t.ardent = t.shrugCd = t.rockT = t.kickT = t.kickHit = 0; t.shredK = 1; t.bleedBy = t.ardentBy = -1; t.spray = null; t.volley = null; t.rayA = null; t.once = false;
+    t.spin = t.spinMax;
+    t.cmd = t.cast = t.dash = t.air = t.out = t.blink = t.charge = t.orbs = t.tether = t.chan = t.ret = t.hold = null;
+    t.tumble = t.launch = t.guard = t.slow = t.hitCd = t.empower = 0;
+    t.up = t.ground = t.mark = t.scar = t.poison = t.bleed = t.bleedT = t.shield = t.shieldT = t.buff = t.frost = t.doom = t.empN = t.shred = t.stkT = t.streamT = 0;
+    const stocked = KEYS.map((k) => skillOf(t, k)).find((S) => S.stock);
+    t.stk = stocked ? stocked.stock.max : 0;
+    t.markK = 1; t.markHold = false; t.chak = t.chakT = 0;
+    t.ret2 = t.empS = null;
+    t.stack = t.stackT = t.last = t.dmark = t.dacc = t.egg = t.eggHp = t.dot = t.dotT = t.drop = 0;
+    t.sleep = 0; t.styleLast = ''; t.subj = t.lights = t.lightsT = 0;
+    t.wcd.fill(0);
+    t.haste = t.charm = t.pin = t.store = t.tag = t.tagT = t.histT = t.stun = t.snare = t.slowK = 0;
+    t.hist = [];
+    t.toggle = t.eggUsed = false;
+    t.lastHit = null;
+    for (const k of KEYS) { t.cd[k] = k === 'R' ? 0 : 1.2; t.re[k] = 0; }
   }
 
   // `fresh`: a new click, not the repeat of a held button. Only that steps a top down off the wall.
@@ -463,7 +481,7 @@ export class World {
   busy(t, firing = false, free = false) {
     // A top in flight is dashing, but free to use its skills.
     if (t.chan && firing) return !!(this.result || t.spin <= 0 || t.up > 0 || t.stun > 0);
-    return !!(this.result || t.spin <= 0 || t.air || t.out || t.cast || (t.dash && !t.dash.skill.fly) || t.blink || (t.charge && !t.charge.skill.loose) || t.chan || t.up > 0 || (!free && (t.stun > 0 || t.silence > 0)) || t.egg > 0);
+    return !!(this.result || t.spin <= 0 || t.air || t.out || t.cast || (t.dash && !t.dash.skill.fly) || t.blink || (t.charge && !t.charge.skill.loose) || t.chan || t.volley || t.up > 0 || (!free && (t.stun > 0 || t.silence > 0)) || t.egg > 0);
   }
 
   // The skill a key would cast right now: its second stage while the recast
@@ -474,6 +492,10 @@ export class World {
     if (t.subj && t.blade.painter) return key === 'R' ? SKILLS.washbrush : SKILLS[skillOf(t, KEYS[t.subj - 1]).spells[key]];
     // THE DARKIN BLADE is three different swings on one key.
     if (S.id === 'darkinblade') return SKILLS['darkin' + (t.re[key] > 0 ? Math.min(3, t.stack + 1) : 1)];
+    // LUNAR ARSENAL: what the key does a second time depends on the weapon in hand.
+    if (S.weapons && t.re[key] > 0) return SKILLS[SKILLS[S.weapons[t.wm]].again || S.re];
+    // GRAVITUM: with anyone slowed, however that came about, the key roots at once.
+    if (S.weapons && SKILLS[S.weapons[t.wm]].eclipse && this.foes(t).some((o) => o.slow > 0 && targetable(o))) return SKILLS[S.re];
     if (S.re && t.re[key] > 0) return SKILLS[S.re];
     // LUNAR ARSENAL: the key fires whatever weapon is in the main hand.
     if (S.weapons) return SKILLS[S.weapons[t.wm]];
@@ -776,6 +798,8 @@ export class World {
   rearm(t) {
     const k = KEYS.find((q) => skillOf(t, q).weapons);
     t.cd[k] = t.wcd[t.wm]; t.re[k] = 0;
+    // The rifle back in hand with its mark still on someone: the follow-up is there to be taken.
+    if (SKILLS[skillOf(t, k).weapons[t.wm]].again) t.re[k] = Math.max(0, ...this.foes(t).map((o) => (o.markHold ? o.mark : 0)));
     this.emit('say', { top: t, text: SKILLS[skillOf(t, k).weapons[t.wm]].en, tone: '' });
   }
 
@@ -783,7 +807,8 @@ export class World {
     const S = c.skill, opp = this.pick(t, c, S);
     // Some blades pay for every skill in spin.
     if (t.blade.costPct && !c.re && !S.free) t.spin = Math.max(1, t.spin * (1 - t.blade.costPct));
-    if (S.weapon !== undefined) {
+    // (The second press that follows a weapon's own shot is part of that use.)
+    if (S.weapon !== undefined && !c.re) {
       // Each weapon keeps its own cooldown, and every use is one of its five shots.
       t.cd[c.key] = t.wcd[S.weapon] = S.cd * t.blade.cdMul;
       if (--t.wa[S.weapon] <= 0) {
@@ -899,13 +924,33 @@ export class World {
         this.rearm(t);
         break;
       case 'bindeclipse': {
-        // BINDING ECLIPSE: wherever it is, a target under the gravity slow is rooted.
-        if (opp.slow <= 0 || !targetable(opp)) break;
-        const dmg = this.hurt(opp, (S.dmg * t.blade.atk) / opp.blade.def, t, S.id);
-        this.snare(opp, opp.slowK >= 0.9 ? S.bigSnare : S.snareT);
-        opp.slow = 0;
+        // BINDING ECLIPSE: wherever they are, everyone under a slow is rooted.
+        for (const o of this.foes(t)) {
+          if (o.slow <= 0 || !targetable(o)) continue;
+          const dmg = this.hurt(o, (S.dmg * t.blade.atk) / o.blade.def, t, S.id);
+          this.snare(o, o.slowK >= 0.9 ? S.bigSnare : S.snareT);
+          o.slow = 0;
+          t.stats.skillHits++;
+          this.emit('strike', { top: o, src: t, skill: S, x: o.x, z: o.z, dmg });
+        }
+        break;
+      }
+      case 'onslaught':
+        // ONSLAUGHT: quicker on its feet, and nothing to do but move while the blows land.
+        t.haste = S.haste;
+        t.volley = { skill: S, n: S.shots, every: S.dur / S.shots, acc: S.dur / S.shots, off: t.wo };
+        break;
+      case 'longshot': {
+        // The rifle's follow-up: wherever the marked target is, the mark goes off and the other hand lands its blow.
+        const v = opp.mark > 0 && targetable(opp) ? opp : this.enemies(t).find((o) => o.mark > 0 && targetable(o));
+        if (!v) break;
+        const k = v.markK;
+        v.mark = 0;
+        const dmg = this.hurt(v, (SKILLS.sigil.pop * k * t.blade.atk) / v.blade.def, t, 'sigil');
         t.stats.skillHits++;
-        this.emit('strike', { top: opp, src: t, skill: S, x: opp.x, z: opp.z, dmg });
+        // The shot itself is the other hand's, and wears its colour.
+        this.emit('strike', { top: v, src: t, skill: S, x: v.x, z: v.z, dmg, ...(v.guard > 0 ? { fx: t.x, fz: t.z } : {}) });
+        this.offhand(t, v, t.wo, true);
         break;
       }
       case 'sentry':
@@ -1584,7 +1629,7 @@ export class World {
       const core = S.core && Math.acos(clamp((ox * dx + oz * dz) / od, -1, 1)) < S.half * S.core;
       hit += this.hurt(opp, ((S.dmg * t.blade.atk + extra) * g) / (core ? 1 : opp.blade.def), t, S.id);
       if (g === 1) { if (S.pull) this.pull(opp, t, S.pull); this.affect(t, opp, S, dx, dz); }
-      if (S.offhand) this.offhand(t, opp);
+      if (S.offhand) this.offhand(t, opp, t.wo, true);
       // A breath held on one target flares up every so many ticks.
       if (S.tick) {
         t.stack++; t.stackT = 0.4;
@@ -1789,13 +1834,13 @@ export class World {
   // body hits, which throw the target themselves.
   affect(s, v, S, dx, dz, shove = true) {
     if (s.realm !== v.realm) return;
-    // A sigil goes off on the next skill that lands.
-    if (v.mark > 0) {
+    // A sigil goes off on the next skill that lands (unless it is waiting for a follow-up of its own).
+    if (v.mark > 0 && !v.markHold) {
       v.mark = 0;
       const dmg = this.hurt(v, (SKILLS.sigil.pop * v.markK * s.blade.atk) / v.blade.def, s, 'sigil');
       this.emit('strike', { top: v, src: s, skill: SKILLS.sigil, x: v.x, z: v.z, dmg });
     }
-    if (S.mark) { v.mark = S.mark; v.markK = s.x2 ? 2 : 1; }
+    if (S.mark) { v.mark = S.mark; v.markK = s.x2 ? 2 : 1; v.markHold = !!S.again; }
     // Stun first: it stops the top dead, and the knockback then carries it off.
     if (S.stun) this.stun(v, S.stun);
     if (S.kb && shove) {
@@ -1830,7 +1875,8 @@ export class World {
   eliminate(t, kind, by) {
     if (this.result || t.gone) return;
     t.gone = kind;
-    if (this.sidesLeft() > 1) {
+    if (this.practice) t.back = 1;
+    if (this.practice || this.sidesLeft() > 1) {
       t.cmd = t.dash = t.cast = t.charge = t.tether = t.orbs = t.chan = t.hold = null; t.guard = 0; t.toggle = false;
       this.emit('ko', { top: t, kind, by: by || null });
       return;
@@ -1861,6 +1907,7 @@ export class World {
     this.updateProjectiles(dt);
     this.updateZones(dt);
     SCOPE = -1;
+    if (this.practice) this.drill(dt);
     if (!this.result) {
       for (const t of this.tops) {
         if (t.spin > 0 || t.out || t.gone) continue;
@@ -1873,6 +1920,33 @@ export class World {
         if (this.result) break;
       }
     }
+  }
+
+  // Practice: the switches on the panel, and tops that went down coming back.
+  drill(dt) {
+    const P = this.practice;
+    for (const t of this.tops) {
+      if (t.gone) { t.back -= dt; if (t.back <= 0) this.revive(t); continue; }
+      if (P.keep[t.side] && !t.out && t.egg <= 0) t.spin = t.spinMax;
+      if (t.side) continue;
+      if (P.fullUlt) t.ult = 100;
+      if (!P.noCd) continue;
+      t.flash = 1;
+      t.wcd.fill(0);
+      for (const k of KEYS) {
+        const S = skillOf(t, k);
+        // What is fired by holding a key, or shot by shot, keeps its own pace.
+        if (!S.rapid && !S.stream && !this.aimSkill(t, k).fire) t.cd[k] = 0;
+        if (S.stock) t.stk = S.stock.max;
+      }
+    }
+  }
+
+  // Practice: back where it started, whole, with whatever it had put on the floor gone.
+  revive(t) {
+    for (const q of this.zones) if (q.owner === t) this.endZone(q);
+    this.resetTop(t);
+    this.emit('back', { top: t });
   }
 
   layEgg(t) {
@@ -1924,6 +1998,7 @@ export class World {
     t.up = Math.max(0, t.up - dt);
     t.ground = Math.max(0, t.ground - dt);
     t.mark = Math.max(0, t.mark - dt);
+    if (t.chak && (t.chakT -= dt) <= 0) t.chak = 0;
     t.scar = Math.max(0, t.scar - dt);
     t.poison = Math.max(0, t.poison - dt);
     const lit = t.buff > 0;
@@ -2001,6 +2076,25 @@ export class World {
       while (sp.n > 0 && sp.acc >= sp.every) { sp.acc -= sp.every; sp.n--; if (t.stun <= 0 && t.up <= 0 && !t.air) this.fire(t, sp.skill, sp.dx, sp.dz, { quiet: sp.n % 3 !== 0 }); }
       if (sp.n <= 0) t.spray = null;
     } else if (t.spray) t.spray = null;
+    if (t.volley && !this.result && t.spin > 0 && !t.out && !t.gone) {
+      const V = t.volley, S = V.skill;
+      V.acc += dt;
+      while (V.n > 0 && V.acc >= V.every) {
+        V.acc -= V.every; V.n--;
+        if (t.stun > 0 || t.up > 0 || t.air) continue;
+        // Whoever is nearest, measured to its edge.
+        let v = null, bd = S.range;
+        for (const o of this.foes(t)) { const d = Math.hypot(o.x - t.x, o.z - t.z) - o.radius; if (targetable(o) && d <= bd) { bd = d; v = o; } }
+        if (!v) continue;
+        // The other hand first, then the scythe, which drinks what it cuts.
+        if (V.n % 2) { this.offhand(t, v, V.off, true); continue; }
+        const dmg = this.hurt(v, (S.dmg * (v.guard > 0 ? 0.3 : 1) * t.blade.atk) / v.blade.def, t, S.id);
+        this.mend(t, dmg * S.leech);
+        t.stats.skillHits++;
+        this.emit('strike', { top: v, src: t, skill: S, x: v.x, z: v.z, dmg, fx: t.x, fz: t.z });
+      }
+      if (V.n <= 0) t.volley = null;
+    } else if (t.volley) t.volley = null;
     // BLOOD FRENZY: it goes for whoever is nearest, whatever its owner wants.
     if (t.buff > 0 && t.blade.buff && t.blade.buff.frenzy && !this.result && !t.dash && !t.air && !t.out && t.stun <= 0 && t.snare <= 0 && !rooted(t)) {
       const o = (t.prey >= 0 && this.tops[t.prey] && !this.tops[t.prey].gone && t.blade.buff.hunt && this.tops[t.prey]) || opp;
@@ -2835,16 +2929,20 @@ export class World {
   // LUNAR ARSENAL: the weapon in the other hand (or `wi`, the one mounted on a
   // sentry) lands a light blow of its own on a target the main one has reached.
   // It leaves a sniper's mark where it is: that is for the next skill to set off.
-  offhand(o, v, wi = o.wo) {
+  // `fly`: the blow is seen crossing from one to the other (2: the heavier one the ultimate sends).
+  offhand(o, v, wi = o.wo, fly = false) {
     const A = SKILLS.arsenal, F = A.off.fx[wi];
     if (this.result || !F || !targetable(v) || v.guard > 0) return;
-    const dmg = this.hurt(v, (A.off.dmg * (F.mul || 1) * o.blade.atk) / v.blade.def, o, 'offhand');
-    if (F.mark && v.mark <= 0) { v.mark = F.mark; v.markK = 1; }
+    // The chakrams it holds fly with the blow, each adding to it; landing, the blow leaves one more.
+    const n = F.chak ? o.chak : 0;
+    const dmg = this.hurt(v, ((A.off.dmg * (F.mul || 1) + n * A.chak.dmg) * o.blade.atk) / v.blade.def, o, 'offhand');
+    // (The ultimate's blow leaves three.)
+    if (F.chak) { o.chak = Math.min(A.chak.max, o.chak + (fly === 2 ? SKILLS.vigil.arm[wi].chak : F.chak)); o.chakT = A.chak.dur; }
     if (F.slow) this.slowBy(v, F.slow, F.slowPct);
     if (F.leech) this.mend(o, dmg * F.leech);
     // The flamethrower's blow washes over whoever else stands close behind.
     if (F.splash) for (const q of this.foes(o)) if (q !== v && targetable(q) && Math.hypot(q.x - v.x, q.z - v.z) < F.splash + q.radius * 0.5) this.hurt(q, (A.off.dmg * o.blade.atk) / q.blade.def, o, 'offhand');
-    this.emit('strike', { top: v, src: o, skill: SKILLS[A.weapons[wi]], x: v.x, z: v.z, dmg, light: true });
+    this.emit('strike', { top: v, src: o, skill: SKILLS[A.weapons[wi]], x: v.x, z: v.z, dmg, light: fly !== 2, ...(fly ? { fx: o.x, fz: o.z } : {}), ...(fly === 2 ? { strong: 1 } : {}), ...(n ? { n } : {}) });
   }
 
   // PLASMA FISSION parting: two bolts at right angles to the way it was going.
@@ -3091,7 +3189,7 @@ export class World {
     }
     // A mark that a body hit sets off as well as a skill.
     for (const [s, v] of [[a, b], [b, a]]) {
-      if (v.mark > 0 && s.blade.markOnClash) { v.mark = 0; const d2 = this.hurt(v, (SKILLS.sigil.pop * s.blade.atk) / v.blade.def, s, 'sigil'); this.emit('strike', { top: v, src: s, skill: SKILLS.sigil, x: v.x, z: v.z, dmg: d2 }); }
+      if (v.mark > 0 && !v.markHold && s.blade.markOnClash) { v.mark = 0; const d2 = this.hurt(v, (SKILLS.sigil.pop * s.blade.atk) / v.blade.def, s, 'sigil'); this.emit('strike', { top: v, src: s, skill: SKILLS.sigil, x: v.x, z: v.z, dmg: d2 }); }
     }
     this.emit('clash', {
       x: (a.x + b.x) / 2, z: (a.z + b.z) / 2, nx, nz, power, kind, src,
@@ -3288,7 +3386,7 @@ export class World {
     this.affect(o, v, S, p.dx, p.dz);
     o.x2 = false;
     // LUNAR ARSENAL: the other hand follows up, or the weapon mounted on a sentry does.
-    if (S.offhand) this.offhand(o, v);
+    if (S.offhand) this.offhand(o, v, o.wo, true);
     if (p.off !== undefined) this.offhand(o, v, p.off);
     // Dragged in last, so a stun on the same hit does not stop the drag.
     if (S.chain) this.pull(v, o, S.pull, S.pullDist);
@@ -3317,6 +3415,8 @@ export class World {
     if (S.reOnHit) { const k = this.keyOf(o, S.id); if (k) o.re[k] = S.reOnHit; }
     // GRAVITUM: while its slow lasts, the same key roots the target.
     if (S.eclipse) { const k = KEYS.find((q) => skillOf(o, q).weapons); if (k && o.wm === S.weapon) o.re[k] = S.eclipse; }
+    // CALIBRUM: while its mark lasts, the same key fires the follow-up.
+    if (S.again) { const k = KEYS.find((q) => skillOf(o, q).weapons); if (k && o.wm === S.weapon) o.re[k] = S.mark; }
     if (S.permHit && o.perm < S.permHit) { o.perm++; this.emit('say', { top: o, text: '+' + o.perm, tone: 'gold' }); }
     if (S.spawn) this.zone(o, SKILLS[S.spawn], v.x, v.z);
     if (S.splash) this.burst(o, S, p.x, p.z, S.splash, { dmg: S.splashDmg, as: {} });
@@ -3330,12 +3430,17 @@ export class World {
     }
     // MOONLIGHT VIGIL does something more for each weapon in hand.
     if (S.id === 'vigil') {
-      const A = S.arm[o.wm];
-      if (A.mark) { v.mark = A.mark; v.markK = 2; }
+      // The weapon in hand follows up on everyone the burst caught, as it would from the other hand, and harder.
+      // (The healing comes once.)
+      const A = S.arm[o.wm], k = KEYS.find((q) => skillOf(o, q).weapons);
       if (A.heal) this.mend(o, A.heal);
-      if (A.slow) { this.slowBy(v, A.slow, A.slowPct); const k = KEYS.find((q) => skillOf(o, q).weapons); if (k) o.re[k] = A.slow; }
-      if (A.dmg) this.hurt(v, (A.dmg * o.blade.atk) / v.blade.def, o, S.id);
-      if (A.sentry) this.zone(o, SKILLS.sentry, v.x - p.dx * 2.6, v.z - p.dz * 2.6, { c: 1, a: SKILLS.sentry.live });
+      for (const q of this.foes(o)) {
+        if (!targetable(q) || (q !== v && Math.hypot(q.x - p.x, q.z - p.z) >= S.splash + q.radius * 0.5)) continue;
+        this.offhand(o, q, o.wm, 2);
+        if (A.mark) { q.mark = A.mark; q.markK = 2; q.markHold = true; if (k) o.re[k] = A.mark; }
+        if (A.slow) { this.slowBy(q, A.slow, A.slowPct); if (k) o.re[k] = A.slow; }
+        if (A.dmg) this.hurt(q, (A.dmg * o.blade.atk) / q.blade.def, o, S.id);
+      }
     }
     // The third quill to land pins the target.
     if (S.id === 'quill') { v.quills = v.quillT > 0 ? v.quills + 1 : 1; v.quillT = 1.5; if (v.quills === 3) this.snare(v, S.root); }
@@ -3400,7 +3505,8 @@ export class World {
           if (S.trap && Math.hypot(p.x, p.z) < ARENA.R) this.zone(p.owner, SKILLS[S.trap], p.x, p.z, null, true);
           if (S.feather && Math.hypot(p.x, p.z) < ARENA.R) this.zone(p.owner, SKILLS.feather, p.x, p.z, null, true);
           if (S.opens) this.open(p);
-          if (S.splash) this.burst(p.owner, S, p.x, p.z, S.splash, { dmg: S.splashDmg, as: {} });
+          // (Some only burst on whoever they strike: at the wall, or spent, they simply go out.)
+          if (S.splash && !S.onHit) this.burst(p.owner, S, p.x, p.z, S.splash, { dmg: S.splashDmg, as: {} });
           this.emit('projEnd', { proj: p, x: p.x, z: p.z });
         }
       }

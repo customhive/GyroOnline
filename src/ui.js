@@ -1,5 +1,5 @@
 // DOM heads-up display, menus and floating combat text.
-import { BLADES, DIFFICULTY, STAGES, ARENA_SIZES, ROUNDS_TO_WIN, KEYS, FLASH, skillOf, kitOf } from './config.js';
+import { BLADES, SKILLS, DIFFICULTY, STAGES, ARENA_SIZES, ROUNDS_TO_WIN, KEYS, FLASH, skillOf, kitOf } from './config.js';
 
 const $ = (s, r = document) => r.querySelector(s);
 const el = (tag, cls, html) => { const e = document.createElement(tag); if (cls) e.className = cls; if (html != null) e.innerHTML = html; return e; };
@@ -165,19 +165,50 @@ export class UI {
     this.skills = {};
     for (const k of KEYS) {
       const S = kitOf(blade)[KEYS.indexOf(k)];
-      const how = S.passive ? '常時効果' : S.rapid ? '押している間、撃ち続ける' : S.wind ? '長押しで溜める → 離して発動' : S.aim === 'self' ? '押すと即発動' : '長押しで照準 → 離して発動';
       const b = el('div', 'skill' + (S.ult ? ' ult' : ''));
-      b.innerHTML = `<div class="s-ring"></div><div class="s-icon">${iconOf(S)}</div><div class="s-cd"></div><div class="s-num"></div><div class="s-key">${k}</div><div class="s-badge"></div>
-        <div class="s-tip"><b>${S.name}</b><i>${S.en}</i><p>${S.desc}</p><span>${S.ult ? 'ゲージ 100%' : 'クールダウン ' + +(S.cd * blade.cdMul).toFixed(1) + '秒'}　／　${how}</span></div>`;
+      b.innerHTML = `<div class="s-ring"></div><div class="s-icon">${iconOf(S)}</div><div class="s-cd"></div><div class="s-num"></div>${S.id === 'nextweapon' ? '' : `<div class="s-key">${k}</div>`}<div class="s-badge"></div>`;
+      this.hoverTip(b, S, blade, k);
       bar.appendChild(b);
       this.skills[k] = { root: b, cd: $('.s-cd', b), num: $('.s-num', b), ring: $('.s-ring', b), badge: $('.s-badge', b), ready: true, note: '' };
     }
     // FLASH sits beside the four, the same for every blade: lit until it has been used this round.
     const f = el('div', 'skill flash');
-    f.innerHTML = `<div class="s-icon">${GLYPHS.blink}</div><div class="s-key">${FLASH.key}</div>
-      <div class="s-tip"><b>フラッシュ</b><i>FLASH</i><p>カーソルの位置へ瞬間移動する（遠ければ、その方向へ${FLASH.range}だけ）。1ラウンドに1回だけ使える。スタン・束縛・打ち上げなどで動けない間は使えない。スキルを狙っている最中や溜めている最中にも使える。</p><span>1ラウンドに1回　／　押すと即発動</span></div>`;
+    f.innerHTML = `<div class="s-icon">${GLYPHS.blink}</div><div class="s-key">${FLASH.key}</div>`;
+    this.hoverTip(f, { icon: 'blink', name: 'フラッシュ', en: 'FLASH', desc: `カーソルの位置へ瞬間移動する（遠ければ、その方向へ${FLASH.range}だけ）。1ラウンドに1回だけ使える。スタン・束縛・打ち上げなどで動けない間は使えない。スキルを狙っている最中や溜めている最中にも使える。`, foot: '1ラウンドに1回　／　押すと即発動' }, { css: 'var(--gold)' }, FLASH.key);
     bar.appendChild(f);
     this.skills[FLASH.key] = { root: f };
+  }
+
+  // A skill on the bar says what it does while the pointer is over it. The
+  // floating tooltip is used because the bar's cut corners would clip one of its own.
+  hoverTip(root, S, blade, key) {
+    // A key that wears a weapon's colour gives its tooltip the same one.
+    // With weapons in hand, it also says what the key does with those weapons, and keeps up as they change.
+    const show = () => { const L = this.me && this.liveDesc(this.me, key); this.tip(root, (L && L.skill) || S, { ...blade, css: this.skills[key].tint || blade.css }, key, { above: true, body: L && L.body, icon: S }); };
+    root.onmouseenter = () => { this.tipKey = key; this.tipShow = show; show(); };
+    root.onmouseleave = () => { this.tipKey = this.tipShow = null; this.tip(null); };
+  }
+
+  // What a skill says about itself where no match is on: its text, then (for a kit of weapons)
+  // a line for each weapon in that weapon's colour.
+  descOf(S, blade) {
+    const A = S.lines && kitOf(blade).find((q) => q.weapons);
+    if (!A) return S.desc;
+    const hex = (n) => '#' + n.toString(16).padStart(6, '0');
+    if (S.lines === 'order') return `${S.desc}<em class="wl">${S.orderLine}${A.tints.map((t) => `<u style="color:${hex(t)}">■</u>`).join('')}</em>`;
+    return S.desc + A.weapons.map((w, i) => `<em class="wl" style="color:${hex(A.tints[i])}">${SKILLS[w][S.lines]}</em>`).join('');
+  }
+
+  // In a match: what this key does with the weapons `me` holds right now.
+  // { skill: whose name and cooldown to show (the weapon's own, on its key), body: the text }, or null for an ordinary skill.
+  liveDesc(me, key) {
+    const S = skillOf(me, key), A = S.lines && kitOf(me.blade).find((q) => q.weapons);
+    if (!A) return null;
+    const main = SKILLS[A.weapons[me.wm]], off = SKILLS[A.weapons[me.wo]];
+    if (S.weapons) return { skill: main, body: main.desc };
+    if (S.lines === 'order') return { body: S.nowLine };
+    if (S.lines === 'offLine') return { body: `${S.nowLine}<em class="wl">${off.offLine}</em>` };
+    return { body: `${S.desc}<em class="wl">${main[S.lines]}</em>` };
   }
 
   buildTitle() {
@@ -186,7 +217,8 @@ export class UI {
     // described in full beside the skill list.
     this.sheets = {};
     this.bars = {};
-    for (const b of Object.values(BLADES)) {
+    // In alphabetical order of their English names.
+    for (const b of Object.values(BLADES).sort((p, q) => p.en.localeCompare(q.en, 'en'))) {
       const c = el('button', 'blade');
       c.style.setProperty('--c', b.css);
       const bar = (label, v) => `<div class="stat"><span>${label}</span><div>${'<i class="on"></i>'.repeat(v)}${'<i></i>'.repeat(5 - v)}</div></div>`;
@@ -210,10 +242,10 @@ export class UI {
     $('#sheet').style.setProperty('--c', b ? b.css : '#3a4566');
     $('#how-name').textContent = b ? b.name + ' のスキル' : 'おまかせ';
     $('#sheet').innerHTML = b ? this.sheets[b.id] : '<p>対戦のたびにランダムなブレードが選ばれます。</p>';
-    $('#how').innerHTML = b ? kitOf(b).map((S, i) => `<div class="how-row"><kbd>${KEYS[i]}</kbd><div class="how-icon">${iconOf(S)}</div><div><b>${S.name}</b><span>${S.desc}</span></div></div>`).join('') : '';
+    $('#how').innerHTML = b ? kitOf(b).map((S, i) => `<div class="how-row"><kbd>${KEYS[i]}</kbd><div class="how-icon">${iconOf(S)}</div><div><b>${S.name}</b><span>${this.descOf(S, b)}</span></div></div>`).join('') : '';
   }
 
-  show(id, on) { $('#' + id).classList.toggle('hidden', !on); }
+  show(id, on) { $('#' + id).classList.toggle('hidden', !on); if (id === 'hud' && !on) this.tip(null); }
 
   setMuted(m) { $('#btn-mute').classList.toggle('off', m); $('#btn-mute').textContent = m ? '♪ OFF' : '♪ ON'; }
 
@@ -222,7 +254,7 @@ export class UI {
 
   // labels / notes: what to call each top ('YOU', 'CPU', 'RIVAL'...) and a word about it, by side.
   startMatch(world, side, labels, notes = []) {
-    this.side = side;
+    this.side = side; this.me = world.tops[side];
     this.labels.innerHTML = '';
     this.tags = [];
     $('#fl').innerHTML = ''; $('#fr').innerHTML = '';
@@ -277,25 +309,94 @@ export class UI {
     t.className = 'show';
   }
 
-  setMenuMode(online) {
+  setMenuMode(online, practice) {
     $('#pause-title').textContent = online ? 'MENU' : 'PAUSE';
     $('#pause-note').textContent = online ? 'オンライン対戦中は一時停止できません。' : '';
-    $('#btn-quit').textContent = online ? '対戦をやめる' : 'タイトルへ';
+    $('#btn-quit').textContent = online ? '対戦をやめる' : practice ? 'ルームに戻る' : 'タイトルへ';
     $('#btn-again').textContent = online ? '同じブレードで再戦' : 'もう一度';
     $('#btn-lobby').classList.toggle('hidden', !online);
     $('#btn-again').parentElement.classList.toggle('three', online);
     $('#btn-back').textContent = online ? '退出する' : 'ルームに戻る';
   }
 
+  // The practice panel at the side of the screen (hidden, with nothing given).
+  // P: how the dummy behaves; sw: the switches, as the simulation holds them.
+  showPractice(P, sw) {
+    const box = $('#practice');
+    document.body.classList.toggle('practice', !!P);
+    box.classList.toggle('hidden', !P);
+    this.menu(null);
+    if (!P) { if (this.meterEl) this.meterEl.remove(); this.meterEl = null; return; }
+    $('#round').textContent = 'PRACTICE';
+    box.innerHTML = '<h3>PRACTICE</h3>';
+    const sw1 = (name, note, on, pick) => {
+      const b = el('button', 'rule' + (on ? ' on' : ''), `<i></i><b>${name}</b><span>${note}</span>`);
+      b.onclick = (e) => { e.currentTarget.blur(); pick(); };
+      box.appendChild(b);
+    };
+    sw1('クールダウンなし', 'スキルとフラッシュ', sw.noCd, () => this.h.drill('noCd'));
+    sw1('必殺技ゲージ常に満タン', '', sw.fullUlt, () => this.h.drill('fullUlt'));
+    sw1('回転が減らない', '自分', sw.keep[0], () => this.h.drill('keep', 0));
+    sw1('回転が減らない', 'ダミー', sw.keep[1], () => this.h.drill('keep', 1));
+    box.appendChild(el('h3', 'sub', 'DUMMY'));
+    const how = P.dummy === 'cpu' ? `CPU ・ ${DIFFICULTY[P.level].name}` : P.dummy === 'move' ? '動き回る' : '止まる';
+    const sel = el('button', 'seat-sel', `<span>${how}</span><i>▾</i>`);
+    const items = [
+      { label: '止まる', note: 'その場から動かない', on: P.dummy === 'still', pick: () => this.h.drill('dummy', 'still') },
+      { label: '動き回る', note: 'スキルは使わない', on: P.dummy === 'move', pick: () => this.h.drill('dummy', 'move') },
+      ...DIFFICULTY.map((d, n) => ({ label: `CPU ・ ${d.name}`, note: d.ja, on: P.dummy === 'cpu' && P.level === n, pick: () => this.h.drill('dummy', 'cpu', n) })),
+    ];
+    sel.onclick = (e) => { e.stopPropagation(); sel.blur(); this.menu(sel, items); };
+    box.appendChild(sel);
+    const act = (name, pick) => {
+      const b = el('button', 'pr-act', name);
+      b.onclick = (e) => { e.currentTarget.blur(); pick(); };
+      box.appendChild(b);
+    };
+    act('位置をリセット', () => this.h.drill('reset'));
+    act('自分のブレードを変える', () => this.h.drill('blade', 0));
+    act('ダミーのブレードを変える', () => this.h.drill('blade', 1));
+    act('ルームに戻る', () => this.h.quit());
+  }
+
+  // The blade picker, laid over whatever is on screen: whose blade it is choosing, and the one chosen.
+  picker(open, who, id) {
+    $('#picker').classList.toggle('hidden', !open);
+    if (!open) return;
+    $('#lb-editing').textContent = '　' + who;
+    document.querySelectorAll('.blade').forEach((c) => c.classList.toggle('on', c.dataset.id === id));
+    this.showBlade(id);
+  }
+
+  // Practice: over the dummy, what the hits on it have come to and what the last one was.
+  meter(world, view, combo, last) {
+    if (!this.meterEl || !this.meterEl.isConnected) { this.meterEl = el('div', 'meter'); this.labels.appendChild(this.meterEl); this.meterText = ''; }
+    const m = this.meterEl, t = world.tops[1];
+    const on = combo >= 1 && !t.out && !view.hidden(t);
+    m.style.opacity = on ? 1 : 0;
+    if (!on) return;
+    const text = `<b>${Math.round(combo)}</b><span>コンボ合計</span><i>最後の1発 ${Math.round(last)}</i>`;
+    if (text !== this.meterText) { this.meterText = text; m.innerHTML = text; }
+    const v = view.tops[1].group.position, q = view.toScreen(v.x, v.y + 4.4, v.z);
+    m.style.transform = `translate(${q.x.toFixed(1)}px,${q.y.toFixed(1)}px)`;
+  }
+
   howTo(S) { return S.passive ? '常時効果' : S.rapid ? '押している間、撃ち続ける' : S.wind ? '長押しで溜める → 離して発動' : S.aim === 'self' ? '押すと即発動' : '長押しで照準 → 離して発動'; }
 
-  // Shows the skill tooltip beside `at` (or hides it, with no skill).
-  tip(at, S, blade, key) {
+  // Shows the skill tooltip beside `at`, or over it with `above` (or hides it, with no skill).
+  // `body`: text to show in place of the skill's own; `icon`: the skill whose icon to wear.
+  tip(at, S, blade, key, { above = false, body, icon } = {}) {
     const t = this.tipEl;
     if (!S) { t.classList.remove('on'); return; }
     t.style.setProperty('--c', blade.css);
-    t.innerHTML = `<div class="tip-head"><kbd>${key}</kbd><div class="how-icon">${iconOf(S)}</div><div><b>${S.name}</b><i>${S.en}</i></div></div><p>${S.desc}</p><span>${S.ult ? 'ゲージ 100%' : S.passive ? '常時効果' : 'クールダウン ' + +(S.cd * blade.cdMul).toFixed(1) + '秒'}${S.passive ? '' : '　／　' + this.howTo(S)}</span>`;
+    t.innerHTML = `<div class="tip-head"><kbd>${key}</kbd><div class="how-icon">${iconOf(icon || S)}</div><div><b>${S.name}</b><i>${S.en}</i></div></div><p>${body || S.desc}</p><span>${S.foot || (S.ult ? 'ゲージ 100%' : S.passive ? '常時効果' : 'クールダウン ' + +(S.cd * blade.cdMul).toFixed(1) + '秒') + (S.passive ? '' : '　／　' + this.howTo(S))}</span>`;
     t.classList.add('on');
+    if (above) {
+      const r = at.getBoundingClientRect(), w = t.offsetWidth;
+      t.style.left = Math.max(8, Math.min(innerWidth - w - 8, r.left + r.width / 2 - w / 2)) + 'px';
+      t.style.top = Math.max(8, r.top - t.offsetHeight - 16) + 'px';
+      return;
+    }
     // To the right of the row if there is room, otherwise to the left; kept on screen.
     const r = at.getBoundingClientRect(), w = t.offsetWidth, h = t.offsetHeight;
     let x = r.right + 14;
@@ -352,9 +453,11 @@ export class UI {
       failed: host ? 'オンラインにつながりません（CPUとの対戦はできます）' : lb.error || '接続できませんでした',
     }[lb.status];
     const s = $('#lb-status');
+    // Alone in its own seat, every other seat left out: the host can practise.
+    const solo = host && me.kind === 'human' && lb.slots.every((p, i) => i === mine || p.kind === 'none');
     // Why the game cannot start yet is said here, not on the button.
     const lopsided = lb.teams && new Set(lb.slots.filter((p) => p.kind !== 'none').map((p) => p.team)).size < 2;
-    s.textContent = host && lopsided ? 'チーム戦は、AとBの両方に1人以上必要です。カードの下の TEAM を押すとチームを変えられます' : status;
+    s.textContent = solo && lb.status !== 'opening' ? (me.ready ? 'プラクティスを開始できます。ダミーを相手にスキルを試せます' : '1人のときは、準備完了を押すとプラクティスを開始できます') : host && lopsided ? 'チーム戦は、AとBの両方に1人以上必要です。カードの下の TEAM を押すとチームを変えられます' : status;
     s.className = 'lb-status ' + lb.status;
     // The host always has the invitation to hand; it does not come and go with the seats.
     // Host-only controls keep their place for a guest (unseen, not removed),
@@ -409,7 +512,7 @@ export class UI {
         if (can) body.onclick = () => this.h.edit(i);
         if (b) body.querySelectorAll('.pc-skill').forEach((row) => {
           const k = Number(row.dataset.k);
-          row.onmouseenter = () => this.tip(row, kitOf(b)[k], b, KEYS[k]);
+          row.onmouseenter = () => this.tip(row, kitOf(b)[k], b, KEYS[k], { body: this.descOf(kitOf(b)[k], b) });
           row.onmouseleave = () => this.tip(null);
         });
       }
@@ -457,15 +560,8 @@ export class UI {
 
     // The blade picker, laid over the room, edits one seat.
     const open = !!lb.picking && lb.slots[lb.edit].kind !== 'open' && lb.slots[lb.edit].kind !== 'none';
-    $('#picker').classList.toggle('hidden', !open);
-    if (open) {
-      const ed = lb.slots[lb.edit];
-      $('#lb-editing').textContent = '　' + (ed.kind === 'cpu' ? `CPU（${lb.edit + 1}P）` : 'あなた');
-      document.querySelectorAll('.blade').forEach((c) => {
-        c.classList.toggle('on', c.dataset.id === ed.blade);
-        });
-      this.showBlade(ed.blade);
-    }
+    const ed = lb.slots[lb.edit];
+    this.picker(open, ed.kind === 'cpu' ? `CPU（${lb.edit + 1}P）` : 'あなた', ed.blade);
 
     // Every person readies up; the host then starts the game.
     const r = $('#lb-ready'), go = $('#lb-start');
@@ -479,8 +575,8 @@ export class UI {
     if (host) {
       const all = lb.slots.every((p) => p.kind === 'none' || p.kind === 'cpu' || (p.kind === 'human' && p.ready))
         && (!lb.teams || new Set(lb.slots.filter((p) => p.kind !== 'none').map((p) => p.team)).size === 2);
-      go.disabled = waiting || !!g.soon || !all || lb.slots.filter((p) => p.kind !== 'none').length < 2;
-      go.textContent = 'ゲーム開始';
+      go.disabled = solo ? !!g.soon || !me.ready : waiting || !!g.soon || !all || lb.slots.filter((p) => p.kind !== 'none').length < 2;
+      go.textContent = solo ? 'プラクティス開始' : 'ゲーム開始';
     }
   }
 
@@ -569,7 +665,9 @@ export class UI {
         tag.fill.style.transform = `scaleX(${r})`;
       }
     });
-    const me = world.tops[this.side];
+    const me = (this.me = world.tops[this.side]);
+    // A tooltip left open follows the weapons as they change hands.
+    if (this.tipShow) { const sig = `${me.wm},${me.wo},${me.wq[0]}`; if (sig !== this.tipSig) { this.tipSig = sig; this.tipShow(); } }
     this.skills[FLASH.key].root.classList.toggle('wait', !(me.flash > 0));
     for (const k of KEYS) {
       const S = skillOf(me, k);
@@ -590,7 +688,7 @@ export class UI {
       const wi = S.weapons ? me.wm : S.id === 'phase' ? me.wo : S.id === 'nextweapon' ? me.wq[0] : -1;
       if (wi >= 0) {
         const tint = '#' + kitOf(me.blade).find((q) => q.weapons).tints[wi].toString(16).padStart(6, '0');
-        if (tint !== s.tint) { s.tint = tint; s.root.style.setProperty('--c', tint); s.root.classList.add('tinted'); }
+        if (tint !== s.tint) { s.tint = tint; s.root.style.setProperty('--c', tint); s.root.classList.add('tinted'); if (this.tipKey === k) this.tipEl.style.setProperty('--c', tint); }
       }
       const note = this.note(world, me, S, k);
       if (note !== s.note) { s.note = note; s.badge.textContent = note; s.badge.classList.toggle('on', note !== ''); }
@@ -606,7 +704,8 @@ export class UI {
     if (tl !== this.lastTime) {
       this.lastTime = tl;
       const c = $('#time');
-      c.textContent = tl;
+      // Practice has no clock to run down.
+      c.textContent = Number.isFinite(tl) ? tl : '∞';
       c.classList.toggle('hurry', tl <= 10);
     }
     const danger = Math.max(0, 1 - me.spin / me.spinMax / 0.25);
@@ -618,13 +717,12 @@ export class UI {
     const foe = world.other(me);
     // A subject is chosen: each key shows the spell it would paint.
     if (me.subj && me.blade.painter) return world.aimSkill(me, key).short || '';
-    if (S.weapons) return me.re[key] > 0 ? '縛' : S.short[me.wm] + me.wa[me.wm];
+    if (S.weapons) return S.weapons.includes(world.aimSkill(me, key).id) ? String(me.wa[me.wm]) : '↩';
     if (S.weapon !== undefined) return kitOf(me.blade).find((q) => q.weapons).short[S.weapon] + me.wa[S.weapon];
     if (S.id === 'bindeclipse') return '縛';
     switch (S.id) {
       case 'inferno': return me.stack ? me.blade.style.ranks[Math.min(me.stack, me.blade.style.max) - 1] : '';
-      case 'phase': return kitOf(me.blade).find((q) => q.weapons).short[me.wo];
-      case 'nextweapon': return kitOf(me.blade).find((q) => q.weapons).short[me.wq[0]];
+      case 'nextweapon': return 'NEXT';
       case 'galeq': return me.stack >= S.stacks ? '竜巻' : me.stack ? String(me.stack) : '';
       case 'fourshot': return String(S.shots - me.stack);
       case 'brokenwings': return me.re[key] > 0 ? String(3 - me.stack) : '';

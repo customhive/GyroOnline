@@ -82,7 +82,7 @@ export class View {
     this.spare = [];
     for (const v of this.tops) {
       for (const g of v.ghosts || []) { this.scene.remove(g.group); disposeTop(g); }
-      this.scene.remove(v.group, v.light, ...v.orbs);
+      this.scene.remove(v.group, v.light, ...v.orbs, ...v.chaks);
       v.trail.dispose(this.scene);
       disposeTop(v);
     }
@@ -107,6 +107,19 @@ export class View {
         o.visible = false;
         this.scene.add(o);
         v.orbs.push(o);
+      }
+      // LUNAR ARSENAL: the chakrams that circle it, smaller and white, parked the same way.
+      v.chaks = []; v.chakFly = null;
+      if (t.blade.id === 'lunar') for (let i = 0; i < SKILLS.arsenal.chak.max; i++) {
+        const o = new THREE.Group();
+        o.add(new THREE.Mesh(this.orbGeo, this.orbMat));
+        const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: this.glow, color: 0xf2f6ff, blending: THREE.AdditiveBlending, depthWrite: false, transparent: true }));
+        s.scale.setScalar(2.6);
+        o.add(s);
+        o.scale.setScalar(0.6);
+        o.visible = false;
+        this.scene.add(o);
+        v.chaks.push(o);
       }
       this.scene.add(v.group, v.light);
       this.tops.push(v);
@@ -282,6 +295,16 @@ export class View {
       case 'strike': {
         const y = groundY(e.x, e.z) + 0.9, c = this.tintOf(e.src, e.skill);
         // A light blow (a second weapon joining in): a flick of its colour, no more.
+        if (e.n && this.tops[e.src.side]) this.tops[e.src.side].chakFly = { n: e.n, x: e.x, z: e.z, t: 0, T: 0.34 };
+        // A shot from far off: a streak from where it was fired to where it lands.
+        if (e.fx !== undefined) for (let i = 1; i < 24; i++) { const u = i / 24; P.burst(e.fx + (e.x - e.fx) * u, y, e.fz + (e.z - e.fz) * u, 3, c, 1.5, { up: 0.2, life: 0.3, size: 0.22, gravity: 0 }); }
+        // The ultimate's follow-up: a heavier streak with a white core, and a ring where it leaves.
+        if (e.strong) {
+          for (let i = 1; i < 48; i++) { const u = i / 48, x = e.fx + (e.x - e.fx) * u, z = e.fz + (e.z - e.fz) * u; P.burst(x, y, z, 5, c, 3.5, { up: 0.3, life: 0.6, size: 0.36, gravity: 0 }); P.burst(x, y, z, 2, 0xffffff, 1, { up: 0.2, life: 0.4, size: 0.26, gravity: 0 }); }
+          W.spawn(e.fx, y - 0.8, e.fz, 0.4, 3.4, 0.3, c, 1);
+          W.spawn(e.x, y - 0.8, e.z, 0.3, 5.5, 0.4, c, 1);
+          this.addShake(0.3);
+        }
         if (e.light) { P.burst(e.x, y, e.z, 26, c, 12, { up: 0.8, life: 0.4, size: 0.24, gravity: 8 }); W.spawn(e.x, y - 0.8, e.z, 0.3, 2.2, 0.25, c, 0.9); break; }
         P.burst(e.x, y, e.z, e.big ? 200 : 70, c, e.big ? 28 : 16, { up: 0.8, life: 0.5, size: 0.28, gravity: 8 });
         P.burst(e.x, y, e.z, 24, 0xffffff, 10, { up: 1, life: 0.35 });
@@ -981,7 +1004,7 @@ export class View {
     }
     for (const t of w.tops) {
       const v = this.tops[t.side], c = this.colorOf(t), gy = groundY(t.x, t.z);
-      if (this.hidden(t)) { for (const o of v.orbs) o.visible = false; continue; }
+      if (this.hidden(t)) { for (const o of v.orbs) o.visible = false; for (const o of v.chaks) o.visible = false; continue; }
       // DARKNESS RISE: the blows counted so far, then the aura itself.
       const AU = t.blade.aura;
       if (AU && t.stack >= AU.hits && !t.out) {
@@ -992,13 +1015,10 @@ export class View {
       } else if (AU && t.stack > 0 && !t.out) {
         for (let i = 0; i < t.stack; i++) { const a = -Math.PI / 2 + (i - (t.stack - 1) / 2) * 0.5; G.ring(t.x + Math.cos(a) * 1.9, t.z + Math.sin(a) * 1.9, 0, 0.18, c, 0.95, 0.12); }
       }
-      // LUNAR ARSENAL: the weapon in hand as a band round the top, the other one as a spot beside it.
-      const AR = t.blade.id === 'lunar' && !t.out && !t.air ? SKILLS.arsenal : null;
-      if (AR) {
-        G.ring(t.x, t.z, 1.72, 1.92, AR.tints[t.wm], 0.9);
-        G.ring(t.x + 1.5, t.z + 1.5, 0, 0.3, AR.tints[t.wo], 0.95, 0.12);
-        G.ring(t.x + 1.5, t.z + 1.5, 0.3, 0.38, 0x000000, 0.6, 0.12);
-      }
+      // LUNAR ARSENAL: the weapon in hand as a band round the top, so the other side can tell which it is.
+      if (t.blade.id === 'lunar' && !t.out && !t.air) G.ring(t.x, t.z, 1.72, 1.92, SKILLS.arsenal.tints[t.wm], 0.9);
+      // ONSLAUGHT: how far the blows reach while they last.
+      if (t.volley && !t.out && !t.air) G.ring(t.x, t.z, t.volley.skill.range - 0.12, t.volley.skill.range, t.volley.skill.tint, 0.55);
       if (t.charge && t.charge.skill.id === 'realm') {
         // Opening a realm: the reach of it, and the one it is opening for.
         const S = t.charge.skill, k = Math.min(1, t.charge.t / t.charge.T), col = this.dangerOf(t), o = w.tops[t.prey];
@@ -1046,6 +1066,18 @@ export class View {
         // Blink out as the skill is about to expire.
         o.children[1].material.opacity = t.orbs.t < 1 ? 0.5 + 0.5 * Math.sin(this.time * 30) : 1;
         if (dt > 0) P.emit(p.x, y, p.z, (Math.random() - 0.5) * 2, Math.random() * 1.5, (Math.random() - 0.5) * 2, 0.35, 0.3, c, 0, 1);
+      }
+      // The chakrams circle; those thrown with a follow-up go out to where it landed and come back.
+      if (v.chakFly && (v.chakFly.t += dt) >= v.chakFly.T) v.chakFly = null;
+      for (let i = 0; i < v.chaks.length; i++) {
+        const o = v.chaks[i];
+        o.visible = i < t.chak && !t.out;
+        if (!o.visible) continue;
+        const a = this.time * 3.4 + (i / Math.max(1, t.chak)) * Math.PI * 2;
+        let x = t.x + Math.cos(a) * 2.2, z = t.z + Math.sin(a) * 2.2;
+        const f = v.chakFly;
+        if (f && i < f.n) { const u = Math.sin((Math.PI * f.t) / f.T); x += (f.x - x) * u; z += (f.z - z) * u; if (dt > 0) P.emit(x, groundY(x, z) + 0.95, z, 0, 0, 0, 0.25, 0.3, 0xf2f6ff, 0, 1); }
+        o.position.set(x, groundY(x, z) + 0.95, z);
       }
       if (t.tether) {
         const o = w.tops[t.tether.to] || w.other(t), wob = 0.5 + 0.5 * Math.sin(this.time * 26);

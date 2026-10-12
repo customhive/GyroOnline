@@ -367,6 +367,12 @@ export class CpuBrain {
         case 'bindeclipse':
           if (foe.slow > 0) return go();
           break;
+        case 'volley':
+          if (d < S.range + 0.5 && want()) return go();
+          break;
+        case 'longshot':
+          if (foe.mark > 0) return go();
+          break;
         case 'phase': {
           // Swap when the weapon in hand is cooling down and the other one is ready.
           const qk = KEYS.find((q) => skillOf(me, q).weapons);
