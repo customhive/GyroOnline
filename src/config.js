@@ -462,7 +462,7 @@ export const SKILLS = {
   meteor: {
     name: 'メテオドライブ', en: 'METEOR DRIVE', aim: 'leap', cd: 2, ult: true,
     range: 11.5, aoe: 4.6, air: 1.0, height: 7.5, dmg: 165, kb: 18.5,
-    desc: '【必殺技】狙った地点へ跳躍し、着地点の周囲を吹き飛ばす。',
+    desc: '狙った地点へ跳躍し、着地点の周囲を吹き飛ばす。',
   },
   // ---- GAIA BASTION: control and counter -----------------------------------
   quake: {
@@ -483,7 +483,7 @@ export const SKILLS = {
   nova: {
     name: 'フォートレスノヴァ', en: 'FORTRESS NOVA', aim: 'self', cd: 2, ult: true,
     charge: 0.8, root: true, aoe: 6.5, dmg: 185, kb: 20, armor: 0.3,
-    desc: '【必殺技】0.8秒間溜め、周囲を吹き飛ばす。溜めている間は移動できず、受けるダメージが70%減る。',
+    desc: '0.8秒間溜め、周囲を吹き飛ばす。溜めている間は移動できず、受けるダメージが70%減る。',
   },
   // ---- SOL ETERNAL: drain and outlast --------------------------------------
   flare: {
@@ -504,7 +504,7 @@ export const SKILLS = {
   eclipse: {
     name: 'エクリプス', en: 'ECLIPSE', aim: 'self', cd: 2, ult: true, need: 'range',
     range: 9.5, breakRange: 12.5, dur: 3, drain: 38, heal: 0.5,
-    desc: '【必殺技】近くの相手とつながり、3秒間回転を吸収し続ける。相手が離れすぎると切れる。',
+    desc: '近くの相手とつながり、3秒間回転を吸収し続ける。相手が離れすぎると切れる。',
   },
   // ---- GALE RONDO: stack wind, knock up, finish in the air -------------------
   galeq: {
@@ -529,7 +529,7 @@ export const SKILLS = {
   lastbreath: {
     name: 'スカイフォール', en: 'SKYFALL', aim: 'self', cd: 2, ult: true, need: 'up',
     range: 15, dmg: 170, kb: 12, gap: 2.6, also: 4.5,
-    desc: '【必殺技】打ち上げ中の相手にだけ使える。瞬間移動して斬り、外側へ吹き飛ばす。近くで打ち上げ中のほかの相手も巻き込む。',
+    desc: '打ち上げ中の相手にだけ使える。瞬間移動して斬り、外側へ吹き飛ばす。近くで打ち上げ中のほかの相手も巻き込む。',
   },
   // ---- NOX SHADE: strike from two places at once ------------------------------
   shuriken: {
@@ -552,7 +552,7 @@ export const SKILLS = {
   deathmark: {
     name: 'アフターバースト', en: 'AFTER BURST', aim: 'self', cd: 2, ult: true, need: 'range', re: 'markswap', window: 5,
     range: 10, gap: 2.6, dur: 3, pop: 80, share: 0.5, air: 0.75, height: 0,
-    desc: '【必殺技】相手の背後へ瞬間移動し（移動中は無敵）、3秒間の印を付ける。元の位置に影が残り、もう一度押すと、影と位置を入れ替える。印が切れるとき、その間に与えたダメージの50%ぶん爆発する。',
+    desc: '相手の背後へ瞬間移動し（移動中は無敵）、3秒間の印を付ける。元の位置に影が残り、もう一度押すと、影と位置を入れ替える。印が切れるとき、その間に与えたダメージの50%ぶん爆発する。',
   },
   // ---- CURTAIN CALL: four shots, the fourth is the heavy one --------------------
   fourshot: {
@@ -577,7 +577,7 @@ export const SKILLS = {
   curtaincall: {
     name: 'グランドフィナーレ', en: 'GRAND FINALE', aim: 'self', cd: 2, ult: true, re: 'curtainfire', stance: true,
     range: 26, half: Math.PI, shots: 4, first: 0.5, every: 0.7, window: 10,
-    desc: '【必殺技】その場に止まり、10秒間、Rを押すたびに狙った方向へ長射程の弾を1発撃つ（最大4発）。当たった相手を0.5秒間80%のスロウにする。相手の回転が減っているほどダメージが増え、4発目は2倍になる。',
+    desc: 'その場に止まり、10秒間、Rを押すたびに狙った方向へ長射程の弾を1発撃つ（最大4発）。当たった相手を0.5秒間80%のスロウにする。相手の回転が減っているほどダメージが増え、4発目は2倍になる。',
   },
   curtainfire: { name: 'グランドフィナーレ', en: 'GRAND FINALE', aim: 'line', hidden: true, fire: true, range: 26, radius: 1.0 },
   curtainshot: {
@@ -611,7 +611,7 @@ export const SKILLS = {
   blizzard: {
     name: 'ホワイトアウト', en: 'WHITEOUT', aim: 'ground', cd: 2, ult: true,
     range: 7.5, aoe: 4.6, r0: 2.6, grow: 1.5, dur: 6, dps: 20, frost: 3,
-    desc: '【必殺技】狙った地点に、1.5秒かけて広がる6秒間の領域を作る。中の相手はスロウになり、ダメージを受け続ける。広がりきるとダメージが3倍になり、スロウが強まり、相手を凍結させる。',
+    desc: '狙った地点に、1.5秒かけて広がる6秒間の領域を作る。中の相手はスロウになり、ダメージを受け続ける。広がりきるとダメージが3倍になり、スロウが強まり、相手を凍結させる。',
   },
   // ---- BROKEN EDGE: short dashes, then the finishing cut ------------------------
   brokenwings: {
@@ -632,7 +632,7 @@ export const SKILLS = {
   exile: {
     name: 'エッジリリース', en: 'EDGE RELEASE', aim: 'self', cd: 2, ult: true, re: 'windslash',
     dur: 10,
-    desc: '【必殺技】10秒間、与えるダメージが20%増える。その間にもう一度押すと、扇状に弾を放つ。相手の回転が減っているほどダメージが増える（最大3倍）。',
+    desc: '10秒間、与えるダメージが20%増える。その間にもう一度押すと、扇状に弾を放つ。相手の回転が減っているほどダメージが増える（最大3倍）。',
   },
   windslash: {
     name: 'エッジリリース', en: 'EDGE RELEASE', aim: 'cone', hidden: true,
@@ -658,7 +658,7 @@ export const SKILLS = {
   mimic: {
     name: 'リプレイ', en: 'REPLAY', aim: 'self', cd: 2, ult: true,
     dur: 2.8,
-    desc: '【必殺技】直前に使ったスキルを、ダメージを40%増やしてもう一度使う。Qの場合、その印は2倍のダメージで爆発する。Wの場合、専用の鏡像へ戻れる。',
+    desc: '直前に使ったスキルを、ダメージを40%増やしてもう一度使う。Qの場合、その印は2倍のダメージで爆発する。Wの場合、専用の鏡像へ戻れる。',
   },
   // ---- GUILLOTINE LORD: bleed them, then end it ------------------------------------
   decimate: {
@@ -679,7 +679,7 @@ export const SKILLS = {
   guillotine: {
     name: 'ギロチンダイブ', en: 'GUILLOTINE DIVE', aim: 'dash', cd: 2, ult: true, tele: 0.4,
     dist: 9.5, minDist: 4, speed: 38, dmg: 80, kb: 12, perBleed: 0.2, trueDmg: true,
-    desc: '【必殺技】狙った方向へ突進し、当たった相手に防御を無視するダメージを与える。出血1つにつきダメージが20%増える（最大2倍）。',
+    desc: '狙った方向へ突進し、当たった相手に防御を無視するダメージを与える。出血1つにつきダメージが20%増える（最大2倍）。',
   },
   // ---- VENOM TRAIL: make them chase you ---------------------------------------------
   poison: {
@@ -700,7 +700,7 @@ export const SKILLS = {
   insanity: {
     name: 'ケミカルブースト', en: 'CHEMICAL BOOST', aim: 'self', cd: 2, ult: true,
     dur: 10,
-    desc: '【必殺技】10秒間、30%加速し、受けるダメージが20%減り、回転が回復し続ける。',
+    desc: '10秒間、30%加速し、受けるダメージが20%減り、回転が回復し続ける。',
   },
   // ---- TURRET ENGINEER: hold ground with machines ------------------------------------
   turret: {
@@ -731,7 +731,7 @@ export const SKILLS = {
   upgrade: {
     name: 'オーバーホール', en: 'OVERHAUL', aim: 'self', cd: 2, ult: true,
     dur: 10,
-    desc: '【必殺技】10秒以内の次のQ・W・Eを強化する（Q＝8秒で壊れる大型の砲台／W＝4連射で20発／E＝3回跳ねて3回爆発）。',
+    desc: '10秒以内の次のQ・W・Eを強化する（Q＝8秒で壊れる大型の砲台／W＝4連射で20発／E＝3回跳ねて3回爆発）。',
   },
   // ---- SAND EMPEROR: soldiers fight, the emperor shoves ------------------------------
   conquer: {
@@ -753,7 +753,7 @@ export const SKILLS = {
   divide: {
     name: 'ファランクスウォール', en: 'PHALANX WALL', aim: 'line', cd: 2, ult: true, tele: 0.3,
     range: 8, radius: 3.6, wall: 3.6, back: 1, travel: 7, speed: 22, hold: 4, dmg: 100, kb: 18, solid: true,
-    desc: '【必殺技】背後から衛兵の壁が狙った方向へ進み、相手を吹き飛ばす。壁は4秒間残り、自分と味方だけが通り抜けられる。',
+    desc: '背後から衛兵の壁が狙った方向へ進み、相手を吹き飛ばす。壁は4秒間残り、自分と味方だけが通り抜けられる。',
   },
   // ---- IRON HAMMER: walls are weapons ----------------------------------------
   hshock: {
@@ -774,7 +774,7 @@ export const SKILLS = {
   verdict: {
     name: 'ホームランスイング', en: 'HOMERUN SWING', aim: 'line', icon: 'beam', cd: 2, ult: true, ai: 'shot',
     tele: 0.2, wind: { min: 0.5, full: 1, max: 4 }, tap: 'verdicttap', near: 4, range: 9.5, speed: 40, radius: 1.6,
-    desc: '【必殺技】長押しで溜める（溜めている間はスロウになり、4秒で不発）。すぐ離すと前方の相手を1秒間打ち上げる。溜めるほど遠くまで届く弾になり、当たった相手とその近くの相手を場外近くまで吹き飛ばす。',
+    desc: '長押しで溜める（溜めている間はスロウになり、4秒で不発）。すぐ離すと前方の相手を1秒間打ち上げる。溜めるほど遠くまで届く弾になり、当たった相手とその近くの相手を場外近くまで吹き飛ばす。',
   },
   verdicttap: {
     name: 'ホームランスイング', en: 'HOMERUN SWING', aim: 'cone', hidden: true,
@@ -807,7 +807,7 @@ export const SKILLS = {
   rush: {
     name: 'フォックストロット', en: 'FOXTROT', aim: 'dash', kind: 'dash', icon: 'dash', cd: 2, ult: true, re: 'rush',
     casts: 3, window: 10, dist: 4.5, minDist: 4.5, speed: 38, through: true, bolt: 'foxbolt', n: 1,
-    desc: '【必殺技】相手をすり抜けて突進し、止まるたびに火の玉を1つ放つ。10秒以内にもう一度押すと、もう一度突進する（3回まで）。',
+    desc: '相手をすり抜けて突進し、止まるたびに火の玉を1つ放つ。10秒以内にもう一度押すと、もう一度突進する（3回まで）。',
   },
   // ---- HARBOR REAPER: hook, drown, execute -----------------------------------
   bonehook: {
@@ -840,7 +840,7 @@ export const SKILLS = {
   deathbelow: {
     name: 'クロスエンド', en: 'CROSS END', aim: 'ground', icon: 'cross', cd: 2, ult: true,
     ai: 'blast', tele: 0.2, range: 7.5, aoe: 3.6, arm: 3.6, width: 0.95, delay: 0.5, dmg: 115, line: 0.2,
-    desc: '【必殺技】狙った地点をX字に斬る。範囲内に相手がいれば、その地点へ瞬間移動する。回転が20%未満の相手（印が付く）は処刑する。',
+    desc: '狙った地点をX字に斬る。範囲内に相手がいれば、その地点へ瞬間移動する。回転が20%未満の相手（印が付く）は処刑する。',
   },
   // ---- BARREL BRUISER: throw them wherever you like --------------------------
   cask: {
@@ -862,7 +862,7 @@ export const SKILLS = {
   bigkeg: {
     name: 'ビッグバンカスク', en: 'BIG BANG CASK', aim: 'ground', kind: 'blast', icon: 'blast', cd: 2, ult: true,
     tele: 0.15, range: 10, aoe: 4.4, delay: 0.5, dmg: 100, kb: 16, launch: 2,
-    desc: '【必殺技】狙った地点が0.5秒後に爆発し、範囲内の相手を中心から外側へ吹き飛ばす。',
+    desc: '狙った地点が0.5秒後に爆発し、範囲内の相手を中心から外側へ吹き飛ばす。',
   },
   // ---- CHRONO REWIND: undo the last four seconds -----------------------------
   timewinder: {
@@ -887,7 +887,7 @@ export const SKILLS = {
   rewind: {
     name: 'ロールバック', en: 'ROLLBACK', aim: 'self', icon: 'star', cd: 2, ult: true,
     air: 0.35, height: 0, base: 80, aoe: 4.2, dmg: 150, kb: 8,
-    desc: '【必殺技】4秒前の位置（後ろを付いてくる半透明の分身）へ瞬間移動する。移動中は無敵。周囲にダメージを与え、回転が回復する。直前の4秒間に失った回転が多いほど回復が増える。',
+    desc: '4秒前の位置（後ろを付いてくる半透明の分身）へ瞬間移動する。移動中は無敵。周囲にダメージを与え、回転が回復する。直前の4秒間に失った回転が多いほど回復が増える。',
   },
   // ---- IRON REVENANT: every blow is banked -----------------------------------
   obliterate: {
@@ -909,7 +909,7 @@ export const SKILLS = {
   realm: {
     name: 'デュエルリング', en: 'DUEL RING', aim: 'self', icon: 'star', cd: 2, ult: true,
     need: 'range', range: 6.5, charge: 0.5, root: true, castSlow: 0.75, steal: 0.2,
-    desc: '【必殺技】カーソルに一番近い相手を、0.5秒後に輪の中へ閉じ込める。7秒間、自分と相手は輪の外へ出られず、外からは見えず、攻撃も届かない。その間、自分が与えるダメージは1.5倍になり、受けるダメージは3分の2になる。',
+    desc: 'カーソルに一番近い相手を、0.5秒後に輪の中へ閉じ込める。7秒間、自分と相手は輪の外へ出られず、外からは見えず、攻撃も届かない。その間、自分が与えるダメージは1.5倍になり、受けるダメージは3分の2になる。',
   },
   // The ring of the realm: `aoe` is how wide the two are shut in, `dur` for how long.
   realmz: { name: 'デュエルリング', en: 'DUEL RING', aim: 'ground', hidden: true, aoe: 7, dur: 7 },
@@ -936,7 +936,7 @@ export const SKILLS = {
   dragonrage: {
     name: 'ドラゴンキック', en: 'DRAGON KICK', aim: 'self', kind: 'kick', icon: 'beam', cd: 2, ult: true,
     need: 'range', grab: 5, dmg: 85, kb: 24, launch: 2.2, pass: 60, passUp: 1, passT: 0.9,
-    desc: '【必殺技】密着した相手を、自分の反対側へ場外まで吹き飛ばす。吹き飛ばした相手がほかの相手に当たると、その相手にもダメージを与え、1秒間打ち上げる。',
+    desc: '密着した相手を、自分の反対側へ場外まで吹き飛ばす。吹き飛ばした相手がほかの相手に当たると、その相手にもダメージを与え、1秒間打ち上げる。',
   },
   ironwill: { name: 'ガードスタンス', en: 'GUARD STANCE', aim: 'self', kind: 'buff', hidden: true, dur: 4 },
   cripplekick: { name: 'グラウンドスラップ', en: 'GROUND SLAP', aim: 'self', kind: 'strike', hidden: true, need: 'range', grab: 6.3, dmg: 0, slow: 4, slowPct: 0.75 },
@@ -959,7 +959,7 @@ export const SKILLS = {
   showstopper: {
     name: 'キャリースラム', en: 'CARRY SLAM', aim: 'self', kind: 'throw', icon: 'leap', cd: 2, ult: true,
     need: 'range', grab: 5.25, carry: 4, air: 0.7, height: 5, aoe: 3.6, dmg: 100, massMul: 0.6, slow: 1, slowPct: 0.99, around: 0.75,
-    desc: '【必殺技】密着した相手を掴み、自分の反対側へ運んで叩きつける。相手が重いほどダメージが増える。着地点の近くのほかの相手も巻き込む。叩きつけた相手を1秒間99%のスロウにする。',
+    desc: '密着した相手を掴み、自分の反対側へ運んで叩きつける。相手が重いほどダメージが増える。着地点の近くのほかの相手も巻き込む。叩きつけた相手を1秒間99%のスロウにする。',
   },
   // ---- POWDER CAPTAIN: kegs first, then the match ----------------------------
   parrrley: {
@@ -980,7 +980,7 @@ export const SKILLS = {
   barrage: {
     name: 'シェルレイン', en: 'SHELL RAIN', aim: 'ground', kind: 'field', icon: 'field', cd: 2, ult: true,
     range: 30, aoe: 6, dur: 8, slowIn: true, slowPct: 0.3, wave: { first: 0.4, every: 2, dmg: 60 },
-    desc: '【必殺技】アリーナのどこへでも、8秒間の砲撃を降らせる。2秒ごとに4回着弾し、中の相手は30%のスロウになる。',
+    desc: 'アリーナのどこへでも、8秒間の砲撃を降らせる。2秒ごとに4回着弾し、中の相手は30%のスロウになる。',
   },
   // ---- ASHEN EXORCIST: nail them down, then seal them away -------------------
   nails: {
@@ -1001,7 +1001,7 @@ export const SKILLS = {
   purgatory: {
     name: 'デッドライン', en: 'DEADLINE', aim: 'ground', kind: 'blast', icon: 'cross', cd: 2, ult: true,
     tele: 0.1, range: 10, aoe: 3.5, delay: 0.75, dmg: 95, slow: 2, slowPct: 0.99, doom: 5,
-    desc: '【必殺技】狙った地点を0.75秒後に攻撃する。範囲内の相手を2秒間99%のスロウにし、5秒間の印を付ける。印の付いた相手は、回転が12%未満になった瞬間に処刑する。処刑するたびにこの値が0.5%上がり、次のラウンドに持ち越す。',
+    desc: '狙った地点を0.75秒後に攻撃する。範囲内の相手を2秒間99%のスロウにし、5秒間の印を付ける。印の付いた相手は、回転が12%未満になった瞬間に処刑する。処刑するたびにこの値が0.5%上がり、次のラウンドに持ち越す。',
   },
   soulrelease: { name: 'バーンラン', en: 'BURN RUN', aim: 'self', hidden: true },
   pursuit2: {
@@ -1027,7 +1027,7 @@ export const SKILLS = {
   finalspark: {
     name: 'プリズムレイ', en: 'PRISM RAY', aim: 'line', kind: 'beam', icon: 'beam', cd: 2, ult: true,
     tele: 0.1, charge: 1, root: true, range: 33, radius: 1.4, dmg: 170, litBonus: 0.25,
-    desc: '【必殺技】1秒間溜め、アリーナの端まで届く貫通する光線を放つ。溜めている間は移動できない。直前にスキルを当てていた相手にはダメージが25%増える。',
+    desc: '1秒間溜め、アリーナの端まで届く貫通する光線を放つ。溜めている間は移動できない。直前にスキルを当てていた相手にはダメージが25%増える。',
   },
   lightorb: { name: 'ライトボム', en: 'LIGHT BOMB', aim: 'line', hidden: true, range: 11, speed: 30, radius: 0.7, dmg: 0, friendly: true, opens: 'singularity' },
   lightpop: { name: 'ライトボム', en: 'LIGHT BOMB', aim: 'self', hidden: true, pops: 'singularity' },
@@ -1085,7 +1085,7 @@ export const SKILLS = {
   despair: {
     name: 'スパイラルゾーン', en: 'SPIRAL ZONE', aim: 'line', kind: 'shot', icon: 'star', cd: 2, ult: true,
     tele: 0.4, range: 12, speed: 30, radius: 1.0, dmg: 20, spawn: 'despairz',
-    desc: '【必殺技】弾を撃ち、当たった相手を中心に3秒間広がり続ける領域を作る。領域は相手に付いて動き、スロウが強まり続け（最大90%）、最後に爆発する。パレットを選んでいる間は使えない（Rは取り消しになる）。',
+    desc: '弾を撃ち、当たった相手を中心に3秒間広がり続ける領域を作る。領域は相手に付いて動き、スロウが強まり続け（最大90%）、最後に爆発する。パレットを選んでいる間は使えない（Rは取り消しになる）。',
   },
   despairz: {
     name: 'スパイラルゾーン', en: 'SPIRAL ZONE', aim: 'ground', kind: 'field', hidden: true,
@@ -1143,7 +1143,7 @@ export const SKILLS = {
   crash: {
     name: 'ハイボルテージ', en: 'HIGH VOLTAGE', aim: 'self', kind: 'burst', icon: 'burst', cd: 2, ult: true,
     aoe: 8.6, dmg: 110, kb: 6, buffHit: 5,
-    desc: '【必殺技】周囲にダメージを与える。当てると5秒間、15%加速し、与えるダメージが15%増える。弾を当て続けるかぎり効果は切れない。',
+    desc: '周囲にダメージを与える。当てると5秒間、15%加速し、与えるダメージが15%増える。弾を当て続けるかぎり効果は切れない。',
   },
   burstfire2: {
     name: 'ラピッドボルト', en: 'RAPID BOLT', aim: 'line', kind: 'shot', hidden: true, rapid: true,
@@ -1177,7 +1177,7 @@ export const SKILLS = {
   storm: {
     name: 'エアリアルファン', en: 'AERIAL FAN', aim: 'line', kind: 'shot', icon: 'leap', cd: 2, ult: true,
     charge: 1.5, veil: true, range: 5.5, speed: 38, radius: 0.7, dmg: 40, fan: 5, half: 0.4, pierce: true, feather: true,
-    desc: '【必殺技】1.5秒間無敵になり、自由に移動できる。終わりに、狙った方向へ貫通する羽根を5枚投げる。',
+    desc: '1.5秒間無敵になり、自由に移動できる。終わりに、狙った方向へ貫通する羽根を5枚投げる。',
   },
   // ---- WORLD ENDER: three swings and the end of the world --------------------
   darkinblade: {
@@ -1213,7 +1213,7 @@ export const SKILLS = {
   worldender: {
     name: 'レッドレイジ', en: 'RED RAGE', aim: 'self', kind: 'buff', icon: 'star', cd: 2, ult: true,
     dur: 10,
-    desc: '【必殺技】10秒間、攻撃力が30%上がり、20%加速し、与えたダメージの30%ぶん回転が回復する。',
+    desc: '10秒間、攻撃力が30%上がり、20%加速し、与えたダメージの30%ぶん回転が回復する。',
   },
   // ---- STYLE RANKER: shoot, cut, pass through --------------------------------
   flair: {
@@ -1257,7 +1257,7 @@ export const SKILLS = {
   grim: {
     name: 'ドレインダイブ', en: 'DRAIN DIVE', aim: 'leap', kind: 'leap', icon: 'leap', cd: 2, ult: true,
     range: 6, air: 0.8, height: 6, aoe: 4, dmg: 115, kb: 10, healHit: 0.33,
-    desc: '【必殺技】狙った地点へ跳躍し、着地点の周囲にダメージを与える。与えたダメージの33%ぶん回転が回復する。',
+    desc: '狙った地点へ跳躍し、着地点の周囲にダメージを与える。与えたダメージの33%ぶん回転が回復する。',
   },
   glaiveup: {
     name: 'ツインストライク', en: 'TWIN STRIKE', aim: 'self', kind: 'buff', hidden: true,
@@ -1350,7 +1350,7 @@ export const SKILLS = {
     tele: 0.4, range: 13, speed: 24, radius: 1.4, dmg: 70, splash: 4, splashDmg: 70, onHit: true,
     arm: [{ twice: 0.18 }, { heal: 90 }, { slow: 2.5, slowPct: 0.99 }, { blast: 6.5, blastDmg: 30 }, { chak: 5 }],
     lines: 'ultLine',
-    desc: '【必殺技】遅い弾を撃つ。相手に当たると爆発し、当たった相手と周囲の相手に、主の武器が強化された追撃をする。',
+    desc: '遅い弾を撃つ。相手に当たると爆発し、当たった相手と周囲の相手に、主の武器が強化された追撃をする。',
   },
   // ---- STAR FORGER: breath, gravity, a falling star --------------------------
   breath: {
@@ -1371,7 +1371,7 @@ export const SKILLS = {
   fallingstar: {
     name: 'スタードロップ', en: 'STAR DROP', aim: 'ground', kind: 'blast', icon: 'blast', cd: 2, ult: true,
     tele: 0.1, range: 12.5, aoe: 5, delay: 0.9, dmg: 150, stun: 1, star: true, gain: 5, evolve: 'skies', evolveAt: 75,
-    desc: '【必殺技】狙った地点を0.9秒後に攻撃し、範囲内の相手を1秒間スタンさせる。当てるとエナジーを5得る。エナジーが多いほど範囲が広がり、75以上で相手を1秒間打ち上げるようになる。エナジーは次のラウンドに持ち越す。',
+    desc: '狙った地点を0.9秒後に攻撃し、範囲内の相手を1秒間スタンさせる。当てるとエナジーを5得る。エナジーが多いほど範囲が広がり、75以上で相手を1秒間打ち上げるようになる。エナジーは次のラウンドに持ち越す。',
   },
   flightstop: { name: 'ロングフライト', en: 'LONG FLIGHT', aim: 'self', hidden: true },
   skies: {
@@ -1397,7 +1397,7 @@ export const SKILLS = {
   primordial: {
     name: 'ラストスペル', en: 'LAST SPELL', aim: 'self', kind: 'strike', icon: 'star', cd: 2, ult: true,
     need: 'range', range: 7.75, dmg: 105, exec: 1.0, execCap: 0.667,
-    desc: '【必殺技】近くの相手に必ず当たる弾を撃つ。相手の回転が減っているほどダメージが増える（最大2倍）。',
+    desc: '近くの相手に必ず当たる弾を撃つ。相手の回転が減っているほどダメージが増える（最大2倍）。',
   },
   // ---- VAULT BREAKER: straight in --------------------------------------------
   vault: {
@@ -1417,7 +1417,7 @@ export const SKILLS = {
   cease: {
     name: 'ロックオンアッパー', en: 'LOCK-ON UPPER', aim: 'self', icon: 'star', cd: 2, ult: true, ai: 'strike',
     need: 'range', range: 9.25, speed: 34, homing: true, unstoppable: true, maxT: 1.5, dmg: 115, keep: 0, kb: 2, up: 1.3, aside: 0.75, asideKb: 9,
-    desc: '【必殺技】カーソルに一番近い相手へ突進する。相手が動いても追い、突進中はスタンや吹き飛ばしで止まらない。当たった相手を1.3秒間打ち上げる。途中で当たったほかの相手には75%のダメージを与え、横へ吹き飛ばす。',
+    desc: 'カーソルに一番近い相手へ突進する。相手が動いても追い、突進中はスタンや吹き飛ばしで止まらない。当たった相手を1.3秒間打ち上げる。途中で当たったほかの相手には75%のダメージを与え、横へ吹き飛ばす。',
   },
   relentwave: { name: 'スルーパンチ', en: 'THROUGH PUNCH', aim: 'cone', hidden: true, range: 4.5, half: 0.5, dmg: 20 },
   // ---- ARCANE SHOOTER: land the shot, get everything back --------------------
@@ -1443,7 +1443,7 @@ export const SKILLS = {
   trueshot: {
     name: 'ワイドウェーブ', en: 'WIDE WAVE', aim: 'line', kind: 'shot', icon: 'beam', cd: 2, ult: true,
     tele: 0.1, charge: 1, root: true, range: 40, speed: 40, radius: 2, dmg: 175, pierce: true,
-    desc: '【必殺技】1秒間溜め、アリーナの端まで届く幅の広い貫通する弾を放つ。溜めている間は移動できない。',
+    desc: '1秒間溜め、アリーナの端まで届く幅の広い貫通する弾を放つ。溜めている間は移動できない。',
   },
   // ---- MAGUS ASCENDANT (Xerath)
   arcanopulse: {
@@ -1464,7 +1464,7 @@ export const SKILLS = {
   arcanerite: {
     name: 'サンダーアーティラリー', en: 'THUNDER ARTILLERY', aim: 'self', icon: 'star', cd: 2, ult: true, re: 'arcanefire', stance: true, ai: 'stance',
     range: 40, half: Math.PI, shots: 6, first: 0.4, every: 0.8, window: 10,
-    desc: '【必殺技】その場に止まり、10秒間、Rを押すたびにアリーナのどこへでも砲撃を落とす（最大6発、0.5秒後に着弾）。当てるたびに次の1発のダメージが増える。',
+    desc: 'その場に止まり、10秒間、Rを押すたびにアリーナのどこへでも砲撃を落とす（最大6発、0.5秒後に着弾）。当てるたびに次の1発のダメージが増える。',
   },
   arcanefire: { name: 'サンダーアーティラリー', en: 'THUNDER ARTILLERY', aim: 'ground', hidden: true, fire: true, range: 40, aoe: 2.2 },
   arcanebarrage: { name: 'サンダーアーティラリー', en: 'THUNDER ARTILLERY', aim: 'ground', kind: 'blast', hidden: true, aoe: 2.2, delay: 0.5, dmg: 52, heavier: 9 },
@@ -1491,7 +1491,7 @@ export const SKILLS = {
   certaindeath: {
     name: 'ハンティングダイブ', en: 'HUNTING DIVE', aim: 'line', icon: 'star', cd: 2, ult: true, ai: 'shot',
     tele: 0.4, range: 30, speed: 42, radius: 0.9, dmg: 20, flyTo: 'certainland', frenzy: 8,
-    desc: '【必殺技】アリーナの端まで届く弾を撃つ。当たった相手へ跳躍し（途中で止められない）、着地点の周囲を吹き飛ばす。巻き込んだほかの相手を1.5秒間恐怖させる（操作できず、逃げる）。その後8秒間、当たった相手を追うWの効果に入る。',
+    desc: 'アリーナの端まで届く弾を撃つ。当たった相手へ跳躍し（途中で止められない）、着地点の周囲を吹き飛ばす。巻き込んだほかの相手を1.5秒間恐怖させる（操作できず、逃げる）。その後8秒間、当たった相手を追うWの効果に入る。',
   },
   certainland: { name: 'ハンティングダイブ', en: 'HUNTING DIVE', aim: 'leap', hidden: true, air: 0.55, height: 4, aoe: 3.2, dmg: 90, kb: 4, track: true, scare: 1.5 },
   // ---- STEAM GOLEM (Blitzcrank)
@@ -1513,7 +1513,7 @@ export const SKILLS = {
   staticfield: {
     name: 'ショートサーキット', en: 'SHORT CIRCUIT', aim: 'self', icon: 'burst', cd: 2, ult: true, ai: 'burst',
     aoe: 5.5, dmg: 110, strip: true, silence: 0.5,
-    desc: '【必殺技】周囲にダメージを与える。相手のバリアとガードを消し、0.5秒間スキルを封じる。',
+    desc: '周囲にダメージを与える。相手のバリアとガードを消し、0.5秒間スキルを封じる。',
   },
   // ---- VOID EYE (Vel'Koz)
   decon: { name: 'ブレイクダウン', en: 'BREAKDOWN', aim: 'self', hidden: true },
@@ -1538,7 +1538,7 @@ export const SKILLS = {
   liferay: {
     name: 'トラッキングレイ', en: 'TRACKING RAY', aim: 'line', icon: 'star', cd: 0.13, ult: true, rapid: true,
     stream: { max: 2.6, cd: 2, gap: 0.3 }, range: 14.5, radius: 0.9, dmg: 11, slow: 1, slowPct: 0.2, turn: 0.22, every: 5,
-    desc: '【必殺技】押している間（最大2.6秒）、カーソルをゆっくり追う貫通する光線を放ち続ける。その間は移動できない。当たった相手を20%のスロウにする。当て続けると分解も進む。',
+    desc: '押している間（最大2.6秒）、カーソルをゆっくり追う貫通する光線を放ち続ける。その間は移動できない。当たった相手を20%のスロウにする。当て続けると分解も進む。',
   },
   // ---- TWIN PURIFIER (Lucian)
   lightslinger: { name: 'ダブルヒット', en: 'DOUBLE HIT', aim: 'self', hidden: true },
@@ -1560,7 +1560,7 @@ export const SKILLS = {
   culling: {
     name: 'ランアンドガン', en: 'RUN AND GUN', aim: 'line', icon: 'star', cd: 2, ult: true, re: 'cullstop', ai: 'shot',
     tele: 0.3, dur: 3, shots: 22, range: 13, speed: 44,
-    desc: '【必殺技】3秒間、決めた方向へ弾を撃ち続ける。撃ちながら移動でき、Eも使える。もう一度押すと止まる。',
+    desc: '3秒間、決めた方向へ弾を撃ち続ける。撃ちながら移動でき、Eも使える。もう一度押すと止まる。',
   },
   cullstop: { name: 'ランアンドガン', en: 'RUN AND GUN', aim: 'self', hidden: true, free: true },
   cullshot: { name: 'ランアンドガン', en: 'RUN AND GUN', aim: 'line', hidden: true, range: 13, speed: 44, radius: 0.6, dmg: 9, kb: 0.6, tumble: 0, launch: 0 },
@@ -1588,7 +1588,7 @@ export const SKILLS = {
   weaverwall: {
     name: 'ウォールサーフ', en: 'WALL SURF', aim: 'line', icon: 'star', cd: 2, ult: true, re: 'wallstop', ai: 'none',
     tele: 0.4, len: 20, side: 1.7, speed: 17, dist: 20, minDist: 3, through: true, fly: true,
-    desc: '【必殺技】狙った方向へ、アリーナを横切る岩の壁を4秒間作り、壁に沿って端まで移動する。途中でもう一度押すと降りる。壁はコマを通さない。',
+    desc: '狙った方向へ、アリーナを横切る岩の壁を4秒間作り、壁に沿って端まで移動する。途中でもう一度押すと降りる。壁はコマを通さない。',
   },
   wallstop: { name: 'ウォールサーフ', en: 'WALL SURF', aim: 'self', hidden: true, free: true },
   weaverz: { name: 'ウォールサーフ', en: 'WALL SURF', aim: 'ground', hidden: true, solid: true, grown: true, wall: 10, aoe: 1, dur: 4 },
@@ -1613,7 +1613,7 @@ export const SKILLS = {
   maxdose: {
     name: 'リカバリーラッシュ', en: 'RECOVERY RUSH', aim: 'self', kind: 'buff', icon: 'star', cd: 2, ult: true, ai: 'recover',
     dur: 8,
-    desc: '【必殺技】8秒間、回転が回復し続け（合計で最大値の35%）、20%加速する。',
+    desc: '8秒間、回転が回復し続け（合計で最大値の35%）、20%加速する。',
   },
 };
 for (const id in SKILLS) SKILLS[id].id = id;

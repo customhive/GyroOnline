@@ -143,6 +143,7 @@ button { font-family: inherit; color: inherit; cursor: pointer; }
 .ci-text b { font-size: 46px; font-style: italic; line-height: 1; }
 .ci-text i { font-style: normal; font-size: 14px; letter-spacing: 0.3em; }
 
+kbd.none { visibility: hidden; }
 /* A line of a description that stands by itself: one weapon's part, in that weapon's colour. */
 .wl { display: block; font-style: normal; }
 .wl u { text-decoration: none; margin-right: 3px; }
@@ -353,7 +354,11 @@ kbd { flex: none; width: 28px; height: 28px; display: grid; place-items: center;
 .picker-detail #how { grid-template-columns: 1fr; }
 .picker-detail h3 { margin: 0 0 8px; }
 .blade.any { --c: #8fa0c8; }
-@media (max-width: 1000px) { .picker-body { grid-template-columns: 1fr; } }
+/* The picker keeps one size whatever blade its sheet is showing: the sheet scrolls inside its own column. */
+.picker-body { height: min(60vh, 560px); align-items: stretch; }
+.picker-body #blades { max-height: none; height: 100%; align-content: start; grid-auto-rows: max-content; }
+.picker-detail { min-height: 0; height: 100%; overflow-y: auto; padding-right: 4px; scrollbar-width: thin; scrollbar-color: var(--line) transparent; }
+@media (max-width: 1000px) { .picker-body { grid-template-columns: 1fr; grid-template-rows: 34vh 34vh; height: auto; } }
 
 /* ---- the skill tooltip on the room's cards ---- */
 .tip { --c: var(--cyan); position: fixed; z-index: 60; left: 0; top: 0; width: 300px; padding: 0 14px 12px; background: linear-gradient(180deg, color-mix(in srgb, var(--c) 16%, #070b16), #070b16 70px); border: 1px solid color-mix(in srgb, var(--c) 65%, #1a2440); box-shadow: 0 10px 34px rgba(0, 0, 0, 0.6), 0 0 22px color-mix(in srgb, var(--c) 30%, transparent); opacity: 0; transform: translateY(4px); transition: opacity 0.1s, transform 0.1s; pointer-events: none; }

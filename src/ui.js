@@ -92,6 +92,8 @@ const GLYPHS = {
   star: svg('<path d="M24 3l6 14 15 1-11 10 4 15-14-8-14 8 4-15L3 18l15-1z" fill="currentColor" stroke="none"/>'),
 };
 const iconOf = (S) => ICONS[S.id] || GLYPHS[S.icon] || GLYPHS.star;
+// The key a skill is on. One that is always on has no key to press: its place is kept, empty, so the rows stay in line.
+const keyCap = (S, key) => (S.passive ? '<kbd class="none"></kbd>' : `<kbd>${key}</kbd>`);
 const FINISH = {
   over: ['OVER FINISH', '場外へ吹き飛ばした！'],
   burst: ['BURST FINISH', '一撃で回転を断ち切った！'],
@@ -166,7 +168,7 @@ export class UI {
     for (const k of KEYS) {
       const S = kitOf(blade)[KEYS.indexOf(k)];
       const b = el('div', 'skill' + (S.ult ? ' ult' : ''));
-      b.innerHTML = `<div class="s-ring"></div><div class="s-icon">${iconOf(S)}</div><div class="s-cd"></div><div class="s-num"></div>${S.id === 'nextweapon' ? '' : `<div class="s-key">${k}</div>`}<div class="s-badge"></div>`;
+      b.innerHTML = `<div class="s-ring"></div><div class="s-icon">${iconOf(S)}</div><div class="s-cd"></div><div class="s-num"></div>${S.passive ? '' : `<div class="s-key">${k}</div>`}<div class="s-badge"></div>`;
       this.hoverTip(b, S, blade, k);
       bar.appendChild(b);
       this.skills[k] = { root: b, cd: $('.s-cd', b), num: $('.s-num', b), ring: $('.s-ring', b), badge: $('.s-badge', b), ready: true, note: '' };
@@ -247,7 +249,7 @@ export class UI {
     $('#sheet').style.setProperty('--c', b ? b.css : '#3a4566');
     $('#how-name').textContent = b ? b.name + ' のスキル' : 'おまかせ';
     $('#sheet').innerHTML = b ? this.sheets[b.id] : '<p>対戦のたびにランダムなブレードが選ばれます。</p>';
-    $('#how').innerHTML = b ? kitOf(b).map((S, i) => `<div class="how-row"><kbd>${KEYS[i]}</kbd><div class="how-icon">${iconOf(S)}</div><div><b>${S.name}</b><span>${this.descOf(S, b)}</span></div></div>`).join('') : '';
+    $('#how').innerHTML = b ? kitOf(b).map((S, i) => `<div class="how-row">${keyCap(S, KEYS[i])}<div class="how-icon">${iconOf(S)}</div><div><b>${S.name}</b><span>${this.descOf(S, b)}</span></div></div>`).join('') : '';
   }
 
   show(id, on) { $('#' + id).classList.toggle('hidden', !on); if (id === 'hud' && !on) this.tip(null); }
@@ -395,7 +397,7 @@ export class UI {
     const t = this.tipEl;
     if (!S) { t.classList.remove('on'); return; }
     t.style.setProperty('--c', blade.css);
-    t.innerHTML = `<div class="tip-head"><kbd>${key}</kbd><div class="how-icon">${iconOf(icon || S)}</div><div><b>${S.name}</b><i>${S.en}</i></div></div><p>${body || S.desc}</p><span>${S.foot || (S.ult ? 'ゲージ 100%' : S.passive ? '常時効果' : 'クールダウン ' + +(S.cd * blade.cdMul).toFixed(1) + '秒') + (S.passive ? '' : '　／　' + this.howTo(S))}</span>`;
+    t.innerHTML = `<div class="tip-head">${keyCap(icon || S, key)}<div class="how-icon">${iconOf(icon || S)}</div><div><b>${S.name}</b><i>${S.en}</i></div></div><p>${body || S.desc}</p><span>${S.foot || (S.ult ? 'ゲージ 100%' : S.passive ? '常時効果' : 'クールダウン ' + +(S.cd * blade.cdMul).toFixed(1) + '秒') + (S.passive ? '' : '　／　' + this.howTo(S))}</span>`;
     t.classList.add('on');
     if (above) {
       const r = at.getBoundingClientRect(), w = t.offsetWidth;
@@ -512,7 +514,7 @@ export class UI {
           ? `<div class="pc-wait"><div class="pc-plus">＋</div><b>参加待ち</b><span>招待URLを開いた相手が<br>ここに入ります</span></div>`
           : `<div class="pc-wait"><b>—</b></div>`;
       } else {
-        const skills = b ? kitOf(b).map((S, k) => `<div class="pc-skill" data-k="${k}"><kbd>${KEYS[k]}</kbd><div class="how-icon">${iconOf(S)}</div><span>${S.name}</span></div>`).join('') : '';
+        const skills = b ? kitOf(b).map((S, k) => `<div class="pc-skill" data-k="${k}">${keyCap(S, KEYS[k])}<div class="how-icon">${iconOf(S)}</div><span>${S.name}</span></div>`).join('') : '';
         body.innerHTML = `<div class="pc-disc"><i></i></div><div class="pc-type">${b ? b.type : '？？？'}</div><div class="pc-en">${b ? b.en : 'RANDOM'}</div><div class="pc-name">${b ? b.name : 'おまかせ'}</div>`
           + (b ? `${this.bars[b.id]}<p class="pc-desc">${b.desc}</p><div class="pc-skills">${skills}</div>` : '<p class="pc-desc">対戦のたびにランダムなブレードが選ばれます。</p>');
         if (can) body.onclick = () => this.h.edit(i);
