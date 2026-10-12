@@ -1399,6 +1399,16 @@ console.log('LUNAR ARSENAL (Aphelios)');
     s.w.cast(s.me, 'Q', s.me.x, s.me.z); s.run(1.7);
     const hits = s.seen.filter((e) => e.type === 'strike' && e.src === s.me).map((e) => (e.light ? 'o' : 's')).join('');
     check(hits === 'ososos', `scythe: six blows, the other hand and the scythe by turns (${hits})`);
+    {
+      // The flame in the other hand: its blow bursts on whoever it lands on, and those close by take the burst too.
+      const F = off.fx[3], w3 = new World([BLADES.lunar, BLADES.gaia, BLADES.gaia], {}), m = w3.tops[0], [a, b] = w3.tops.slice(1), ev = [];
+      const hold = () => { m.x = 0; m.z = 4; m.vx = m.vz = 0; m.cmd = null; a.x = 0; a.z = 0; b.x = 2.8; b.z = -0.5; a.vx = a.vz = b.vx = b.vz = 0; };
+      hold(); m.wm = 1; m.wo = 3; m.cd.Q = 0; w3.cast(m, 'Q', m.x, m.z);
+      for (let i = 0; i < 0.12 / DT; i++) { hold(); w3.step(DT); ev.push(...w3.events); w3.events.length = 0; }
+      const blasts = ev.filter((e) => e.type === 'blast');
+      check(blasts.length >= 1 && Math.hypot(blasts[0].x - a.x, blasts[0].z - a.z) < 0.3 && blasts[0].r === F.blast && Math.abs(a.stats.taken - (off.dmg + F.blastDmg) * k) < 1 && Math.abs(b.stats.taken - F.blastDmg * k) < 1,
+        `scythe with the flame in the other hand: the blow bursts round whoever it struck, and the one beside it is caught (${Math.round(a.stats.taken / k)}, ${Math.round(b.stats.taken / k)})`);
+    }
     s = setup('lunar', 8); s.me.wm = 1;
     s.w.cast(s.me, 'Q', s.me.x, s.me.z); s.run(1.8);
     check(s.foe.stats.taken === 0 && s.me.wa[1] === 4, 'scythe: nothing within 5.5 is nothing struck (the use is still spent)');

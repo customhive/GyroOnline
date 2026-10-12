@@ -2949,8 +2949,9 @@ export class World {
     if (F.chak) this.gainChak(o, fly === 2 ? SKILLS.vigil.arm[wi].chak : F.chak);
     if (F.slow) this.slowBy(v, F.slow, F.slowPct);
     if (F.leech) this.mend(o, dmg * F.leech);
-    // The flamethrower's blow washes over whoever else stands close behind.
-    if (F.splash) for (const q of this.foes(o)) if (q !== v && targetable(q) && Math.hypot(q.x - v.x, q.z - v.z) < F.splash + q.radius * 0.5) this.hurt(q, (A.off.dmg * o.blade.atk) / q.blade.def, o, 'offhand');
+    // The flame's blow bursts where it lands: everyone near, the one it struck among them, takes a little more.
+    // (The ultimate's is a bigger burst.)
+    if (F.blast) { const B = fly === 2 ? SKILLS.vigil.arm[wi] : F; this.burst(o, SKILLS[A.weapons[wi]], v.x, v.z, B.blast, { dmg: B.blastDmg, as: {} }); }
     this.emit('strike', { top: v, src: o, skill: SKILLS[A.weapons[wi]], x: v.x, z: v.z, dmg, light: fly !== 2, ...(fly ? { fx: o.x, fz: o.z } : {}), ...(fly === 2 ? { strong: 1 } : {}) });
   }
 
@@ -3445,7 +3446,9 @@ export class World {
     if (S.again) { const k = KEYS.find((q) => skillOf(o, q).weapons); if (k && o.wm === S.weapon) o.re[k] = S.mark; }
     if (S.permHit && o.perm < S.permHit) { o.perm++; this.emit('say', { top: o, text: '+' + o.perm, tone: 'gold' }); }
     if (S.spawn) this.zone(o, SKILLS[S.spawn], v.x, v.z);
-    if (S.splash) this.burst(o, S, p.x, p.z, S.splash, { dmg: S.splashDmg, as: {} });
+    // (One that bursts only on whoever it strikes bursts round that top, not round where the two met.)
+    const bx = S.onHit ? v.x : p.x, bz = S.onHit ? v.z : p.z;
+    if (S.splash) this.burst(o, S, bx, bz, S.splash, { dmg: S.splashDmg, as: {} });
     // KEEPER'S VERDICT: whoever stands close to the one it struck is sent flying with it.
     if (S.around) for (const q of this.foes(o)) {
       if (q === v || !targetable(q) || Math.hypot(q.x - v.x, q.z - v.z) > S.around) continue;
@@ -3461,12 +3464,11 @@ export class World {
       const A = S.arm[o.wm], k = KEYS.find((q) => skillOf(o, q).weapons);
       if (A.heal) this.mend(o, A.heal);
       for (const q of this.foes(o)) {
-        if (!targetable(q) || (q !== v && Math.hypot(q.x - p.x, q.z - p.z) >= S.splash + q.radius * 0.5)) continue;
+        if (!targetable(q) || (q !== v && Math.hypot(q.x - bx, q.z - bz) >= S.splash + q.radius * 0.5)) continue;
         this.offhand(o, q, o.wm, 2);
         // (The rifle's lands twice.)
         if (A.twice) { o.echo = o.echo || { t: A.twice, wi: o.wm, to: [] }; o.echo.to.push(q.side); }
         if (A.slow) { this.slowBy(q, A.slow, A.slowPct); if (k) o.re[k] = A.slow; }
-        if (A.dmg) this.hurt(q, (A.dmg * o.blade.atk) / q.blade.def, o, S.id);
       }
     }
     // The third quill to land pins the target.

@@ -1270,7 +1270,7 @@ export const SKILLS = {
     // Each weapon has a colour of its own, on its key and on everything it fires.
     tints: [0x4fe08a, 0xff4a5a, 0xb46bff, 0x4aa8ff, 0xf2f6ff],
     // What the weapon in the other hand adds when it joins in: a light blow, and something of its own.
-    off: { dmg: 14, fx: [{ mul: 2 }, { leech: 1 }, { slow: 2.5, slowPct: 0.3 }, { mul: 1.5, splash: 2.4 }, { chak: 1 }] },
+    off: { dmg: 14, fx: [{ mul: 2 }, { leech: 1 }, { slow: 2.5, slowPct: 0.3 }, { blast: 4.5, blastDmg: 10 }, { chak: 1 }] },
     // CRESCENDUM: chakrams circle whoever holds them (up to `max`). A follow-up of its own that lands adds one; its
     // skill adds one and then throws them all, one after another. One that strikes comes back; one that misses is lost.
     // With none gained and none landed for `dur` seconds they all go; they flicker for the last `warn` of it.
@@ -1329,8 +1329,8 @@ export const SKILLS = {
     tele: 0.3, range: 12, speed: 9, radius: 2, dmg: 42, pierce: true, disc: true, kb: 0, tumble: 0, launch: 0, offhand: true,
     desc: '狙った方向へ、ゆっくり進む炎の円を放つ。貫通する。',
     briefLine: 'ゆっくり進む炎の円を放つ。貫通する。',
-    offLine: '追撃：1.5倍のダメージ。近くのほかの相手にも当たる。',
-    ultLine: '強化追撃：追加ダメージを与える。',
+    offLine: '追撃：爆発し、周囲の相手にもダメージを与える。',
+    ultLine: '強化追撃：大爆発し、周囲の相手にもダメージを与える。',
   },
   chakram: {
     name: 'ガードチャクラム', en: 'GUARD CHAKRAM', aim: 'line', hidden: true, weapon: 4, cd: 3, ai: 'shot', tint: 0xf2f6ff,
@@ -1348,7 +1348,7 @@ export const SKILLS = {
   vigil: {
     name: 'ムーンバースト', en: 'MOON BURST', aim: 'line', kind: 'shot', icon: 'star', cd: 2, ult: true,
     tele: 0.4, range: 13, speed: 24, radius: 1.4, dmg: 70, splash: 4, splashDmg: 70, onHit: true,
-    arm: [{ twice: 0.18 }, { heal: 90 }, { slow: 2.5, slowPct: 0.99 }, { dmg: 50 }, { chak: 5 }],
+    arm: [{ twice: 0.18 }, { heal: 90 }, { slow: 2.5, slowPct: 0.99 }, { blast: 6.5, blastDmg: 30 }, { chak: 5 }],
     lines: 'ultLine',
     desc: '【必殺技】遅い弾を撃つ。相手に当たると爆発し、当たった相手と周囲の相手に、主の武器が強化された追撃をする。',
   },
