@@ -309,7 +309,7 @@ export const BLADES = {
     color: 0x8fb8ff, css: '#8fb8ff', teeth: 4,
     atk: 1.28, def: 1.02, mass: 0.94, speed: 13.5, decay: 6.2, spinMax: 1000, cdMul: 1.0, guardMul: 1.0,
     bars: { atk: 5, def: 1, sta: 3, spd: 3 },
-    desc: '5つの武器のうち2つを持ち、主と副を入れ替えながら戦う。使い切った武器は次の武器に替わり、次のラウンドに持ち越す。Eのスキルは無い。',
+    desc: '5つの武器のうち2つを持ち、主と副を入れ替えながら戦う。使い切った武器は次の武器に替わり、次のラウンドに持ち越す。',
   },
   cosmos: {
     id: 'cosmos', kit: { Q: 'breath', W: 'flight', E: 'blackhole', R: 'fallingstar' },
@@ -1324,16 +1324,16 @@ export const SKILLS = {
   },
   bindeclipse: { name: 'グラビティキャノン', en: 'GRAVITY CANNON', aim: 'self', hidden: true, tint: 0xb46bff, ai: 'bindeclipse', weapon: 2, cd: 5, dmg: 40, snareT: 1, bigSnare: 1.35 },
   duskwave: {
-    name: 'フレイムスロワー', en: 'FLAME THROWER', aim: 'line', kind: 'shot', hidden: true, weapon: 3, cd: 2.5, tint: 0x4aa8ff,
+    name: 'エナジーディスク', en: 'ENERGY DISC', aim: 'line', kind: 'shot', hidden: true, weapon: 3, cd: 2.5, tint: 0x4aa8ff,
     // A wide disc that drifts across the floor, slow enough to walk out of, through everyone in its way.
     tele: 0.3, range: 12, speed: 9, radius: 2, dmg: 42, pierce: true, disc: true, kb: 0, tumble: 0, launch: 0, offhand: true,
-    desc: '狙った方向へ、ゆっくり進む炎の円を放つ。貫通する。',
-    briefLine: 'ゆっくり進む炎の円を放つ。貫通する。',
+    desc: '狙った方向へ、ゆっくり進む光の円を放つ。貫通する。',
+    briefLine: 'ゆっくり進む光の円を放つ。貫通する。',
     offLine: '追撃：爆発し、周囲の相手にもダメージを与える。',
     ultLine: '強化追撃：大爆発し、周囲の相手にもダメージを与える。',
   },
   chakram: {
-    name: 'ガードチャクラム', en: 'GUARD CHAKRAM', aim: 'line', hidden: true, weapon: 4, cd: 3, ai: 'shot', tint: 0xf2f6ff,
+    name: 'リターンチャクラム', en: 'RETURN CHAKRAM', aim: 'line', hidden: true, weapon: 4, cd: 3, ai: 'shot', tint: 0xf2f6ff,
     tele: 0.3, range: 9, speed: 36, radius: 0.6, dmg: 26, every: 0.12, kb: 1, tumble: 0, launch: 0,
     desc: '円月輪を1つ得て、持っている円月輪をすべて、狙った方向へ続けて撃つ。当たった円月輪は戻り、外れた円月輪は失う。',
     briefLine: '円月輪を1つ得て、持っている分を続けて撃つ。当たれば戻る。',
@@ -1341,10 +1341,10 @@ export const SKILLS = {
     ultLine: '強化追撃：円月輪を5つ得る。',
   },
   sentry: {
-    name: 'ガードチャクラム', en: 'GUARD CHAKRAM', aim: 'ground', hidden: true, cd: 3, ai: 'ground', tint: 0xf2f6ff,
+    name: 'リターンチャクラム', en: 'RETURN CHAKRAM', aim: 'ground', hidden: true, cd: 3, ai: 'ground', tint: 0xf2f6ff,
     range: 4.75, aoe: 1.1, dur: 20, live: 4, reach: 5, wake: 0.35, rate: 0.8, max: 3,
   },
-  sentryshot: { name: 'ガードチャクラム', en: 'GUARD CHAKRAM', aim: 'line', hidden: true, tint: 0xf2f6ff, range: 9, speed: 32, radius: 0.55, dmg: 20, kb: 1.5, tumble: 0, launch: 0 },
+  sentryshot: { name: 'リターンチャクラム', en: 'RETURN CHAKRAM', aim: 'line', hidden: true, tint: 0xf2f6ff, range: 9, speed: 32, radius: 0.55, dmg: 20, kb: 1.5, tumble: 0, launch: 0 },
   vigil: {
     name: 'ムーンバースト', en: 'MOON BURST', aim: 'line', kind: 'shot', icon: 'star', cd: 2, ult: true,
     tele: 0.4, range: 13, speed: 24, radius: 1.4, dmg: 70, splash: 4, splashDmg: 70, onHit: true,
