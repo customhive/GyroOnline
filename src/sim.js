@@ -64,6 +64,7 @@ export function makeTop(side, blade) {
     shredK: 1,             // how much more a softened top takes
     bleedBy: -1,           // who made it bleed
     spray: null,           // a burst of shots being fired one after another: { skill, n, every, acc, dx, dz }
+    echo: null,            // a follow-up that lands a second time a moment later: { t, wi, to: [sides] }
     volley: null,          // blows landing one after another on whoever is nearest: { skill, n, every, acc, off }
     rayA: null,            // the bearing of a beam that turns to follow the cursor
     dbl: 0,                // the next body hit lands twice
@@ -421,7 +422,7 @@ export class World {
     if (this.practice && t.side) { t.x = (t.side - 1) * 3; t.z = 0; t.vx = t.vz = 0; }
     t.back = 0;
     t.gone = null; t.prey = t.dmarkTo = -1; t.quills = t.quillT = 0; t.realm = 0; t.flash = 1;
-    t.silence = t.dbl = t.odT = t.deN = t.deT = t.ardent = t.shrugCd = t.rockT = t.kickT = t.kickHit = 0; t.shredK = 1; t.bleedBy = t.ardentBy = -1; t.spray = null; t.volley = null; t.rayA = null; t.once = false;
+    t.silence = t.dbl = t.odT = t.deN = t.deT = t.ardent = t.shrugCd = t.rockT = t.kickT = t.kickHit = 0; t.shredK = 1; t.bleedBy = t.ardentBy = -1; t.spray = null; t.volley = null; t.echo = null; t.rayA = null; t.once = false;
     t.spin = t.spinMax;
     t.cmd = t.cast = t.dash = t.air = t.out = t.blink = t.charge = t.orbs = t.tether = t.chan = t.ret = t.hold = null;
     t.tumble = t.launch = t.guard = t.slow = t.hitCd = t.empower = 0;
@@ -2081,6 +2082,11 @@ export class World {
       while (sp.n > 0 && sp.acc >= sp.every) { sp.acc -= sp.every; sp.n--; if (t.stun <= 0 && t.up <= 0 && !t.air) { const p = this.fire(t, sp.skill, sp.dx, sp.dz, { quiet: sp.n % 3 !== 0 }); if (sp.chak) p.chakOf = t.side; } }
       if (sp.n <= 0) t.spray = null;
     } else if (t.spray) t.spray = null;
+    if (t.echo && (t.echo.t -= dt) <= 0) {
+      const E = t.echo;
+      t.echo = null;
+      if (!this.result && !t.gone && !t.out) for (const i of E.to) this.offhand(t, this.tops[i], E.wi, 2);
+    }
     if (t.volley && !this.result && t.spin > 0 && !t.out && !t.gone) {
       const V = t.volley, S = V.skill;
       V.acc += dt;
@@ -3457,7 +3463,8 @@ export class World {
       for (const q of this.foes(o)) {
         if (!targetable(q) || (q !== v && Math.hypot(q.x - p.x, q.z - p.z) >= S.splash + q.radius * 0.5)) continue;
         this.offhand(o, q, o.wm, 2);
-        if (A.mark) { q.mark = A.mark; q.markK = 2; q.markHold = true; if (k) o.re[k] = A.mark; }
+        // (The rifle's lands twice.)
+        if (A.twice) { o.echo = o.echo || { t: A.twice, wi: o.wm, to: [] }; o.echo.to.push(q.side); }
         if (A.slow) { this.slowBy(q, A.slow, A.slowPct); if (k) o.re[k] = A.slow; }
         if (A.dmg) this.hurt(q, (A.dmg * o.blade.atk) / q.blade.def, o, S.id);
       }

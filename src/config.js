@@ -1297,10 +1297,10 @@ export const SKILLS = {
   moonshot: {
     name: 'ロングライフル', en: 'LONG RIFLE', aim: 'line', kind: 'shot', hidden: true, weapon: 0, cd: 4, tint: 0x4fe08a,
     tele: 0.45, range: 13.5, speed: 52, radius: 0.7, dmg: 46, mark: 4.5, again: 'longshot',
-    desc: '長射程の弾を撃つ。当てると、4.5秒以内にもう一度押して追撃できる。',
-    briefLine: '長射程の弾。当てると、もう一度押して追撃できる。',
-    offLine: '追撃：追加ダメージを与える。',
-    ultLine: '強化追撃：Qをもう一度押して追撃できる。その追撃のダメージは2倍。',
+    desc: '長射程の弾を撃つ。当てると、4.5秒以内にもう一度押して追撃。',
+    briefLine: '長射程の弾。当てると、もう一度押して追撃。',
+    offLine: '追撃：ダメージを与える。',
+    ultLine: '強化追撃：ダメージを2回与える。',
   },
   // The follow-up on a marked target, on the same key: it reaches however far off the target is,
   // sets the mark off, and the weapon in the other hand lands its blow with it.
@@ -1309,8 +1309,8 @@ export const SKILLS = {
     name: 'ドレインサイス', en: 'DRAIN SCYTHE', aim: 'self', hidden: true, weapon: 1, cd: 4, tint: 0xff4a5a, ai: 'volley',
     // Six blows in 1.75 seconds at whoever is nearest: the other hand, then the scythe, by turns.
     dur: 1.75, shots: 6, range: 5.5, dmg: 26, leech: 0.35, haste: 1.75,
-    desc: '1.75秒間加速し、いちばん近い相手を6回攻撃する。その間は移動とフラッシュしかできない。',
-    briefLine: '加速し、いちばん近い相手を6回攻撃する。',
+    desc: '1.75秒間加速し、いちばん近い相手に攻撃と追撃を交互にする。',
+    briefLine: '加速し、いちばん近い相手に攻撃と追撃を交互にする。',
     offLine: '追撃：与えたダメージぶん回転が回復する。',
     ultLine: '強化追撃：回転が大きく回復する。',
   },
@@ -1347,7 +1347,7 @@ export const SKILLS = {
   vigil: {
     name: 'ムーンバースト', en: 'MOON BURST', aim: 'line', kind: 'shot', icon: 'star', cd: 2, ult: true,
     tele: 0.4, range: 13, speed: 24, radius: 1.4, dmg: 70, splash: 4, splashDmg: 70, onHit: true,
-    arm: [{ mark: 4.5 }, { heal: 90 }, { slow: 2.5, slowPct: 0.99 }, { dmg: 50 }, { chak: 5 }],
+    arm: [{ twice: 0.18 }, { heal: 90 }, { slow: 2.5, slowPct: 0.99 }, { dmg: 50 }, { chak: 5 }],
     lines: 'ultLine',
     desc: '【必殺技】遅い弾を撃つ。相手に当たると爆発し、当たった相手と周囲の相手に、主の武器が強化された追撃をする。',
   },

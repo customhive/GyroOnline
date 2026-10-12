@@ -1316,7 +1316,11 @@ console.log('LUNAR ARSENAL (Aphelios)');
   check(me.wm === 4 && me.wa[4] === 4, 'the weapons carry into the next round');
   const vig = (wm) => { const s = setup('lunar', 6); s.me.wm = wm; s.me.spin = 500; s.w.cast(s.me, 'R', s.foe.x, s.foe.z); s.run(0.5); return s; };
   const v0 = vig(0), v1 = vig(1), v2 = vig(2), v3 = vig(3), v4 = vig(4);
-  check(v0.foe.mark > 0 && v0.foe.markK === 2, 'R with the rifle: a mark that goes off twice as hard');
+  {
+    const n = () => v0.seen.filter((e) => e.type === 'strike' && e.strong).length, a = n();
+    v0.run(0.4);
+    check(a >= 1 && n() === 2 && v0.foe.mark === 0 && v0.w.aimSkill(v0.me, 'Q').id === 'moonshot', 'R with the rifle: its follow-up lands twice, and leaves no mark');
+  }
   check(v1.me.spin > 580, 'R with the scythe: heals');
   check(v2.foe.slowK === 0.99 && v2.w.aimSkill(v2.me, 'Q').id === 'bindeclipse', 'R with gravity: all but stopped, and open to the root');
   check(v3.foe.stats.taken > v1.foe.stats.taken + 20, 'R with the flame: more damage');
