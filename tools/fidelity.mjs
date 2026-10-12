@@ -1291,8 +1291,16 @@ console.log('LUNAR ARSENAL (Aphelios)');
   foe.x = 9; foe.z = -9; const am = me.wa[2]; w.cast(me, 'Q', me.x, me.z);
   check(foe.snare > 0.5 && foe.slow === 0 && me.wa[2] === am, 'Q again: wherever it is, the slowed target is rooted; no shot used');
   ({ w, me, foe, run, saw } = setup('lunar', 6));
-  me.wm = 3; w.cast(me, 'Q', foe.x, foe.z);
-  check(saw('cone') || setup.last.w.events.some((e) => e.type === 'cone'), 'Q with the flame: a fan');
+  {
+    // The flame: a wide disc that drifts on through whoever it meets.
+    const F = SKILLS.duskwave, w3 = new World([BLADES.lunar, BLADES.gaia, BLADES.sol], {}), m = w3.tops[0], [a, b] = w3.tops.slice(1);
+    const hold = () => { m.x = 0; m.z = 9; m.vx = m.vz = 0; m.cmd = null; a.x = 0; a.z = 4; b.x = 0; b.z = -1; a.vx = a.vz = b.vx = b.vz = 0; };
+    hold(); m.wm = 3; m.wo = 1; m.cd.Q = 0; w3.cast(m, 'Q', 0, 0);
+    let t1 = 0, t2 = 0;
+    for (let i = 0; i < 1.6 / DT; i++) { hold(); w3.step(DT); if (!t1 && a.stats.taken > 0) t1 = w3.time; if (!t2 && b.stats.taken > 0) t2 = w3.time; }
+    check(t1 > 0 && t2 > t1 + 0.4 && !w3.projectiles.length, `Q with the flame: a disc that goes through the first it meets and on to the next (${t1.toFixed(2)}s, ${t2.toFixed(2)}s), then is spent`);
+    check(F.speed < BLADES.gaia.speed * 0.8, 'slow enough to walk out of');
+  }
   ({ w, me, foe, run, saw } = setup('lunar', 6));
   {
     // The chakram: one more is gained, then all held are thrown; what strikes comes back, what misses is lost.
@@ -1356,9 +1364,9 @@ console.log('LUNAR ARSENAL (Aphelios)');
       check(s.foe.mark === 0 && s.w.aimSkill(s.me, 'Q').id === 'moonshot', 'left alone, the mark and the second press both run out after 4.5 seconds');
     }
     s = setup('lunar', 5); s.me.wm = 3; s.me.wo = 2;
-    s.w.cast(s.me, 'Q', s.foe.x, s.foe.z); s.w.step(DT);
+    s.w.cast(s.me, 'Q', s.foe.x, s.foe.z); s.run(0.5);
     check(s.foe.slowK === 0.3 && Math.abs(s.foe.stats.taken - (SKILLS.duskwave.dmg + off.dmg) * k) < 1, 'flame with gravity in the other hand: whoever the fan catches is slowed too');
-    s.run(0.3); s.w.cast(s.me, 'W', s.me.x, s.me.z);
+    s.w.cast(s.me, 'W', s.me.x, s.me.z);
     check(s.w.aimSkill(s.me, 'Q').id === 'bindeclipse' && s.w.canCast(s.me, 'Q'), 'W to gravity with someone already slowed: the key roots straight away');
     s.foe.x = 9; s.foe.z = -9; s.w.cast(s.me, 'Q', s.me.x, s.me.z);
     check(s.foe.snare > 0.5 && s.foe.slow === 0 && s.me.wa[2] === 4 && Math.abs(s.me.cd.Q - SKILLS.bindeclipse.cd) < 0.1 && s.w.aimSkill(s.me, 'Q').id === 'gravshot', 'rooted from afar; that is one use of the cannon, and its cooldown begins');
@@ -1371,7 +1379,7 @@ console.log('LUNAR ARSENAL (Aphelios)');
       check(w4.tops[1].snare > 0.5 && w4.tops[2].snare > 0.5 && m.wa[2] === 4, 'two slowed at once: both are rooted by the one press');
     }
     s = setup('lunar', 5); s.me.wm = 3; s.me.wo = 0;
-    s.w.cast(s.me, 'Q', s.foe.x, s.foe.z); s.w.step(DT);
+    s.w.cast(s.me, 'Q', s.foe.x, s.foe.z); s.run(0.5);
     check(s.foe.mark === 0 && Math.abs(s.foe.stats.taken - (SKILLS.duskwave.dmg + off.dmg * 2) * k) < 1, 'flame with the rifle in the other hand: a heavier second blow, and no mark');
     {
       // The chakram in the other hand: every blow that lands leaves one circling, and those held fly with the next.

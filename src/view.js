@@ -607,6 +607,8 @@ export class View {
         const sprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: this.glow, blending: THREE.AdditiveBlending, depthWrite: false, transparent: true }));
         sprite.scale.setScalar(4.5);
         group.add(sprite);
+        // A disc is a glow at its middle and no more (the floor shows the rest).
+        if (p.skill.disc) sprite.scale.setScalar(2.6);
         this.scene.add(group);
         v = { proj: p, group, mat, sprite, side: -1 };
         this.projs.set(p.id, v);
@@ -768,9 +770,9 @@ export class View {
         if (p.crawl) { G.ring(p.x, p.z, 0, p.skill.field, this.colorOf(p.owner), 0.1); G.ring(p.x, p.z, p.skill.field - 0.1, p.skill.field, this.dangerOf(p.owner), 0.7); }
         if (p.skill.re && SKILLS[p.skill.re].aoe) { const A = SKILLS[p.skill.re].aoe; G.ring(p.x, p.z, A - 0.1, A, this.dangerOf(p.owner), 0.55); G.ring(p.x, p.z, 0, A, this.dangerOf(p.owner), 0.06); }
         v.group.children[1].rotation.x += dt * 22;
-        // A phantom is its copy, not a bolt.
-        v.group.children[0].visible = v.group.children[1].visible = !p.skill.ghost;
-        if (dt > 0) for (let i = 0; i < 3; i++) {
+        // A phantom is its copy, not a bolt; a disc has no point to it (the floor shows it whole).
+        v.group.children[0].visible = v.group.children[1].visible = !p.skill.ghost && !p.skill.disc;
+        if (dt > 0 && !p.skill.disc) for (let i = 0; i < 3; i++) {
           P.emit(p.x - p.dx * Math.random() * 1.2 + (Math.random() - 0.5) * 0.9, y + (Math.random() - 0.5) * 0.8, p.z - p.dz * Math.random() * 1.2 + (Math.random() - 0.5) * 0.9,
             -p.dx * 4, Math.random() * 2, -p.dz * 4, 0.3, 0.3, this.tintOf(p.owner, p.skill), 0, 1);
         }
@@ -973,6 +975,15 @@ export class View {
   // Effects that last a while: zones, charging, orbs, the drain link, fading cones.
   drawOngoing(dt) {
     const G = this.ground, P = this.particles, w = this.world;
+    // A disc crossing the floor: its rim lit all the way round, over the ground it covers.
+    for (const p of w.projectiles) {
+      if (!p.skill.disc || this.hidden(p.owner)) continue;
+      const c = this.tintOf(p.owner, p.skill), r = p.r, beat = 0.5 + 0.5 * Math.sin(this.time * 9);
+      G.ring(p.x, p.z, 0, r, c, 0.16);
+      G.ring(p.x, p.z, r - 0.55, r, c, 0.3 + 0.15 * beat);
+      G.ring(p.x, p.z, r - 0.26, r, 0xffffff, 0.55 + 0.3 * beat);
+      G.ring(p.x, p.z, r, r + 0.1, this.dangerOf(p.owner), 0.9);
+    }
     for (const z of w.zones) {
       const k = Math.min(1, z.t / z.T);
       // (The ring of a realm is the one thing of it that shows from outside, faintly.)

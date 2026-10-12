@@ -1324,10 +1324,11 @@ export const SKILLS = {
   },
   bindeclipse: { name: 'グラビティキャノン', en: 'GRAVITY CANNON', aim: 'self', hidden: true, tint: 0xb46bff, ai: 'bindeclipse', weapon: 2, cd: 5, dmg: 40, snareT: 1, bigSnare: 1.35 },
   duskwave: {
-    name: 'フレイムスロワー', en: 'FLAME THROWER', aim: 'cone', kind: 'cone', hidden: true, weapon: 3, cd: 2.5, tint: 0x4aa8ff,
-    tele: 0.3, range: 6.5, half: 0.5, dmg: 42, offhand: true,
-    desc: '前方に扇状の炎を放つ。',
-    briefLine: '前方に扇状の炎を放つ。',
+    name: 'フレイムスロワー', en: 'FLAME THROWER', aim: 'line', kind: 'shot', hidden: true, weapon: 3, cd: 2.5, tint: 0x4aa8ff,
+    // A wide disc that drifts across the floor, slow enough to walk out of, through everyone in its way.
+    tele: 0.3, range: 12, speed: 9, radius: 2, dmg: 42, pierce: true, disc: true, kb: 0, tumble: 0, launch: 0, offhand: true,
+    desc: '狙った方向へ、ゆっくり進む炎の円を放つ。貫通する。',
+    briefLine: 'ゆっくり進む炎の円を放つ。貫通する。',
     offLine: '追撃：1.5倍のダメージ。近くのほかの相手にも当たる。',
     ultLine: '強化追撃：追加ダメージを与える。',
   },
