@@ -221,7 +221,7 @@ export const BLADES = {
     id: 'prism', kit: { Q: 'binding', W: 'barrier', E: 'singularity', R: 'finalspark' },
     name: 'プリズム・レディアンス', en: 'PRISM RADIANCE', type: 'STAMINA', typeJa: 'スタミナ',
     color: 0xfff3a0, css: '#fff3a0', teeth: 6,
-    atk: 1.35, def: 1.06, mass: 0.95, speed: 13.5, decay: 5.6, spinMax: 1000, cdMul: 1.0, guardMul: 1.0,
+    atk: 1.0, def: 1.06, mass: 0.95, speed: 13.5, decay: 5.6, spinMax: 1000, cdMul: 1.0, guardMul: 1.0,
     desc: '相手の移動を封じ、アリーナの端まで届く光線で撃つ遠距離型。',
   },
   canvas: {
@@ -680,7 +680,7 @@ export const SKILLS = {
   // ---- TURRET ENGINEER: hold ground with machines ------------------------------------
   turret: {
     name: 'オートタレット', en: 'AUTO TURRET', aim: 'ground', cd: 1, big: true, stock: { max: 3, every: 14 },
-    range: 3.5, aoe: 1.1, dur: 40, bigDur: 8, max: 4, cap: 3, reach: 10.5, rate: 0.9, dmg: 10, bigDmg: 38, hp: 2, bump: 9,
+    range: 3.5, aoe: 1.1, dur: 40, bigDur: 8, max: 4, cap: 3, reach: 10.5, rate: 0.9, dmg: 14, bigDmg: 38, hp: 2,
     leash: 10, idle: 8, laserEvery: 90,
     desc: '相手を自動で撃つ砲台を近くに置く（同時に3基まで）。3基ぶん溜めておける（14秒で1基ぶん戻る）。砲台は光線が溜まると、近くの相手を光線で撃つ。',
   },
@@ -987,7 +987,7 @@ export const SKILLS = {
   // ---- PRISM RADIANCE: bind, then burn a line across the arena ---------------
   binding: {
     name: 'ホールドライト', en: 'HOLD LIGHT', aim: 'line', kind: 'shot', icon: 'shot', cd: 10,
-    tele: 0.45, range: 10, speed: 30, radius: 0.8, dmg: 44, snare: 2,
+    tele: 0.45, range: 10, speed: 30, radius: 0.8, dmg: 84, snare: 2,
     desc: '弾を撃ち、当たった相手の移動を2秒間封じる。',
   },
   barrier: {
@@ -997,12 +997,12 @@ export const SKILLS = {
   },
   singularity: {
     name: 'ライトボム', en: 'LIGHT BOMB', aim: 'ground', kind: 'field', icon: 'field', cd: 8, re: 'lightpop',
-    tele: 0.1, range: 11, aoe: 3.4, dur: 5, slowIn: true, slowPct: 0.45, endDmg: 66, endSlow: 1, endSlowPct: 0.45,
+    tele: 0.1, range: 11, aoe: 3.4, dur: 5, slowIn: true, slowPct: 0.45, endDmg: 126, endSlow: 1, endSlowPct: 0.45,
     desc: '狙った地点に球を投げ、5秒間置く（途中で壁に当たると消える）。中の相手は45%のスロウになる。もう一度押すか、5秒経つと爆発する。',
   },
   finalspark: {
     name: 'プリズムレイ', en: 'PRISM RAY', aim: 'line', kind: 'beam', icon: 'beam', cd: 2, ult: true,
-    tele: 0.1, charge: 1, root: true, range: 33, radius: 1.4, dmg: 170, litBonus: 0.25,
+    tele: 0.1, charge: 1, root: true, range: 33, radius: 1.4, dmg: 325, litBonus: 0.25,
     desc: '1秒間溜め、アリーナの端まで届く貫通する光線を放つ。溜めている間は移動できない。直前にスキルを当てていた相手にはダメージが25%増える。',
   },
   lightorb: { name: 'ライトボム', en: 'LIGHT BOMB', aim: 'line', hidden: true, range: 11, speed: 30, radius: 0.7, dmg: 0, friendly: true, opens: 'singularity' },

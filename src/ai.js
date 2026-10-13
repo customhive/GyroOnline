@@ -166,6 +166,8 @@ export class CpuBrain {
     const ahead = (T) => predictAt(foe, me, T);
 
     // Ultimates first.
+    // PRISM RAY is for whoever cannot step out of it: held long enough for the ray to be drawn.
+    if (this.has('finalspark') && d < SKILLS.finalspark.range && Math.max(foe.snare, foe.stun, foe.up) > SKILLS.finalspark.charge * 0.75) return this.use('finalspark', foe.x, foe.z);
     if (this.has('meteor') && !guarded && d < SKILLS.meteor.range + 2 && want(foe.tumble > 0 ? 0.3 : 0)) {
       const p = this.jitter(ahead(SKILLS.meteor.air * 0.85), 0.8);
       return this.use('meteor', p.x, p.z);
@@ -350,6 +352,7 @@ export class CpuBrain {
           else if (d < 3.5 && r() < 0.25) return go(-me.x, -me.z); // only to get away
           break;
         case 'beam':
+          if (S.id === 'finalspark') break; // (see above)
           if (d > (S.range > 8 ? 2.5 : 0) && d < S.range - Math.min(2, S.range * 0.25) && want(foe.tumble > 0.3 ? 0.3 : 0)) return at(this.jitter(ahead((S.charge || 0) * 0.8 + wind), 0.6));
           break;
         case 'kick': {

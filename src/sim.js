@@ -2621,15 +2621,11 @@ export class World {
         case 'turret': {
           // a: overclock time left, b: time to the next shot, c: 1 upgraded, +2 for each blow taken
           if (z.t >= z.T || this.result) { this.endZone(z); break; }
-          // Whoever runs into it is thrown back off it, and it is one blow nearer to breaking. (Counted as they
-          // arrive: standing on it is still one blow.)
+          // Whoever runs over it brings it one blow nearer to breaking. (Counted as they arrive: standing on it is
+          // still one blow.)
           {
             const on = live && d < z.r + opp.radius * 0.6;
-            if (on && !z.on) {
-              const nx = d > 0.05 ? (opp.x - z.x) / d : 1, nz = d > 0.05 ? (opp.z - z.z) / d : 0;
-              if (!fixed(opp)) { this.stopDash(opp); this.knock(opp, nx, nz, S.bump, 0.2, 1.6); }
-              this.hitTurret(z, opp);
-            }
+            if (on && !z.on) this.hitTurret(z, opp);
             z.on = on;
             if (z.dead) break;
           }

@@ -1158,7 +1158,7 @@ console.log('AUTO TURRET: two blows');
   const z = w.own(me, 'turret')[0];
   check(z && z.skill.hp - (z.c >> 1) === 2, 'a turret stands two blows');
   foe.x = z.x; foe.z = z.z - 1.2; w.step(DT);
-  check(!z.dead && z.c >> 1 === 1 && Math.hypot(foe.vx, foe.vz) > 4, 'a body that runs into it takes one off and is thrown back');
+  check(!z.dead && z.c >> 1 === 1 && Math.hypot(foe.vx, foe.vz) < 1, 'a body that runs over it takes one off (and is not thrown back)');
   foe.x = z.x; foe.z = z.z - 1.2; foe.vx = foe.vz = 0; foe.tumble = 0; w.step(DT); w.step(DT);
   check(!z.dead && z.c >> 1 === 1, 'standing on it is still one blow');
   foe.x = 0; foe.z = -8; w.step(DT);
