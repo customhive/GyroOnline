@@ -649,7 +649,10 @@ export const SKILLS = {
   poison: {
     name: 'トキシックライン', en: 'TOXIC LINE', aim: 'self', cd: 1,
     // While it is on: `cost` spin a second, and `speed` times as quick.
-    cost: 4, speed: 1.15, every: 0.3, aoe: 1.4, dur: 3.25, dps: 24, linger: 2,
+    // The trail is laid as a chain of stretches with no gaps between them: a new one is begun every `every` seconds,
+    // and until then the newest runs from where it was begun to wherever the top is now. Each is `aoe` wide either
+    // side and lasts `dur` seconds from when it was begun. (A stretch longer than `reach` is a jump, not a walk: no trail.)
+    cost: 4, speed: 1.15, every: 0.2, reach: 6, aoe: 1.4, dur: 3.25, dps: 24, linger: 2,
     desc: '切り替え式。オンの間、15%加速し、通った跡が毒の床になるが、自分の回転が減り続ける。毒の床に触れた相手は2秒間、ダメージを受ける。',
   },
   glue: {

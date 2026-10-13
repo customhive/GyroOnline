@@ -284,6 +284,21 @@ console.log('VENOM TRAIL (Singed)');
       let up = false; for (let i = 0; i < 90; i++) { d.step(DT); up = up || !!o.air; }
       check(up && v.stats.taken === 0 && o.stats.taken > 30, 'E: a top that dashes into it while it waits is thrown, and its dash does no damage');
     }
+    {
+      // The trail has no gaps, however fast it is laid: every point the top passed through is on it.
+      const d = new World(BLADES.venom, BLADES.gaia, 3), [v, o] = d.tops, P = SKILLS.poison, path = []; let speed = 0;
+      v.x = -9; v.z = 4; v.vx = v.vz = 0; o.x = 0; o.z = -11; v.cd.Q = 0; v.buff = 10;
+      d.cast(v, 'Q', v.x, v.z);
+      for (let i = 0; i < 1.2 / DT; i++) { d.issueMove(v, 9, 4); o.x = 0; o.z = -11; o.vx = o.vz = 0; d.step(DT); speed = Math.max(speed, Math.hypot(v.vx, v.vz)); if (i % 6 === 0) path.push([v.x, v.z]); }
+      const on = ([x, z]) => d.zones.some((q) => { if (q.kind !== 'poison' || q.dead) return false; const L2 = q.dx * q.dx + q.dz * q.dz, u = L2 > 0 ? Math.max(0, Math.min(1, ((x - q.x) * q.dx + (z - q.z) * q.dz) / L2)) : 0; return Math.hypot(x - q.x - q.dx * u, z - q.z - q.dz * u) < q.r; });
+      const n = d.zones.filter((q) => q.kind === 'poison').length;
+      check(speed > 17 && path.every(on), `Q: laid at full speed (${speed.toFixed(0)} a second), the trail still has no gaps (${path.filter(on).length}/${path.length} points on it, in ${n} stretches)`);
+      o.x = (path[4][0] + path[5][0]) / 2; o.z = 4 + P.aoe * 0.6; o.vx = o.vz = 0; d.step(DT);
+      check(o.poison > 0, 'Q: a top standing on it between two of its joints is poisoned');
+      const far = d.zones.length; d.flash(v, v.x, v.z - 4); d.step(DT);
+      const last = d.zones[d.zones.length - 1];
+      check(Math.hypot(last.dx, last.dz) < 0.5, 'Q: the trail does not stretch across a FLASH');
+    }
     // TOXIC LINE is no longer shut off for its owner when spin runs low.
     ({ w, me, foe, run, saw } = setup('venom', 9));
     w.cast(me, 'Q', me.x, me.z); me.spin = 6; run(0.5);

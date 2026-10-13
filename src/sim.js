@@ -66,6 +66,7 @@ export function makeTop(side, blade) {
     spray: null,           // a burst of shots being fired one after another: { skill, n, every, acc, dx, dz }
     echo: null,            // a follow-up that lands a second time a moment later: { t, wi, to: [sides] }
     grab: 0,               // BACK TOSS is waiting for a body hit: time left
+    trailZ: null,          // TOXIC LINE: the stretch of trail still being drawn out behind this top
     volley: null,          // blows landing one after another on whoever is nearest: { skill, n, every, acc, off }
     rayA: null,            // the bearing of a beam that turns to follow the cursor
     dbl: 0,                // the next body hit lands twice
@@ -427,7 +428,7 @@ export class World {
     if (this.practice && t.side) { t.x = (t.side - 1) * 3; t.z = 0; t.vx = t.vz = 0; }
     t.back = 0;
     t.gone = null; t.prey = t.dmarkTo = -1; t.quills = t.quillT = 0; t.realm = 0; t.flash = 1;
-    t.silence = t.dbl = t.odT = t.deN = t.deT = t.ardent = t.shrugCd = t.rockT = t.kickT = t.kickHit = 0; t.shredK = 1; t.bleedBy = t.ardentBy = -1; t.spray = null; t.volley = null; t.echo = null; t.grab = 0; t.rayA = null; t.once = false;
+    t.silence = t.dbl = t.odT = t.deN = t.deT = t.ardent = t.shrugCd = t.rockT = t.kickT = t.kickHit = 0; t.shredK = 1; t.bleedBy = t.ardentBy = -1; t.spray = null; t.volley = null; t.echo = null; t.grab = 0; t.trailZ = null; t.rayA = null; t.once = false;
     t.spin = t.spinMax;
     t.cmd = t.cast = t.dash = t.air = t.out = t.blink = t.charge = t.orbs = t.tether = t.chan = t.ret = t.hold = null;
     t.tumble = t.launch = t.guard = t.slow = t.hitCd = t.empower = 0;
@@ -475,6 +476,8 @@ export class World {
     const lim = ARENA.R - t.radius - 0.2, r = Math.hypot(nx, nz);
     if (r > lim) { nx *= lim / r; nz *= lim / r; }
     const fx = t.x, fz = t.z;
+    // (A trail being laid does not stretch across the jump.)
+    t.trailZ = null;
     t.flash--;
     t.x = nx; t.z = nz;
     this.emit('flash', { top: t, fx, fz });
@@ -2197,9 +2200,12 @@ export class World {
       else {
         t.spin -= S.cost * dt;
         t.drop -= dt;
-        if (t.drop <= 0) { t.drop = S.every; this.zone(t, S, t.x, t.z, null, true); }
+        // The newest stretch follows the top; a new one is begun now and then, where the last one ends.
+        let q = t.trailZ && !t.trailZ.dead && this.zones.includes(t.trailZ) ? t.trailZ : null;
+        if (q) { const dx = t.x - q.x, dz = t.z - q.z; if (Math.hypot(dx, dz) > S.reach) q = null; else { q.dx = dx; q.dz = dz; } }
+        if (!q || t.drop <= 0) { t.drop = S.every; t.trailZ = this.zone(t, S, t.x, t.z, null, true); }
       }
-    }
+    } else t.trailZ = null;
     if (t.charge) {
       // Drawing breath: it mends a little all the while.
       if (t.charge.skill.chargeHeal) t.spin = Math.min(t.spinMax, t.spin + t.charge.skill.chargeHeal * t.spinMax * dt);
@@ -2577,7 +2583,12 @@ export class World {
           break;
         case 'poison':
           if (z.t >= z.T) { z.dead = true; break; }
-          for (const o of this.inZone(z, t, 0.3)) o.poison = S.linger;
+          // A stretch of trail: from where it was begun (x, z) to where it ends (dx, dz further on).
+          if (!this.result) for (const o of this.foes(t)) {
+            if (!targetable(o)) continue;
+            const L2 = z.dx * z.dx + z.dz * z.dz, u = L2 > 0 ? clamp(((o.x - z.x) * z.dx + (o.z - z.z) * z.dz) / L2, 0, 1) : 0;
+            if (Math.hypot(o.x - z.x - z.dx * u, o.z - z.z - z.dz * u) < z.r + o.radius * 0.3) o.poison = S.linger;
+          }
           break;
         case 'glue':
           if (z.t >= z.T) { this.endZone(z); break; }

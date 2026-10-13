@@ -1212,10 +1212,14 @@ export class View {
         timer();
         if (dt > 0) for (let i = 0; i < 5; i++) { const a = Math.random() * 6.283, r = Math.sqrt(Math.random()) * z.r; P.emit(z.x + Math.cos(a) * r, gy + 2 + Math.random() * 2.5, z.z + Math.sin(a) * r, 5, -5, 2, 0.7, 0.2, Math.random() < 0.5 ? 0xffffff : ICE, 0, 0.2); }
         return true;
-      case 'poison':
-        G.ring(z.x, z.z, 0, z.r, TOXIC, 0.2 * Math.min(1, (z.T - z.t) / 1.2));
+      case 'poison': {
+        // A stretch of trail: a band from where it was begun to where it ends, rounded at the far end.
+        const a = 0.2 * Math.min(1, (z.T - z.t) / 1.2), len = Math.hypot(z.dx, z.dz);
+        if (len > 0.05) G.rect(z.x, z.z, z.dx / len, z.dz / len, len, z.r, TOXIC, a);
+        G.ring(z.x + z.dx, z.z + z.dz, 0, z.r, TOXIC, a * 0.5);
         if (dt > 0 && Math.random() < 0.06) speck(TOXIC, 1 + Math.random() * 2, -1);
         return true;
+      }
       case 'glue':
         G.ring(z.x, z.z, 0, z.r, 0xffe9a8, 0.13 * fade);
         G.ring(z.x, z.z, z.r - 0.14, z.r, col, 0.85 * fade);
