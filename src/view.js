@@ -1027,6 +1027,8 @@ export class View {
       }
       // LUNAR ARSENAL: the weapon in hand as a band round the top, so the other side can tell which it is.
       if (t.blade.id === 'lunar' && !t.out && !t.air) G.ring(t.x, t.z, 1.72, 1.92, SKILLS.arsenal.tints[t.wm], 0.9);
+      // BACK TOSS, waiting for a touch: a band that tightens as its time runs out.
+      if (t.grab > 0 && !t.out && !t.air) G.ring(t.x, t.z, 1.5, 1.5 + 0.5 * Math.min(1, t.grab / SKILLS.fling.arm) + 0.12 * Math.sin(this.time * 16), c, 0.75);
       // ONSLAUGHT: how far the blows reach while they last.
       if (t.volley && !t.out && !t.air) G.ring(t.x, t.z, t.volley.skill.range - 0.12, t.volley.skill.range, t.volley.skill.tint, 0.55);
       if (t.charge && t.charge.skill.id === 'realm') {

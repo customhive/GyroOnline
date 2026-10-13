@@ -65,6 +65,7 @@ export function makeTop(side, blade) {
     bleedBy: -1,           // who made it bleed
     spray: null,           // a burst of shots being fired one after another: { skill, n, every, acc, dx, dz }
     echo: null,            // a follow-up that lands a second time a moment later: { t, wi, to: [sides] }
+    grab: 0,               // BACK TOSS is waiting for a body hit: time left
     volley: null,          // blows landing one after another on whoever is nearest: { skill, n, every, acc, off }
     rayA: null,            // the bearing of a beam that turns to follow the cursor
     dbl: 0,                // the next body hit lands twice
@@ -153,6 +154,8 @@ export function moveTop(t, dt, opp) {
   const eased = t.slow > 0 ? 1 - (t.slowK || 0.4) : 1;
   const slow = (t.ground > 0 ? Math.min(0.4, eased) : eased) * ((B && B.speed) || 1) * (t.haste > 0 ? 1.3 : 1) * (t.hold ? 0.8 : 1) * (t.blade.style ? 1 + t.blade.style.speed * (t.stack || 0) : 1)
     * (t.blade.aura && t.stack >= t.blade.aura.hits ? t.blade.aura.speed : 1)
+    // TOXIC LINE: quicker while the trail is being laid.
+    * (t.toggle ? SKILLS.poison.speed : 1)
     * (t.blade.surf && t.scar <= 0 && Math.hypot(t.x, t.z) > ARENA.R - 3.4 && !rimOpen(t.x, t.z) ? t.blade.surf : 1);
   // Stunned tops stay put too, except while a hit is still carrying them.
   const held = rooted(t) || ((t.stun > 0 || t.snare > 0) && t.tumble <= 0);
@@ -261,7 +264,7 @@ function ghost(t) {
   return {
     blade: t.blade, x: t.x, z: t.z, vx: t.vx, vz: t.vz, spin: t.spin, spinMax: t.spinMax,
     dir: t.dir, radius: t.radius, tumble: t.tumble, slow: t.slow, phase: t.phase, stack: t.stack,
-    ground: t.ground, buff: t.buff, haste: t.haste, up: t.up, egg: t.egg, chan: t.chan, hold: t.hold, stun: t.stun, snare: t.snare, slowK: t.slowK, still: t.still,
+    ground: t.ground, buff: t.buff, haste: t.haste, up: t.up, egg: t.egg, chan: t.chan, hold: t.hold, stun: t.stun, snare: t.snare, slowK: t.slowK, still: t.still, toggle: t.toggle,
     cmd: t.cmd ? { ...t.cmd } : null, dash: t.dash ? { ...t.dash } : null,
     blink: t.blink ? { ...t.blink } : null, charge: t.charge,
   };
@@ -424,7 +427,7 @@ export class World {
     if (this.practice && t.side) { t.x = (t.side - 1) * 3; t.z = 0; t.vx = t.vz = 0; }
     t.back = 0;
     t.gone = null; t.prey = t.dmarkTo = -1; t.quills = t.quillT = 0; t.realm = 0; t.flash = 1;
-    t.silence = t.dbl = t.odT = t.deN = t.deT = t.ardent = t.shrugCd = t.rockT = t.kickT = t.kickHit = 0; t.shredK = 1; t.bleedBy = t.ardentBy = -1; t.spray = null; t.volley = null; t.echo = null; t.rayA = null; t.once = false;
+    t.silence = t.dbl = t.odT = t.deN = t.deT = t.ardent = t.shrugCd = t.rockT = t.kickT = t.kickHit = 0; t.shredK = 1; t.bleedBy = t.ardentBy = -1; t.spray = null; t.volley = null; t.echo = null; t.grab = 0; t.rayA = null; t.once = false;
     t.spin = t.spinMax;
     t.cmd = t.cast = t.dash = t.air = t.out = t.blink = t.charge = t.orbs = t.tether = t.chan = t.ret = t.hold = null;
     t.tumble = t.launch = t.guard = t.slow = t.hitCd = t.empower = 0;
@@ -1348,18 +1351,11 @@ export class World {
         this.emit('cone', { top: t, skill: S, dx: c.dx, dz: c.dz, hit, target: tg });
         break;
       }
-      case 'fling': {
-        // Over the shoulder: the target lands on the far side of the thrower.
-        let dx = t.x - opp.x, dz = t.z - opp.z;
-        const d = Math.hypot(dx, dz) || 1;
-        let x = t.x + (dx / d) * S.dist, z = t.z + (dz / d) * S.dist;
-        const lim = ARENA.R - 1.6, r = Math.hypot(x, z);
-        if (r > lim) { x *= lim / r; z *= lim / r; }
-        opp.air = { t: 0, T: S.air, sx: opp.x, sz: opp.z, tx: x, tz: z, skill: S, by: t.side };
-        opp.cmd = opp.dash = opp.cast = opp.chan = opp.charge = null; opp.vx = opp.vz = 0; opp.up = 0;
-        this.emit('fling', { top: t, target: opp, tx: x, tz: z });
+      case 'fling':
+        // Not a throw yet: the next body hit will be.
+        t.grab = S.arm;
+        this.emit('buff', { top: t, skill: S });
         break;
-      }
       case 'poison':
         t.toggle = !t.toggle; t.drop = 0;
         this.emit('buff', { top: t, skill: S, off: !t.toggle });
@@ -2001,6 +1997,7 @@ export class World {
     }
     t.snare = Math.max(0, t.snare - dt);
     t.hitCd = Math.max(0, t.hitCd - dt);
+    t.grab = Math.max(0, t.grab - dt);
     t.empower = Math.max(0, t.empower - dt);
     t.up = Math.max(0, t.up - dt);
     t.ground = Math.max(0, t.ground - dt);
@@ -2194,9 +2191,9 @@ export class World {
       t.toggle = false;
     }
     if (t.toggle) {
-      // POISON TRAIL: paid for in spin, and it shuts itself off before that runs dry.
+      // POISON TRAIL: paid for in spin, for as long as it is left on.
       const S = SKILLS.poison;
-      if (t.spin <= S.cost * 3 || t.egg > 0) t.toggle = false;
+      if (t.egg > 0) t.toggle = false;
       else {
         t.spin -= S.cost * dt;
         t.drop -= dt;
@@ -2274,7 +2271,8 @@ export class World {
       const by = this.tops[a.by];
       t.tumble = Math.max(t.tumble, 0.3);
       const hit = this.hurt(t, (S.dmg * (1 + (S.massMul || 0) * (t.mass - 1)) * by.blade.atk) / t.blade.def, by, S.id);
-      if (S.id === 'fling') { if (this.own(by, 'glue').some((q) => Math.hypot(q.x - x, q.z - z) < q.r)) this.snare(t, S.snare); } else if (S.stun) this.stun(t, S.stun);
+      // BACK TOSS: down onto the thrower's own adhesive is a harder landing, and a stun.
+      if (S.id === 'fling') { if (this.own(by, 'glue').some((q) => Math.hypot(q.x - x, q.z - z) < q.r)) { this.hurt(t, (S.glueDmg * by.blade.atk) / t.blade.def, by, S.id); this.stun(t, S.stun); } } else if (S.stun) this.stun(t, S.stun);
       if (S.slow) this.slowBy(t, S.slow, S.slowPct);
       by.stats.skillHits++;
       // THE SHOW STOPPER: whoever else of the thrower's enemies stands where it comes down is caught too.
@@ -3032,6 +3030,13 @@ export class World {
     let nx = b.x - a.x, nz = b.z - a.z;
     const d = Math.hypot(nx, nz), min = a.radius + b.radius;
     if (d >= min) return;
+    // BACK TOSS, waiting: this touch is the throw (not of a guard, nor of an egg).
+    for (const [s, v] of [[a, b], [b, a]]) {
+      if (!(s.grab > 0) || this.result || v.guard > 0 || v.egg > 0 || s.stun > 0 || s.up > 0) continue;
+      s.grab = 0;
+      this.toss(s, v);
+      return;
+    }
     // CEASE AND DESIST: anyone but its target is knocked aside, and the charge goes on.
     for (const [s, v] of [[a, b], [b, a]]) {
       const h = s.dash;
@@ -3357,6 +3362,19 @@ export class World {
     const C = SKILLS.arsenal.chak;
     t.chak = Math.min(C.max, t.chak + n);
     t.chakT = C.dur;
+  }
+
+  // BACK TOSS: over the shoulder, so the target lands on the far side of the thrower.
+  toss(t, opp) {
+    const S = SKILLS.fling;
+    let dx = t.x - opp.x, dz = t.z - opp.z;
+    const d = Math.hypot(dx, dz) || 1;
+    let x = t.x + (dx / d) * S.dist, z = t.z + (dz / d) * S.dist;
+    const lim = ARENA.R - 1.6, r = Math.hypot(x, z);
+    if (r > lim) { x *= lim / r; z *= lim / r; }
+    opp.air = { t: 0, T: S.air, sx: opp.x, sz: opp.z, tx: x, tz: z, skill: S, by: t.side };
+    opp.cmd = opp.dash = opp.cast = opp.chan = opp.charge = null; opp.vx = opp.vz = 0; opp.up = 0;
+    this.emit('fling', { top: t, target: opp, tx: x, tz: z });
   }
 
   // A chakram that struck nothing does not come back.

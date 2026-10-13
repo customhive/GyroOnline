@@ -249,15 +249,46 @@ console.log('VENOM TRAIL (Singed)');
   let { w, me, foe, run, saw } = setup('venom', 8);
   const free = setup('venom', 8); free.run(1);
   w.cast(me, 'Q', me.x, me.z); run(1);
-  check(me.toggle && Math.abs(me.spin - free.me.spin) < 0.5, 'Q: the trail costs no spin');
+  check(me.toggle && Math.abs(free.me.spin - me.spin - SKILLS.poison.cost) < 0.6, 'Q: the trail is paid for in spin, a little every second it is on');
+  {
+    // ...and it is quicker on its feet while it lays one.
+    const go = (on) => { const s = setup('venom', 20); s.foe.x = 0; s.foe.z = -11; s.me.x = -8; s.me.z = 6; s.me.vx = s.me.vz = 0; if (on) s.w.cast(s.me, 'Q', s.me.x, s.me.z); for (let i = 0; i < 90; i++) { s.w.issueMove(s.me, 8, 6); s.foe.x = 0; s.foe.z = -11; s.foe.vx = s.foe.vz = 0; s.w.step(DT); } return s.me.x + 8; };
+    const off = go(false), on = go(true);
+    check(on > off * 1.08 && on < off * 1.2, `Q on: about 15% faster (${off.toFixed(1)} -> ${on.toFixed(1)} in the same time)`);
+  }
+  foe.x = me.x + 5; foe.z = me.z; foe.vx = foe.vz = me.vx = me.vz = 0;
   w.cast(me, 'W', foe.x, foe.z); run(0.1);
   check(foe.slowK === 0.7 && foe.ground > 0, 'W: 70% slow and no dashing on the adhesive');
   run(3);
   check(!w.zones.some((z) => z.kind === 'glue'), 'W: lasts 3 seconds');
   ({ w, me, foe, run, saw } = setup('venom', 3));
-  w.cast(me, 'W', me.x, me.z + 5.5); w.cast(me, 'E', me.x, me.z);
-  for (let i = 0; i < 80; i++) w.step(DT);
-  check(foe.snare > 0 && foe.z > me.z, 'E: thrown over the shoulder into the adhesive, the target is rooted');
+  {
+    const T = SKILLS.fling, k = BLADES.venom.atk / foe.blade.def, apart = () => { me.x = 0; me.z = 0; foe.x = 0; foe.z = -6; me.vx = me.vz = foe.vx = foe.vz = 0; me.cmd = foe.cmd = null; };
+    apart(); w.cast(me, 'W', me.x, me.z + 5.5); w.cast(me, 'E', me.x, me.z);
+    for (let i = 0; i < 30; i++) { apart(); w.step(DT); }
+    check(me.grab > 0 && !foe.air && foe.stats.taken === 0 && me.cd.E > 7, 'E: pressed, it waits for a body hit; nothing is thrown yet');
+    foe.z = -2.3; const t0 = foe.stats.taken; w.step(DT);
+    check(!!foe.air && me.grab === 0, 'E: the next touch is the throw');
+    for (let i = 0; i < 80; i++) w.step(DT);
+    check(foe.stun > 0 && foe.snare === 0 && foe.z > me.z && Math.abs(foe.stats.taken - t0 - (T.dmg + T.glueDmg) * k) < 2, 'E: thrown over the shoulder onto the adhesive, the target takes more and is stunned, not rooted');
+    ({ w, me, foe, run, saw } = setup('venom', 3));
+    apart(); w.cast(me, 'E', me.x, me.z);
+    for (let i = 0; i < (T.arm + 0.1) / DT; i++) { apart(); w.step(DT); }
+    foe.z = -2.3; w.step(DT);
+    check(me.grab === 0 && !foe.air, 'E: left waiting two seconds it lapses, and a touch after that is only a touch');
+    {
+      // Waiting, it answers a dash: whoever charges in is thrown, and the blow they were bringing never lands.
+      const d = new World(BLADES.venom, BLADES.azure, 3), [v, o] = d.tops;
+      v.x = 0; v.z = 0; o.x = 0; o.z = -5; v.vx = v.vz = o.vx = o.vz = 0; v.still = true; v.cd.E = 0; o.cd.E = 0;
+      d.cast(v, 'E', v.x, v.z); d.cast(o, 'E', v.x, v.z);
+      let up = false; for (let i = 0; i < 90; i++) { d.step(DT); up = up || !!o.air; }
+      check(up && v.stats.taken === 0 && o.stats.taken > 30, 'E: a top that dashes into it while it waits is thrown, and its dash does no damage');
+    }
+    // TOXIC LINE is no longer shut off for its owner when spin runs low.
+    ({ w, me, foe, run, saw } = setup('venom', 9));
+    w.cast(me, 'Q', me.x, me.z); me.spin = 6; run(0.5);
+    check(me.toggle && me.spin < 6, 'Q: left on with almost nothing left, it stays on');
+  }
 }
 
 console.log('ARCANE SHOOTER (Ezreal)');

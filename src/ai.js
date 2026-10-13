@@ -6,7 +6,7 @@ import { ARENA, KEYS, SKILLS, FLASH, skillOf } from './config.js';
 import { intercept, predictAt, targetable, spinRatio, rooted, wallOf, rimOpen } from './sim.js';
 
 // Blades that fight from range back off when the other top gets this close.
-const KEEP_AWAY = { curtain: 7.5, gear: 6.5, frost: 5.5, sand: 5, prism: 7, canvas: 6.5, star: 7, lunar: 7.5, arcane: 7, hex: 6.5, cosmos: 5.5, pirate: 5, spark: 5.5, fox: 5 };
+const KEEP_AWAY = { curtain: 7.5, gear: 6.5, frost: 5.5, sand: 5, prism: 7, canvas: 6.5, star: 7, lunar: 7.5, arcane: 7, hex: 6.5, cosmos: 5.5, pirate: 5, spark: 5.5, fox: 5, venom: 8 };
 
 export class CpuBrain {
   constructor(world, me, level) {
@@ -151,7 +151,8 @@ export class CpuBrain {
       const S = w.aimSkill(me, k);
       if (skillOf(me, k).rapid && d < S.range + 1.5 && w.canCast(me, k)) { const p = this.jitter({ x: foe.x + foe.vx * 0.1, z: foe.z + foe.vz * 0.1 }, 0.5); return w.cast(me, k, p.x, p.z); }
     }
-    if (this.has('fling') && w.rng() < L.cast + 0.2) return this.use('fling');
+    // (Armed only with the other top close enough to run into soon: it waits two seconds, no longer.)
+    if (this.has('fling') && !me.grab && d < 5.5 && w.rng() < L.cast + 0.2) return this.use('fling');
     if (this.again('brokenwings') && d < 6.5 && this.has('brokenwings')) return this.use('brokenwings', foe.x, foe.z);
     return false;
   }

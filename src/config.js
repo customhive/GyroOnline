@@ -648,8 +648,9 @@ export const SKILLS = {
   // ---- VENOM TRAIL: make them chase you ---------------------------------------------
   poison: {
     name: 'トキシックライン', en: 'TOXIC LINE', aim: 'self', cd: 1,
-    cost: 0, every: 0.3, aoe: 1.4, dur: 3.25, dps: 18, linger: 2,
-    desc: '切り替え式。オンの間、通った跡が毒の床になる。触れた相手は2秒間、毒のダメージを受ける。',
+    // While it is on: `cost` spin a second, and `speed` times as quick.
+    cost: 4, speed: 1.15, every: 0.3, aoe: 1.4, dur: 3.25, dps: 24, linger: 2,
+    desc: '切り替え式。オンの間、15%加速し、通った跡が毒の床になるが、自分の回転が減り続ける。毒の床に触れた相手は2秒間、ダメージを受ける。',
   },
   glue: {
     name: 'スティッキーフロア', en: 'STICKY FLOOR', aim: 'ground', cd: 13,
@@ -657,9 +658,11 @@ export const SKILLS = {
     desc: '狙った地点に粘着床を3秒間置く。中の相手は70%のスロウになり、突進・瞬間移動・跳躍が使えない。',
   },
   fling: {
-    name: 'バックトス', en: 'BACK TOSS', aim: 'self', cd: 8, need: 'range',
-    range: 3.6, dist: 5.5, air: 0.55, height: 3.2, dmg: 46, snare: 2,
-    desc: '密着した相手を自分の背後へ投げる。粘着床に落とすと、2秒間、移動を封じる。',
+    name: 'バックトス', en: 'BACK TOSS', aim: 'self', cd: 8,
+    // Pressed, it waits (`arm` seconds) for the next body hit, and that is the throw.
+    // Coming down on its own adhesive, the target takes `glueDmg` more and is stunned.
+    arm: 2, dist: 5.5, air: 0.55, height: 3.2, dmg: 46, glueDmg: 30, stun: 1,
+    desc: '2秒以内の次の体当たりで、相手を自分の背後へ投げる。粘着床に落とすと、追加ダメージを与え、1秒間スタンさせる。',
   },
   insanity: {
     name: 'ケミカルブースト', en: 'CHEMICAL BOOST', aim: 'self', cd: 2, ult: true,
