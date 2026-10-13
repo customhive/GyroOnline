@@ -694,7 +694,7 @@ export class View {
       } else if (kind === 'turret') {
         const foe = this.world.other(z.owner);
         o.group.rotation.y = Math.atan2(-(foe.z - z.z), foe.x - z.x);
-        o.group.scale.setScalar(z.c ? 1.6 : 1);
+        o.group.scale.setScalar(z.c & 1 ? 1.6 : 1);
         o.mat.color.set(c).multiplyScalar(z.a > 0 ? 2.4 + Math.sin(this.time * 40) : 1.4);
       } else {
         const S = z.skill;
@@ -1272,6 +1272,8 @@ export class View {
       case 'turret': case 'sentry':
         if (mine) G.ring(z.x, z.z, S.reach - 0.05, S.reach, c, 0.12);
         G.ring(z.x, z.z, 1.2, 1.35, col, 0.7);
+        // What it can still take: one bright arc for each blow, as on a keg.
+        if (S.hp) { const n = S.hp - (z.c >> 1); for (let i = 0; i < n; i++) { const a0 = -Math.PI / 2 + (i - n / 2) * 0.75 + 0.08; G.ring(z.x, z.z, 1.5, 1.75, 0xffffff, 0.9, 0.1, a0, a0 + 0.59); } }
         return true;
       case 'arise': {
         const idle = !(z.c & 1) && Math.hypot(z.owner.x - z.x, z.owner.z - z.z) > S.leash;

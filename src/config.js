@@ -680,9 +680,9 @@ export const SKILLS = {
   // ---- TURRET ENGINEER: hold ground with machines ------------------------------------
   turret: {
     name: 'オートタレット', en: 'AUTO TURRET', aim: 'ground', cd: 1, big: true, stock: { max: 3, every: 14 },
-    range: 3.5, aoe: 1.1, dur: 40, bigDur: 8, max: 4, cap: 3, reach: 10.5, rate: 0.9, dmg: 20, bigDmg: 38,
+    range: 3.5, aoe: 1.1, dur: 40, bigDur: 8, max: 4, cap: 3, reach: 10.5, rate: 0.9, dmg: 10, bigDmg: 38, hp: 2, bump: 9,
     leash: 10, idle: 8, laserEvery: 90,
-    desc: '相手を自動で撃つ砲台を近くに置く（同時に3基まで）。3基ぶん溜めておける（14秒で1基ぶん戻る）。Wを当てると砲台の光線が溜まり、Eを当てると全基がすぐに光線を撃つ。自分が離れて8秒経つと止まる。体当たりを受けると壊れる。',
+    desc: '相手を自動で撃つ砲台を近くに置く（同時に3基まで）。3基ぶん溜めておける（14秒で1基ぶん戻る）。砲台は光線が溜まると、近くの相手を光線で撃つ。',
   },
   turretlaser: { name: 'オートタレット', en: 'AUTO TURRET', aim: 'line', hidden: true, range: 10, radius: 0.6, dmg: 34 },
   biglaser: { name: 'オートタレット', en: 'AUTO TURRET', aim: 'line', hidden: true, range: 10, radius: 0.9, dmg: 60 },
@@ -695,18 +695,18 @@ export const SKILLS = {
     name: 'ロケットクラスター', en: 'ROCKET CLUSTER', aim: 'ground', cd: 7, tele: 0.35, big: true,
     range: 12, near: 3, aoe: 0.8, speed: 30, radius: 0.55, dmg: 44, next: 0.2, charge: 0.2, kb: 2, tumble: 0, launch: 0,
     fan: 5, spread: 0.9, volleys: 4, lag: 2.2,
-    desc: '弾を5発撃つ。狙った地点で1つに集まり、そのまま直進する。2発目以降はダメージが80%減る。',
+    desc: '弾を5発撃つ。狙った地点で1つに集まり、そのまま直進する。2発目以降はダメージが80%減る。1発当てるごとに、すべての砲台の光線が20%溜まる。',
   },
   grenade: {
     name: 'ショックグレネード', en: 'SHOCK GRENADE', aim: 'ground', cd: 11, tele: 0.15, big: true,
     range: 8.8, aoe: 3, bigAoe: 4.3, delay: 0.55, core: 1.6, bigCore: 2.8, dmg: 56, bigDmg: 96, stun: 1.5, slow: 2, slowPct: 0.35, bigSlowPct: 0.8,
     bounces: 3, hop: 3.4,
-    desc: '狙った地点に爆弾を投げる。中心で当てると1.5秒間スタンさせ、外側は2秒間35%のスロウにする。当たると自分の砲台がすぐに光線を撃つ。',
+    desc: '狙った地点に爆弾を投げる。中心で当てると1.5秒間スタンさせ、外側は2秒間35%のスロウにする。当てると、すべての砲台の光線がすぐに溜まる。',
   },
   upgrade: {
     name: 'オーバーホール', en: 'OVERHAUL', aim: 'self', cd: 2, ult: true,
     dur: 10,
-    desc: '10秒以内の次のQ・W・Eを強化する（Q＝8秒で壊れる大型の砲台／W＝4連射で20発／E＝3回跳ねて3回爆発）。',
+    desc: '10秒以内の次のQ・W・Eを強化する。',
   },
   // ---- SAND EMPEROR: soldiers fight, the emperor shoves ------------------------------
   conquer: {

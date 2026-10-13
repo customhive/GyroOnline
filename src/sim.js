@@ -319,11 +319,13 @@ export function intercept(sx, sz, target, opp, speed, delay = 0) {
 // Fills in what a zone's kind implies. Also used when one arrives over the network.
 export function initZone(z) {
   const S = (z.skill = SKILLS[z.kind]);
-  z.r = (z.c && S.bigAoe) || S.aoe || S.radius || 1;
+  // (A turret's c is two things: 1 for the upgraded one, and 2 for every blow it has taken.)
+  const big = z.kind === 'turret' ? z.c & 1 : z.c;
+  z.r = (big && S.bigAoe) || S.aoe || S.radius || 1;
   // A wall as long as it was made.
   if (S.grown) z.half = z.a;
   if (S.star) z.r *= 1 + z.c * 0.005;
-  z.T = z.kind === 'divide' ? S.travel / S.speed + S.hold : (z.c && S.bigDur) || S.dur || S.delay || 1;
+  z.T = z.kind === 'divide' ? S.travel / S.speed + S.hold : (big && S.bigDur) || S.dur || S.delay || 1;
   if (S.grow) z.r = Math.min(S.aoe, S.r0 + ((S.aoe - S.r0) * z.t) / S.grow); // a storm that is still spreading
   return z;
 }
@@ -1190,7 +1192,7 @@ export class World {
         break;
       case 'turret': {
         // The upgraded one comes on top of the three; of the ordinary ones the oldest makes room.
-        const plain = this.own(t, 'turret').filter((q) => !q.c);
+        const plain = this.own(t, 'turret').filter((q) => !(q.c & 1));
         if (!big && plain.length >= S.cap) this.endZone(plain[0]);
         this.zone(t, S, c.ax, c.az, { c: big ? 1 : 0, b: 0.5 });
         break;
@@ -2617,12 +2619,19 @@ export class World {
           for (const o of this.inZone(z, t, 0)) { o.ground = 0.25; this.slowBy(o, 0.25, S.slowPct); }
           break;
         case 'turret': {
-          // a: overclock time left, b: time to the next shot, c: upgraded
+          // a: overclock time left, b: time to the next shot, c: 1 upgraded, +2 for each blow taken
           if (z.t >= z.T || this.result) { this.endZone(z); break; }
-          if (live && d < z.r + opp.radius * 0.6) {
-            this.endZone(z);
-            this.emit('blast', { top: opp, skill: S, x: z.x, z: z.z, r: 1.6, hit: 0, target: null });
-            break;
+          // Whoever runs into it is thrown back off it, and it is one blow nearer to breaking. (Counted as they
+          // arrive: standing on it is still one blow.)
+          {
+            const on = live && d < z.r + opp.radius * 0.6;
+            if (on && !z.on) {
+              const nx = d > 0.05 ? (opp.x - z.x) / d : 1, nz = d > 0.05 ? (opp.z - z.z) / d : 0;
+              if (!fixed(opp)) { this.stopDash(opp); this.knock(opp, nx, nz, S.bump, 0.2, 1.6); }
+              this.hitTurret(z, opp);
+            }
+            z.on = on;
+            if (z.dead) break;
           }
           z.a = Math.max(0, z.a - dt); z.b -= dt;
           // dx: how long its maker has been far away, dz: laser charge
@@ -2631,13 +2640,13 @@ export class World {
           z.dz = Math.min(1, z.dz + dt / S.laserEvery);
           if (z.dz >= 1 && live && d < SKILLS.turretlaser.range) {
             z.dz = 0;
-            this.lineHit(t, z.c ? SKILLS.biglaser : SKILLS.turretlaser, z.x, z.z, (opp.x - z.x) / (d || 1), (opp.z - z.z) / (d || 1));
+            this.lineHit(t, z.c & 1 ? SKILLS.biglaser : SKILLS.turretlaser, z.x, z.z, (opp.x - z.x) / (d || 1), (opp.z - z.z) / (d || 1));
           }
           if (z.b <= 0 && live && d < S.reach) {
-            const shot = z.c ? SKILLS.bigshot : SKILLS.turretshot, lead = d / shot.speed;
+            const shot = z.c & 1 ? SKILLS.bigshot : SKILLS.turretshot, lead = d / shot.speed;
             const ax = opp.x + opp.vx * lead - z.x, az = opp.z + opp.vz * lead - z.z, n = Math.hypot(ax, az) || 1;
-            this.fire(t, shot, ax / n, az / n, { x: z.x, z: z.z, dmg: z.c ? S.bigDmg : S.dmg });
-            z.b = S.rate * (z.a > 0 ? 0.45 : 1) * (z.c ? 0.7 : 1);
+            this.fire(t, shot, ax / n, az / n, { x: z.x, z: z.z, dmg: z.c & 1 ? S.bigDmg : S.dmg });
+            z.b = S.rate * (z.a > 0 ? 0.45 : 1) * (z.c & 1 ? 0.7 : 1);
           }
           break;
         }
@@ -3039,7 +3048,18 @@ export class World {
     this.emit('blast', { top: by, skill: z.skill, x: z.x, z: z.z, r: 1.4, hit: 0, target: null });
   }
   // Every keg an area of effect reaches.
+  // An AUTO TURRET takes a blow: from a body, or from anything that would have hurt a top standing there.
+  hitTurret(z, by) {
+    if (z.dead) return;
+    z.c += 2;
+    const left = z.skill.hp - (z.c >> 1);
+    this.emit('blast', { top: by, skill: z.skill, x: z.x, z: z.z, r: left > 0 ? 0.9 : 1.6, hit: 0, target: null });
+    if (left <= 0) this.endZone(z);
+  }
+
   hitKegs(by, S, inside) {
+    // (The other side's turrets are struck by whatever sweeps over them, as the kegs are.)
+    if (S.dmg || S.dps || S.land) for (const q of this.zones) if (q.kind === 'turret' && !q.dead && q.owner.team !== by.team && q.owner.realm === by.realm && inside(q)) this.hitTurret(q, by);
     if (S.id === 'keg') return;
     for (const q of this.zones) if (q.kind === 'keg' && !q.dead && inside(q)) this.hitKeg(q, by);
   }
@@ -3558,6 +3578,12 @@ export class World {
       const v = this.foes(p.owner).find((q) => targetable(q) && !(p.hit & (1 << q.side)) && Math.hypot(q.x - p.x, q.z - p.z) < p.r + q.radius) || this.other(p.owner);
       // A shot strikes any keg it passes; the captain's own pistol shot stops there.
       const keg = this.zones.find((q) => q.kind === 'keg' && !q.dead && q.id !== p.keg && Math.hypot(q.x - p.x, q.z - p.z) < 1.2 + p.r);
+      // And any turret of the other side's, once each (the shot goes on).
+      if (!S.friendly && !p.back) for (const q of this.zones) {
+        if (q.kind !== 'turret' || q.dead || q.owner.team === p.owner.team || q.owner.realm !== p.owner.realm || (p.tur && p.tur.includes(q.id)) || Math.hypot(q.x - p.x, q.z - p.z) > 1 + p.r) continue;
+        (p.tur = p.tur || []).push(q.id);
+        this.hitTurret(q, p.owner);
+      }
       if (keg) {
         p.keg = keg.id;
         this.hitKeg(keg, p.owner);

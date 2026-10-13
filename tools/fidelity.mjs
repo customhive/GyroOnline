@@ -1151,6 +1151,26 @@ console.log('ARENA');
   check(ARENA.R === 13 && std.size === 0, 'the next match in the standard arena is 13 again');
 }
 
+console.log('AUTO TURRET: two blows');
+{
+  let { w, me, foe, run } = setup('gear', 16, 'azure');
+  w.cast(me, 'Q', me.x, me.z - 3); run(0.2);
+  const z = w.own(me, 'turret')[0];
+  check(z && z.skill.hp - (z.c >> 1) === 2, 'a turret stands two blows');
+  foe.x = z.x; foe.z = z.z - 1.2; w.step(DT);
+  check(!z.dead && z.c >> 1 === 1 && Math.hypot(foe.vx, foe.vz) > 4, 'a body that runs into it takes one off and is thrown back');
+  foe.x = z.x; foe.z = z.z - 1.2; foe.vx = foe.vz = 0; foe.tumble = 0; w.step(DT); w.step(DT);
+  check(!z.dead && z.c >> 1 === 1, 'standing on it is still one blow');
+  foe.x = 0; foe.z = -8; w.step(DT);
+  w.burst(foe, SKILLS.quake, z.x, z.z, 2);
+  check(z.dead, 'a skill that sweeps over it is a blow too: the second breaks it');
+  ({ w, me, foe, run } = setup('gear', 16, 'azure'));
+  w.cast(me, 'Q', me.x, me.z - 3); run(0.2);
+  const z2 = w.own(me, 'turret')[0];
+  w.burst(me, SKILLS.quake, z2.x, z2.z, 2);
+  check(z2.c >> 1 === 0, 'its own side does not harm it');
+}
+
 console.log('FLASH');
 {
   let { w, me, foe } = setup('azure', 12);
