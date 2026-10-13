@@ -24,6 +24,9 @@ export const heightAt = (r) => {
 // FLASH: every top can step straight to a spot nearby, once a round.
 export const FLASH = { key: 'F', range: 4 };
 
+// Spin is shown as rpm: every number on screen that counts spin (the bars, damage, healing, the tallies) is the
+// simulation's own figure times this, so what is dealt adds up to what the bar says.
+export const RPM = 3.6;
 export const ROUND_TIME = 75;
 export const ROUNDS_TO_WIN = 2;
 
@@ -48,7 +51,7 @@ export const BLADES = {
     id: 'sol', kit: { Q: 'flare', W: 'sanctuary', E: 'satellite', R: 'eclipse' },
     name: 'ソル・エターナル', en: 'SOL ETERNAL', type: 'STAMINA', typeJa: 'スタミナ',
     color: 0xffb52e, css: '#ffb52e', teeth: 4,
-    atk: 0.96, def: 1.0, mass: 1.05, speed: 14, decay: 5.4, spinMax: 1040, cdMul: 0.9, guardMul: 1.0,
+    atk: 0.96, def: 1.0, mass: 1.05, speed: 14, decay: 5.4, spinMax: 1000, cdMul: 0.9, guardMul: 1.0,
     bars: { atk: 3, def: 3, sta: 5, spd: 3 },
     desc: '回転を吸収・回復しながら粘り勝つドレイン型。',
   },
@@ -307,7 +310,7 @@ export const BLADES = {
     id: 'lunar', kit: { Q: 'arsenal', W: 'phase', E: 'nextweapon', R: 'vigil' },
     name: 'ルナ・アーセナル', en: 'LUNAR ARSENAL', type: 'ATTACK', typeJa: 'アタック',
     color: 0x8fb8ff, css: '#8fb8ff', teeth: 4,
-    atk: 1.28, def: 1.02, mass: 0.94, speed: 13.5, decay: 6.2, spinMax: 1000, cdMul: 1.0, guardMul: 1.0,
+    atk: 1.28, def: 0.94, mass: 0.94, speed: 13.5, decay: 6.2, spinMax: 1000, cdMul: 1.0, guardMul: 1.0,
     bars: { atk: 5, def: 1, sta: 3, spd: 3 },
     desc: '5つの武器のうち2つを持ち、主と副を入れ替えながら戦う。使い切った武器は次の武器に替わり、次のラウンドに持ち越す。',
   },
@@ -1347,7 +1350,7 @@ export const SKILLS = {
   sentryshot: { name: 'リターンチャクラム', en: 'RETURN CHAKRAM', aim: 'line', hidden: true, tint: 0xf2f6ff, range: 9, speed: 32, radius: 0.55, dmg: 20, kb: 1.5, tumble: 0, launch: 0 },
   vigil: {
     name: 'ムーンバースト', en: 'MOON BURST', aim: 'line', kind: 'shot', icon: 'star', cd: 2, ult: true,
-    tele: 0.4, range: 13, speed: 24, radius: 1.4, dmg: 70, splash: 4, splashDmg: 70, onHit: true,
+    tele: 0.4, range: 13, speed: 24, radius: 1.4, dmg: 50, splash: 4, splashDmg: 50, onHit: true,
     arm: [{ twice: 0.18 }, { heal: 90 }, { slow: 2.5, slowPct: 0.99 }, { blast: 6.5, blastDmg: 14 }, { chak: 5 }],
     lines: 'ultLine',
     desc: '遅い弾を撃つ。相手に当たると爆発し、当たった相手と周囲の相手に、主の武器が強化された追撃をする。',

@@ -6,7 +6,7 @@
 // its own top answers input at once, then corrects itself from each snapshot
 // (rewind to the host's state, re-apply inputs the host has not seen yet,
 // simulate forward by the measured delay).
-import { BLADES, DIFFICULTY, STAGES, ARENA_SIZES, ROUND_TIME, ROUNDS_TO_WIN, KEYS, FLASH, setArenaSize, skillOf } from './config.js';
+import { BLADES, DIFFICULTY, STAGES, ARENA_SIZES, ROUND_TIME, ROUNDS_TO_WIN, KEYS, FLASH, RPM, setArenaSize, skillOf } from './config.js';
 import { World, spinRatio } from './sim.js';
 import { CpuBrain } from './ai.js';
 import { View } from './view.js';
@@ -1005,10 +1005,10 @@ function dmgPop(top, dmg) {
   if (dmg < 1) return;
   if (game.practice && top.side) game.practice.last = dmg;
   const size = dmg >= 90 ? 'huge' : dmg >= 45 ? 'big' : '';
-  popAt(top, Math.round(dmg), `dmg ${top.side === game.side ? 'taken' : 'dealt'} ${size}`);
+  popAt(top, Math.round(dmg * RPM), `dmg ${top.side === game.side ? 'taken' : 'dealt'} ${size}`);
 }
 function healPop(top, amount) {
-  if (amount >= 1) popAt(top, '+' + Math.round(amount), 'heal');
+  if (amount >= 1) popAt(top, '+' + Math.round(amount * RPM), 'heal');
 }
 
 // What happens between tops in another world than this player's is neither seen nor heard.

@@ -1,5 +1,5 @@
 // DOM heads-up display, menus and floating combat text.
-import { BLADES, SKILLS, DIFFICULTY, STAGES, ARENA_SIZES, ROUNDS_TO_WIN, KEYS, FLASH, skillOf, kitOf } from './config.js';
+import { BLADES, SKILLS, DIFFICULTY, STAGES, ARENA_SIZES, ROUNDS_TO_WIN, KEYS, FLASH, RPM, skillOf, kitOf } from './config.js';
 
 const $ = (s, r = document) => r.querySelector(s);
 const el = (tag, cls, html) => { const e = document.createElement(tag); if (cls) e.className = cls; if (html != null) e.innerHTML = html; return e; };
@@ -383,7 +383,7 @@ export class UI {
     const on = combo >= 1 && !t.out && !view.hidden(t);
     m.style.opacity = on ? 1 : 0;
     if (!on) return;
-    const text = `<b>${Math.round(combo)}</b><span>コンボ合計</span><i>最後の1発 ${Math.round(last)}</i>`;
+    const text = `<b>${Math.round(combo * RPM)}</b><span>コンボ合計</span><i>最後の1発 ${Math.round(last * RPM)}</i>`;
     if (text !== this.meterText) { this.meterText = text; m.innerHTML = text; }
     const v = view.tops[1].group.position, q = view.toScreen(v.x, v.y + 4.4, v.z);
     m.style.transform = `translate(${q.x.toFixed(1)}px,${q.y.toFixed(1)}px)`;
@@ -655,7 +655,7 @@ export class UI {
       const grey = t.blade.grey || t.blade.ignite ? Math.min(1 - r, t.store / t.spinMax) : 0;
       f.grey.style.width = grey * 100 + '%';
       f.grey.style[f.left ? 'left' : 'right'] = r * 100 + '%';
-      f.num.textContent = Math.ceil(Math.max(0, t.spin) * 3.6) + ' rpm';
+      f.num.textContent = Math.ceil(Math.max(0, t.spin) * RPM) + ' rpm';
       f.root.classList.toggle('low', r < 0.25);
       f.ult.style.transform = `scaleX(${t.ult / 100})`;
       const hasUlt = KEYS.some((k) => skillOf(t, k).ult);
@@ -770,8 +770,8 @@ export class UI {
     const cells = (f) => tops.map(f);
     const row = (label, f) => { const c = cells(f); return `<tr><td>${c[0]}</td><th>${label}</th>${c.slice(1).map((v) => `<td>${v}</td>`).join('')}</tr>`; };
     $('#res-stats').innerHTML = `<tr class="head"><td style="color:${tops[0].blade.css}">${tops[0].blade.name}</td><th></th>${tops.slice(1).map((t) => `<td style="color:${t.blade.css}">${t.blade.name}</td>`).join('')}</tr>`
-      + row('与えたダメージ', (t) => Math.round(t.stats.dealt))
-      + row('最大ヒット', (t) => Math.round(t.stats.maxHit))
+      + row('与えたダメージ', (t) => Math.round(t.stats.dealt * RPM))
+      + row('最大ヒット', (t) => Math.round(t.stats.maxHit * RPM))
       + row('スキル命中', (t) => t.stats.skillHits)
       + row('パリィ / 反射', (t) => t.stats.parries)
       + row('激突回数', (t) => t.stats.clashes);
