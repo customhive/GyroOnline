@@ -66,6 +66,8 @@ export function makeTop(side, blade) {
     spray: null,           // a burst of shots being fired one after another: { skill, n, every, acc, dx, dz }
     echo: null,            // a follow-up that lands a second time a moment later: { t, wi, to: [sides] }
     grab: 0,               // BACK TOSS is waiting for a body hit: time left
+    drag: 0,               // being pulled in: time left (no FLASH out of it)
+    dragTo: null,          // and toward whom or what
     hema: false,           // the frenzy it is in is the ultimate's: stronger than the plain one
     trailZ: null,          // TOXIC LINE: the stretch of trail still being drawn out behind this top
     volley: null,          // blows landing one after another on whoever is nearest: { skill, n, every, acc, off }
@@ -429,7 +431,7 @@ export class World {
     if (this.practice && t.side) { t.x = (t.side - 1) * 3; t.z = 0; t.vx = t.vz = 0; }
     t.back = 0;
     t.gone = null; t.prey = t.dmarkTo = -1; t.quills = t.quillT = 0; t.realm = 0; t.flash = 1;
-    t.silence = t.dbl = t.odT = t.deN = t.deT = t.ardent = t.shrugCd = t.rockT = t.kickT = t.kickHit = 0; t.shredK = 1; t.bleedBy = t.ardentBy = -1; t.spray = null; t.volley = null; t.echo = null; t.grab = 0; t.trailZ = null; t.hema = false; t.rayA = null; t.once = false;
+    t.silence = t.dbl = t.odT = t.deN = t.deT = t.ardent = t.shrugCd = t.rockT = t.kickT = t.kickHit = 0; t.shredK = 1; t.bleedBy = t.ardentBy = -1; t.spray = null; t.volley = null; t.echo = null; t.drag = 0; t.dragTo = null; t.grab = 0; t.trailZ = null; t.hema = false; t.rayA = null; t.once = false;
     t.spin = t.spinMax;
     t.cmd = t.cast = t.dash = t.air = t.out = t.blink = t.charge = t.orbs = t.tether = t.chan = t.ret = t.hold = null;
     t.tumble = t.launch = t.guard = t.slow = t.hitCd = t.empower = 0;
@@ -464,7 +466,7 @@ export class World {
   // drawing breath for a skill does not stop it.
   canFlash(t) {
     return !!(t.flash > 0 && !this.result && t.spin > 0 && !t.gone && !t.out && !t.air && !t.dash && !t.blink && t.up <= 0 && t.stun <= 0 && t.snare <= 0
-      && t.charm <= 0 && t.ground <= 0 && t.egg <= 0 && !(t.tumble > 0 && t.launch > 0) && !(t.charge && t.charge.skill.veil));
+      && t.charm <= 0 && t.ground <= 0 && t.egg <= 0 && !(t.tumble > 0 && t.launch > 0) && t.drag <= 0 && !(t.charge && t.charge.skill.veil));
   }
 
   // To the point given if it is within reach, else as far toward it as reach allows. Never past the wall.
@@ -1796,7 +1798,7 @@ export class World {
     // 2.3: what it takes to cover `far` before the stagger wears off.
     const sp = Math.min(speed, d * 3.2, far * 2.3);
     v.vx = (dx / d) * sp; v.vz = (dz / d) * sp;
-    v.tumble = Math.max(v.tumble, 0.5); v.cmd = null; v.dash = null; v.cast = null; v.chan = null; v.hold = null;
+    v.tumble = Math.max(v.tumble, 0.5); v.drag = 0.5; v.dragTo = to; v.cmd = null; v.dash = null; v.cast = null; v.chan = null; v.hold = null;
   }
 
   // Slows `v` for `T` seconds, taking `pct` of its speed (40% unless said).
@@ -2013,6 +2015,10 @@ export class World {
     t.snare = Math.max(0, t.snare - dt);
     t.hitCd = Math.max(0, t.hitCd - dt);
     t.grab = Math.max(0, t.grab - dt);
+    t.drag = Math.max(0, t.drag - dt);
+    // A pull sets its catch down beside whoever pulled, not into them: no clash to knock it away again.
+    if (t.drag > 0 && t.dragTo && Math.hypot(t.dragTo.x - t.x, t.dragTo.z - t.z) < (t.dragTo.radius ? t.dragTo.radius + t.radius + 0.4 : 0.5)) { t.vx = 0; t.vz = 0; }
+    if (t.drag <= 0) t.dragTo = null;
     t.empower = Math.max(0, t.empower - dt);
     t.up = Math.max(0, t.up - dt);
     t.ground = Math.max(0, t.ground - dt);

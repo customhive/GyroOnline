@@ -1163,6 +1163,23 @@ console.log('FLASH');
     ({ w, me, foe } = setup('azure', 12)); hold(me);
     check(!w.flash(me, 0, 0) && me.flash === 1, `not while ${what} (and it is not spent)`);
   }
+  {
+    // A pull: no FLASH out of it, it sets its catch down beside the puller, and ANCHOR CHAIN leaves an 80% slow.
+    const g = setup('gaia', 9, 'azure');
+    g.me.z = 0; g.foe.z = -9;
+    g.w.cast(g.me, 'E', g.foe.x, g.foe.z);
+    let hit = false, near = 99, clash = false;
+    for (let i = 0; i < 240 && !(hit && g.foe.drag <= 0); i++) {
+      g.w.step(1 / 120); g.me.z = 0; g.me.vx = g.me.vz = 0;
+      if (g.foe.drag > 0 && !hit) { hit = true; check(!g.w.flash(g.foe, 0, 0) && g.foe.flash === 1, 'not while being pulled in (and it is not spent)'); }
+      if (hit) near = Math.min(near, Math.hypot(g.foe.x - g.me.x, g.foe.z - g.me.z));
+      clash = clash || g.w.events.some((e) => e.type === 'clash');
+      g.w.events.length = 0;
+    }
+    check(hit && !clash && near < 3.6 && near >= g.me.radius + g.foe.radius, 'a pull ends beside the puller, without a clash');
+    check(g.foe.slow > 1 && g.foe.slowK === 0.8, 'ANCHOR CHAIN: 80% slow on whoever it pulled');
+    check(g.w.canFlash(g.foe), 'and FLASH is back once the pull is over');
+  }
   ({ w, me, foe } = setup('hunger', 9));
   w.hold(me, 'E'); w.flash(me, me.x, me.z - 4);
   check(!!me.hold && me.flash === 0, 'while drawing breath for a skill: the step is taken and the breath is kept');

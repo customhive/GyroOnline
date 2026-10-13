@@ -207,7 +207,8 @@ export class CpuBrain {
       if (!this.has(id) || this.again(id)) continue;
       const S = w.aimSkill(me, this.keyOf[id]);
       let bonus = 0;
-      if (id === 'anchor' && d < 4.5) continue;
+      // (The chain is thrown for the pillar that follows it: not while the pillar is away.)
+      if (id === 'anchor' && (d < 4.5 || (this.keyOf.quake && me.cd[this.keyOf.quake] > 0.5))) continue;
       if (id === 'frostbite') bonus = foe.slow > 0 || foe.tumble > 0 ? 0.4 : -0.15;
       if (id === 'flourish') bonus = foe.scar > 0 ? 0.3 : -0.25;
       if (id === 'fourshot') bonus = 0.15;
@@ -224,6 +225,13 @@ export class CpuBrain {
     // Blasts on the floor.
     for (const id of ['quake', 'grenade']) {
       const S = SKILLS[id];
+      // Whoever the chain has is going nowhere: the pillar goes where the pull sets them down, or where they crawl.
+      if (id === 'quake' && this.has(id) && d < S.range && (foe.drag > 0 || (foe.slow > 0.4 && foe.slowK >= 0.7))) {
+        const k = foe.drag > 0 ? Math.min(1, 2.7 / (d || 1)) : 1;
+        return this.use(id, me.x + (foe.x - me.x) * k, me.z + (foe.z - me.z) * k);
+      }
+      // (And the pillar is kept for the chain when the chain is nearly back.)
+      if (id === 'quake' && this.keyOf.anchor && me.cd[this.keyOf.anchor] < 2.5) continue;
       if (this.has(id) && d < S.range + 1 && want(foe.tumble > 0.3 || foe.slow > 0.5 ? 0.3 : 0)) {
         const p = this.jitter(ahead(S.delay + me.windup[this.keyOf[id]]), 0.7);
         return this.use(id, p.x, p.z);

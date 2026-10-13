@@ -444,8 +444,8 @@ export const SKILLS = {
   },
   anchor: {
     name: 'アンカーチェーン', en: 'ANCHOR CHAIN', aim: 'line', cd: 8, tele: 0.45,
-    range: 13.5, speed: 30, radius: 0.85, dmg: 36, pull: 19, slow: 1.8, chain: true,
-    desc: '狙った方向へ鎖を撃つ。当たった相手を引き寄せ、1.8秒間40%のスロウにする。',
+    range: 13.5, speed: 30, radius: 0.85, dmg: 36, pull: 19, slow: 1.8, slowPct: 0.8, chain: true,
+    desc: '狙った方向へ鎖を撃つ。当たった相手を引き寄せ、1.8秒間80%のスロウにする。',
   },
   nova: {
     name: 'フォートレスノヴァ', en: 'FORTRESS NOVA', aim: 'self', cd: 2, ult: true,
