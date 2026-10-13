@@ -199,7 +199,7 @@ export const BLADES = {
     store: { taken: 0.15, dealt: 0.45, max: 140, fade: 4 },
     // DARKNESS RISE: three blows in a row (each within `keep` of the last) light an aura for `dur`,
     // kept alight by every blow after; it burns whatever is within `r` and quickens its owner.
-    aura: { hits: 3, keep: 4, dur: 4, r: 3.4, dps: 18, speed: 1.09 },
+    aura: { hits: 3, keep: 4, dur: 4, r: 3.4, dps: 9, speed: 1.09 },
     desc: '攻撃を3回続けて当てると4秒間、9%加速し、周囲の相手にダメージを与え続ける（当て続けるかぎり続く）。与えたダメージを蓄えてバリアに変える。必殺技は相手1人と自分を7秒間、輪の中に閉じ込める。',
   },
   dragon: {
@@ -286,7 +286,7 @@ export const BLADES = {
     id: 'darkin', kit: { Q: 'darkinblade', W: 'chains', E: 'umbral', R: 'worldender' },
     name: 'ブラッド・クレイモア', en: 'BLOOD CLAYMORE', type: 'ATTACK', typeJa: 'アタック',
     color: 0xc81e3c, css: '#c81e3c', teeth: 3,
-    atk: 1.6, def: 1.32, mass: 1.15, speed: 13.5, decay: 5.8, spinMax: 1000, cdMul: 1.0, guardMul: 1.0,
+    atk: 1.6, def: 1.02, mass: 1.15, speed: 13.5, decay: 5.8, spinMax: 1000, cdMul: 1.0, guardMul: 1.0,
     bars: { atk: 5, def: 3, sta: 3, spd: 3 },
     buff: { atk: 1.3, speed: 1.2, leech: 0.3 },
     desc: '形の違う3回の斬撃を、先端で当てていく。必殺技の間は攻撃力が上がって加速し、与えたダメージで回転が回復する。',
@@ -1243,7 +1243,7 @@ export const SKILLS = {
   },
   inferno: {
     name: 'フルオートスピン', en: 'FULL AUTO SPIN', aim: 'self', kind: 'field', icon: 'burst', cd: 5, need: 'style',
-    follow: true, dur: 2, aoe: 5.5, dps: 110, selfSlow: 0.3,
+    follow: true, dur: 2, aoe: 5.5, dps: 70, selfSlow: 0.3,
     desc: 'ランクSのときだけ使える。2秒間、周囲にダメージを与え続ける。その間、自分は30%のスロウになる。終わるとランクは最初に戻る。',
   },
   // ---- UNSUNDERED GLAIVE: stronger with every hit ----------------------------

@@ -841,7 +841,7 @@ console.log('IRON REVENANT (Mordekaiser)');
     check(s0.me.stack === 2 && s0.foe.stats.taken === before, 'two blows in a row: nothing yet');
     s0.w.hurt(s0.foe, 10, s0.me, 'x'); const lit = s0.foe.stats.taken; s0.run(1);
     const burn = s0.foe.stats.taken - lit;
-    check(s0.me.stack === 3 && Math.abs(burn - (18 * BLADES.iron.atk) / BLADES.gaia.def) < 1.5, `the third lights the aura: about 18 a second to whoever is close (${burn.toFixed(1)})`);
+    check(s0.me.stack === 3 && Math.abs(burn - (BLADES.iron.aura.dps * BLADES.iron.atk) / BLADES.gaia.def) < 1.5, `the third lights the aura: about ${BLADES.iron.aura.dps} a second to whoever is close (${burn.toFixed(1)})`);
     s0.run(3.2);
     check(s0.me.stack === 0, 'four seconds without a blow and it goes out');
     const s1 = setup('iron', 12);
