@@ -165,6 +165,59 @@ export function createStage(canvas) {
     map: floorCanvas(2048, paintFloor), emissiveMap: floorCanvas(2048, (g) => paintGlow(g)), emissive: 0xffffff, emissiveIntensity: 0.85,
     metalness: 0.82, roughness: 0.36, side: THREE.DoubleSide,
   });
+  // What is spilt on the floor (a trail of poison) is painted into a mask the floor wears, and the floor's own shader
+  // turns the mask into something that looks poured there: it darkens what is under it, glows, crawls and bubbles,
+  // and is lit along its edge. Red is this player's side's, green the other side's (whose edge is drawn as a threat).
+  const TRAIL = 512;
+  const trailCanvas = document.createElement('canvas');
+  trailCanvas.width = trailCanvas.height = TRAIL;
+  const trailG = trailCanvas.getContext('2d');
+  const trailTex = new THREE.CanvasTexture(trailCanvas);
+  trailTex.colorSpace = THREE.NoColorSpace;
+  trailTex.generateMipmaps = false;
+  trailTex.minFilter = trailTex.magFilter = THREE.LinearFilter;
+  const trailU = { uTrail: { value: trailTex }, uTrailTime: { value: 0 } };
+  let trailInk = false;
+  floorMat.onBeforeCompile = (shader) => {
+    Object.assign(shader.uniforms, trailU);
+    shader.fragmentShader = shader.fragmentShader
+      .replace('void main() {', `uniform sampler2D uTrail;
+uniform float uTrailTime;
+float trailHash(vec2 p) { return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
+float trailNoise(vec2 p) {
+  vec2 i = floor(p), f = fract(p);
+  f = f * f * (3.0 - 2.0 * f);
+  return mix(mix(trailHash(i), trailHash(i + vec2(1.0, 0.0)), f.x), mix(trailHash(i + vec2(0.0, 1.0)), trailHash(i + vec2(1.0, 1.0)), f.x), f.y);
+}
+void main() {`)
+      .replace('#include <emissivemap_fragment>', `#include <emissivemap_fragment>
+#ifdef USE_MAP
+  {
+    vec4 trl = texture2D(uTrail, vMapUv);
+    float tm = max(trl.r, trl.g);
+    if (tm > 0.004) {
+      vec2 tp = vMapUv * 24.0;
+      // It crawls: two layers of noise drifting across each other.
+      float n1 = trailNoise(tp * 1.2 + vec2(uTrailTime * 0.22, -uTrailTime * 0.16));
+      float n2 = trailNoise(tp * 2.6 - vec2(uTrailTime * 0.35, uTrailTime * 0.27));
+      float body = smoothstep(0.32, 0.7, tm + (n1 - 0.5) * 0.22);
+      float edge = smoothstep(0.16, 0.42, tm + (n1 - 0.5) * 0.12) * (1.0 - smoothstep(0.42, 0.78, tm));
+      // It bubbles: in each cell a ring swells from a point and thins out, each to its own beat.
+      vec2 cell = tp * 1.7, id = floor(cell);
+      float h = trailHash(id), ph = fract(uTrailTime * (0.3 + h * 0.45) + h * 9.0);
+      vec2 off = (vec2(trailHash(id + 1.7), trailHash(id + 3.1)) - 0.5) * 0.5;
+      float dist = length(fract(cell) - 0.5 - off), rad = 0.05 + 0.2 * ph;
+      float bubble = smoothstep(0.045, 0.0, abs(dist - rad)) * (1.0 - ph) * body;
+      vec3 toxic = vec3(0.42, 1.0, 0.1), deep = vec3(0.03, 0.16, 0.03);
+      vec3 rim = trl.g > trl.r ? vec3(1.0, 0.22, 0.2) : toxic;
+      diffuseColor.rgb = mix(diffuseColor.rgb, deep, body * 0.85);
+      totalEmissiveRadiance = mix(totalEmissiveRadiance, toxic * (0.035 + 0.11 * n2 * n2), body * 0.92);
+      totalEmissiveRadiance += rim * edge * (0.5 + 0.22 * sin(uTrailTime * 3.5 + n1 * 6.283)) + toxic * bubble * 0.8;
+    }
+  }
+#endif`);
+  };
+  floorMat.customProgramCacheKey = () => 'floor-trail';
   // The stadium is modelled at the standard width and stretched sideways for a
   // wider arena (its height stays, so the bowl keeps the depth the simulation uses).
   const arena = new THREE.Group();
@@ -297,7 +350,37 @@ export function createStage(canvas) {
       camera.aspect = w / h;
       camera.updateProjectionMatrix();
     },
+    // What lies on the floor this frame, as stretches: [{ x, z, dx, dz, r, a (how strongly, 0 to 1), foe }].
+    // (Painted at the stadium's own scale: a wider arena stretches the floor, and the mask with it.)
+    trail(list) {
+      if (!list.length && !trailInk) return;
+      trailInk = list.length > 0;
+      const g = trailG, k = R / ARENA.R, s = (TRAIL / (EXTENT * 2)) * k;
+      g.setTransform(1, 0, 0, 1, 0, 0);
+      g.globalCompositeOperation = 'source-over';
+      g.fillStyle = '#000';
+      g.fillRect(0, 0, TRAIL, TRAIL);
+      g.setTransform(s, 0, 0, s, TRAIL / 2, TRAIL / 2);
+      // Where stretches overlap the stronger one shows, so the trail is one even band, not a string of beads.
+      g.globalCompositeOperation = 'lighten';
+      g.lineCap = 'round';
+      // Three passes, widest and faintest first: a soft shoulder for the shader to find the edge in.
+      for (const [wide, strength] of [[1.08, 0.3], [0.96, 0.62], [0.82, 1]]) {
+        for (const q of list) {
+          const v = Math.round(255 * Math.max(0, Math.min(1, q.a)) * strength);
+          g.strokeStyle = q.foe ? `rgb(0,${v},0)` : `rgb(${v},0,0)`;
+          g.lineWidth = q.r * 2 * wide;
+          g.beginPath();
+          g.moveTo(q.x, q.z);
+          // (A stretch with no length is still a dot: a line that goes nowhere draws nothing.)
+          g.lineTo(q.x + (q.dx || 0.001), q.z + q.dz);
+          g.stroke();
+        }
+      }
+      trailTex.needsUpdate = true;
+    },
     update(dt, time) {
+      trailU.uTrailTime.value = time;
       for (const b of beams) {
         b.m.rotation.z = Math.sin(time * 0.35 + b.ph) * 0.28 - Math.cos(b.a) * 0.45;
         b.m.rotation.x = Math.cos(time * 0.3 + b.ph) * 0.28 + Math.sin(b.a) * 0.45;

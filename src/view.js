@@ -128,6 +128,7 @@ export class View {
   }
 
   clearRound() {
+    this.stage.trail([]);
     for (const p of this.projs.values()) this.scene.remove(p.group);
     this.projs.clear();
     this.telegraphs.length = 0;
@@ -975,6 +976,13 @@ export class View {
   // Effects that last a while: zones, charging, orbs, the drain link, fading cones.
   drawOngoing(dt) {
     const G = this.ground, P = this.particles, w = this.world;
+    // What is spilt on the floor is gathered here and handed to the stage, which wears it.
+    const spilt = [];
+    for (const z of w.zones) {
+      if (z.kind !== 'poison' || z.dead || this.hidden(z.owner)) continue;
+      spilt.push({ x: z.x, z: z.z, dx: z.dx, dz: z.dz, r: z.r, a: Math.min(1, z.t / 0.08 + 0.4, (z.T - z.t) / 1.1), foe: this.dangerOf(z.owner) === ENEMY_COLOR });
+    }
+    this.stage.trail(spilt);
     // A disc crossing the floor: its rim lit all the way round, over the ground it covers.
     for (const p of w.projectiles) {
       if (!p.skill.disc || this.hidden(p.owner)) continue;
@@ -1213,11 +1221,8 @@ export class View {
         if (dt > 0) for (let i = 0; i < 5; i++) { const a = Math.random() * 6.283, r = Math.sqrt(Math.random()) * z.r; P.emit(z.x + Math.cos(a) * r, gy + 2 + Math.random() * 2.5, z.z + Math.sin(a) * r, 5, -5, 2, 0.7, 0.2, Math.random() < 0.5 ? 0xffffff : ICE, 0, 0.2); }
         return true;
       case 'poison': {
-        // A stretch of trail: a band from where it was begun to where it ends, rounded at the far end.
-        const a = 0.2 * Math.min(1, (z.T - z.t) / 1.2), len = Math.hypot(z.dx, z.dz);
-        if (len > 0.05) G.rect(z.x, z.z, z.dx / len, z.dz / len, len, z.r, TOXIC, a);
-        G.ring(z.x + z.dx, z.z + z.dz, 0, z.r, TOXIC, a * 0.5);
-        if (dt > 0 && Math.random() < 0.06) speck(TOXIC, 1 + Math.random() * 2, -1);
+        // A stretch of trail. The floor itself shows it (see drawOngoing); here only a wisp rises off it now and then.
+        if (dt > 0 && Math.random() < 0.1) { const u = Math.random(), a = Math.random() * 6.283, r = Math.sqrt(Math.random()) * z.r, x = z.x + z.dx * u + Math.cos(a) * r, y = z.z + z.dz * u + Math.sin(a) * r; P.emit(x, groundY(x, y) + 0.1, y, 0, 0.8 + Math.random() * 1.6, 0, 0.9, 0.16, TOXIC, -1, 1); }
         return true;
       }
       case 'glue':
