@@ -106,6 +106,8 @@ export function makeTop(side, blade) {
 let SCOPE = -1;
 export const targetable = (t) => !t.air && !t.out && !t.blink && !t.gone && !(t.charge && t.charge.skill.veil) && (SCOPE < 0 || t.realm === SCOPE);
 export const spinRatio = (t) => Math.max(0, t.spin / t.spinMax);
+// How fast a launched top must meet the wall to go over it: the more spin it has left, the faster.
+export const ringOutAt = (t) => ARENA.ringOutSpeed + (ARENA.ringOutFull - ARENA.ringOutSpeed) * clamp((spinRatio(t) - ARENA.ringOutBelow) / (1 - ARENA.ringOutBelow), 0, 1);
 // Tops with little spin left are thrown further.
 export const kbMul = (t) => 1 + 0.85 * (1 - spinRatio(t));
 // Nothing moves it: braced for a blast, or inside the egg.
@@ -875,15 +877,6 @@ export class World {
         t.dash.home = opp.side; t.dash.age = 0; t.dash.bumped = 0;
         break;
       }
-      case 'cripplekick':
-        // Everyone the shockwave could have reached is slowed, not only the nearest.
-        for (const o of this.foes(t)) {
-          if (!targetable(o) || Math.hypot(o.x - t.x, o.z - t.z) > S.grab) continue;
-          this.slowBy(o, S.slow, S.slowPct);
-          t.stats.skillHits++;
-          this.emit('strike', { top: o, src: t, skill: S, x: o.x, z: o.z, dmg: 0 });
-        }
-        break;
       case 'singularity': {
         // Thrown, not placed: the orb flies to the spot and only then opens, so a wall in its way stops it.
         const dx = c.ax - t.x, dz = c.az - t.z, d = Math.hypot(dx, dz);
@@ -1557,14 +1550,22 @@ export class World {
         this.emit('charge', { top: t, T: S.charge, skill: S });
         break;
       case 'kick': {
+        // A short thrust the way it was aimed. The first it meets is the one kicked; meeting nobody, it is wasted.
+        let v = null, near = Infinity;
+        for (const o of this.foes(t)) {
+          const rx = o.x - t.x, rz = o.z - t.z, along = rx * c.dx + rz * c.dz, side = Math.abs(-rx * c.dz + rz * c.dx);
+          if (targetable(o) && along > -1 && along < S.range + o.radius && side < S.radius + o.radius * 0.6 && along < near) { near = along; v = o; }
+        }
+        this.emit('beam', { top: t, skill: S, x: t.x, z: t.z, dx: c.dx, dz: c.dz, hit: 0, target: null });
+        if (!v) { this.emit('say', { top: t, text: 'MISS', tone: 'dim' }); break; }
         // Straight away from the kicker: where it stands decides where the target goes.
-        const kx = opp.x - t.x, kz = opp.z - t.z, kd = Math.hypot(kx, kz) || 1;
-        const dmg = this.hurt(opp, (S.dmg * (opp.guard > 0 ? 0.4 : 1) * t.blade.atk) / opp.blade.def, t, S.id);
-        this.knock(opp, kx / kd, kz / kd, S.kb, 0.7, S.launch);
+        const kx = v.x - t.x, kz = v.z - t.z, kd = Math.hypot(kx, kz) || 1;
+        const dmg = this.hurt(v, (S.dmg * (v.guard > 0 ? 0.4 : 1) * t.blade.atk) / v.blade.def, t, S.id);
+        this.knock(v, kx / kd, kz / kd, S.kb, 0.7, S.launch);
         // In flight it bowls over whoever else of the kicker's enemies it runs into.
-        if (S.pass) { opp.kickT = S.passT; opp.kickBy = t.side; opp.kickHit = 0; }
+        if (S.pass) { v.kickT = S.passT; v.kickBy = t.side; v.kickHit = 0; }
         t.stats.skillHits++;
-        this.emit('strike', { top: opp, src: t, skill: S, x: opp.x, z: opp.z, dmg, big: true });
+        this.emit('strike', { top: v, src: t, skill: S, x: v.x, z: v.z, dmg, big: true });
         break;
       }
       case 'strike': {
@@ -3310,7 +3311,7 @@ export class World {
     }
     if (!c || c.vn <= 0) return;
     if (t.blink) { t.blink.t = 0; return; }
-    if (!this.result && t.launch > 0 && c.vn > ARENA.ringOutSpeed && !(t.egg > 0)) {
+    if (!this.result && t.launch > 0 && c.vn > ringOutAt(t) && !(t.egg > 0)) {
       if (t.tether) this.emit('tetherEnd', { top: t, broke: true });
       if (t.orbs) this.emit('orbsEnd', { top: t });
       t.out = { t: 0, y: 0, vy: 7 + c.vn * 0.35 };

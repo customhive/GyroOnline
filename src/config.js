@@ -5,7 +5,11 @@ export const ARENA = {
   H: 2.4,           // bowl depth at the rim
   K: 3.0,           // strength of the pull toward the centre
   wallE: 0.7,       // wall restitution
-  ringOutSpeed: 16.5, // outward speed at the wall that throws a launched top out
+  // Outward speed at the wall that throws a launched top over it: `ringOutSpeed` for one with `ringOutBelow` of its
+  // spin or less, `ringOutFull` for one with all of it, and in between for the rest. The more spin, the harder it is to put out.
+  ringOutSpeed: 16.5,
+  ringOutFull: 130,
+  ringOutBelow: 0.1,
 };
 
 // How wide the arena is: the room's host chooses. Everything measures itself
@@ -148,7 +152,7 @@ export const BLADES = {
     atk: 1.02, def: 1.15, mass: 1.3, speed: 12.5, decay: 5.9, spinMax: 1000, cdMul: 1.0, guardMul: 1.0,
     bars: { atk: 3, def: 5, sta: 3, spd: 2 },
     pin: { dmg: 40, stun: 2 },
-    desc: '相手を壁へ運んでスタンさせ、突進してくる相手はWで止める。溜めた必殺技は相手を場外近くまで吹き飛ばす。',
+    desc: '相手を壁へ運んでスタンさせ、突進してくる相手はWで止める。溜めた必殺技は相手を遠くへ吹き飛ばす。',
   },
   fox: {
     id: 'fox', kit: { Q: 'orb', W: 'foxfire', E: 'charm', R: 'rush' },
@@ -205,7 +209,7 @@ export const BLADES = {
     atk: 1.08, def: 0.98, mass: 1.0, speed: 15.5, decay: 6.9, spinMax: 1000, cdMul: 1.0, guardMul: 1.0,
     bars: { atk: 5, def: 3, sta: 2, spd: 5 },
     buff: { leech: 0.26 },
-    desc: '弾を当てた相手へ瞬間移動し、背後に回って必殺技で場外へ吹き飛ばす。',
+    desc: '弾を当てた相手へ瞬間移動し、背後に回って必殺技で遠くへ吹き飛ばす。',
   },
   boss: {
     id: 'boss', kit: { Q: 'knuckle', W: 'haymaker', E: 'facebreaker', R: 'showstopper' },
@@ -777,7 +781,7 @@ export const SKILLS = {
   verdict: {
     name: 'ホームランスイング', en: 'HOMERUN SWING', aim: 'line', icon: 'beam', cd: 2, ult: true, ai: 'shot',
     tele: 0.2, wind: { min: 0.5, full: 1, max: 4 }, tap: 'verdicttap', near: 4, range: 9.5, speed: 40, radius: 1.6,
-    desc: '長押しで溜める（溜めている間はスロウになり、4秒で不発）。すぐ離すと前方の相手を1秒間打ち上げる。溜めるほど遠くまで届く弾になり、当たった相手とその近くの相手を場外近くまで吹き飛ばす。',
+    desc: '長押しで溜める（溜めている間はスロウになり、4秒で不発）。すぐ離すと前方の相手を1秒間打ち上げる。溜めるほど遠くまで届く弾になり、当たった相手とその近くの相手を遠くへ吹き飛ばす。',
   },
   verdicttap: {
     name: 'ホームランスイング', en: 'HOMERUN SWING', aim: 'cone', hidden: true,
@@ -919,12 +923,12 @@ export const SKILLS = {
   // ---- DRAGON STRIKER: mark, follow, kick out --------------------------------
   sonicwave: {
     name: 'タグウェーブ', en: 'TAG WAVE', aim: 'line', kind: 'shot', icon: 'shot', cd: 6,
-    tele: 0.4, re: 'resonate', reOnHit: 3, range: 9.3, speed: 36, radius: 0.8, dmg: 34,
+    tele: 0.4, re: 'resonate', reOnHit: 3, range: 9.3, speed: 36, radius: 0.8, dmg: 20,
     desc: '弾を撃つ。当たったら3秒以内にもう一度押すと、相手の位置へ瞬間移動して攻撃する（相手の回転が減っているほどダメージが増える）。',
   },
   resonate: {
     name: 'タグウェーブ', en: 'TAG WAVE', aim: 'self', kind: 'strike', hidden: true,
-    tp: true, dmg: 40, exec: 1.0,
+    tp: true, dmg: 20, exec: 1.0,
   },
   safeguard: {
     name: 'ガードスタンス', en: 'GUARD STANCE', aim: 'self', kind: 'buff', icon: 'shield', cd: 7, re: 'ironwill', cursor: true,
@@ -932,17 +936,18 @@ export const SKILLS = {
     desc: '2秒間バリアを張る。カーソルを味方に合わせて使うと、その味方へ突進し、2人ともバリアを得る。3秒以内にもう一度押すと、4秒間、与えたダメージの26%ぶん回転が回復する。',
   },
   tempest: {
-    name: 'グラウンドスラップ', en: 'GROUND SLAP', aim: 'self', kind: 'burst', icon: 'burst', cd: 8, re: 'cripplekick',
-    aoe: 5.1, dmg: 36, reHit: 3,
-    desc: '周囲にダメージを与える。当たったら3秒以内にもう一度押すと、相手を4秒間75%のスロウにする。',
+    name: 'グラウンドスラップ', en: 'GROUND SLAP', aim: 'self', kind: 'burst', icon: 'burst', cd: 8,
+    aoe: 5.1, dmg: 36, slow: 4, slowPct: 0.75,
+    desc: '周囲にダメージを与え、4秒間75%のスロウにする。',
   },
   dragonrage: {
-    name: 'ドラゴンキック', en: 'DRAGON KICK', aim: 'self', kind: 'kick', icon: 'beam', cd: 2, ult: true,
-    need: 'range', grab: 5, dmg: 85, kb: 24, launch: 2.2, pass: 60, passUp: 1, passT: 0.9,
-    desc: '密着した相手を、自分の反対側へ場外まで吹き飛ばす。吹き飛ばした相手がほかの相手に当たると、その相手にもダメージを与え、1秒間打ち上げる。',
+    name: 'ドラゴンキック', en: 'DRAGON KICK', aim: 'line', kind: 'kick', icon: 'beam', cd: 2, ult: true,
+    // A short thrust that has to be aimed, the reach of GALE THRUST: the first it meets is the one kicked.
+    tele: 0.3, range: 4.5, radius: 1.0, dmg: 85, kb: 24, launch: 2.2, pass: 60, passUp: 1, passT: 0.9,
+    desc: '短い直線を蹴り、当たった相手を自分と反対の方向へ遠くまで吹き飛ばす。吹き飛ばした相手がほかの相手に当たると、その相手にもダメージを与え、1秒間打ち上げる。',
   },
   ironwill: { name: 'ガードスタンス', en: 'GUARD STANCE', aim: 'self', kind: 'buff', hidden: true, dur: 4 },
-  cripplekick: { name: 'グラウンドスラップ', en: 'GROUND SLAP', aim: 'self', kind: 'strike', hidden: true, need: 'range', grab: 6.3, dmg: 0, slow: 4, slowPct: 0.75 },
+
   // ---- BRAWLER KING: take it, then give it back ------------------------------
   knuckle: {
     name: 'ワンツーパンチ', en: 'ONE-TWO PUNCH', aim: 'self', kind: 'buff', icon: 'buff', cd: 5,
@@ -1637,7 +1642,7 @@ for (const b of Object.values(BLADES)) b.hasUlt = kitOf(b).some((S) => S.ult);
 // The tops start near and far, so the gaps are placed the same for both.
 const GATE = 0.3;
 export const STAGES = [
-  { id: 'classic', name: 'スタンダード', en: 'STANDARD', ja: '壁に囲まれた基本のアリーナ。強く吹き飛ばして壁に叩きつけると場外。', wall: true, gaps: [] },
+  { id: 'classic', name: 'スタンダード', en: 'STANDARD', ja: '壁に囲まれた基本のアリーナ。回転の減った相手を強く吹き飛ばすと、壁を越えて場外。', wall: true, gaps: [] },
   { id: 'gates', name: 'スリーゲート', en: 'THREE GATES', ja: '壁の3か所に穴が開いている。穴から転がり出ると場外。', wall: true, gaps: [[0, GATE], [(Math.PI * 2) / 3, GATE], [(Math.PI * 4) / 3, GATE]] },
   { id: 'open', name: 'オープン', en: 'OPEN RING', ja: '壁が無い。端から出るとそのまま場外。', wall: false, gaps: [] },
 ];

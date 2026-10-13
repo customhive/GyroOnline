@@ -423,13 +423,16 @@ console.log('DRAGON STRIKER (Lee Sin)');
   check(me.buff > 3.9 && me.spin > 520, 'W again: 26% of damage dealt comes back for 4 seconds');
   ({ w, me, foe, run, saw } = setup('dragon', 4));
   w.cast(me, 'E', me.x, me.z);
-  check(me.re.E > 2.9 && foe.slow === 0, 'E: the blast opens the cripple, and does not slow by itself');
-  w.cast(me, 'E', me.x, me.z);
-  check(foe.slowK === 0.75 && foe.slow > 3.9, 'E again: a 75% slow for 4 seconds');
+  check(foe.slowK === 0.75 && foe.slow > 3.9 && me.re.E === 0 && w.aimSkill(me, 'E').id === 'tempest', 'E: the blast itself slows 75% for 4 seconds, and there is no second press');
   ({ w, me, foe, run, saw } = setup('dragon', 3));
   me.x = 2.6; me.z = foe.z; foe.x = 0;
-  w.cast(me, 'R', 99, 99);
-  check(foe.vx < -8 && Math.abs(foe.vz) < 1, 'R: kicks straight away from Lee, whatever the cursor says');
+  me.ult = 100; w.cast(me, 'R', me.x + 5, me.z + 1);
+  check(me.ult === 0 && foe.stats.taken === 0 && Math.hypot(foe.vx, foe.vz) < 8, 'R: aimed the wrong way it meets nobody, and the gauge is spent');
+  me.ult = 100; me.cd.R = 0; me.x = 2.6; me.z = foe.z; foe.x = 0; foe.vx = foe.vz = 0; w.cast(me, 'R', foe.x, foe.z + 0.6);
+  check(foe.vx < -8 && Math.abs(foe.vz) < 1, 'R: a short thrust; whoever it meets is kicked straight away from Lee, not the way it was aimed');
+  ({ w, me, foe, run, saw } = setup('dragon', 3));
+  me.x = 7.5; me.z = 0; foe.x = 0; foe.z = 0; me.ult = 100; w.cast(me, 'R', foe.x, foe.z);
+  check(me.ult === 0 && foe.stats.taken === 0, 'R: out of its reach (4.5) it does not find its target');
 }
 
 console.log('MIRAGE TRICK: mimicked sigil');
@@ -463,10 +466,20 @@ console.log('IRON HAMMER (Poppy)');
   w.hold(me, 'R'); run(0.2); w.cast(me, 'R', foe.x, foe.z);
   check(foe.up > 0.5, 'R tapped: knocks up what is right in front');
   ({ w, me, foe, run, saw } = setup('hammer', 10));
+  foe.spin = foe.spinMax * 0.25;
   w.hold(me, 'R'); run(1.1); w.cast(me, 'R', foe.x, foe.z);
   check(w.projectiles.length === 1 && Math.abs(w.projectiles[0].left - 9.5) < 0.01, 'R held: a wave with the reach wound up');
   for (let i = 0; i < 200 && !w.result; i++) w.step(DT);
-  check(w.result && w.result.kind === 'over' && w.result.winner === me, 'R held: the target is thrown out of the ring');
+  check(w.result && w.result.kind === 'over' && w.result.winner === me, 'R held: a target low on spin is thrown out of the ring');
+  {
+    // The wall: the more spin a top has, the harder it must be thrown to go over.
+    const thrown = (ratio, speed) => { const s = setup('azure', 8); s.me.x = 0; s.me.z = 9; s.foe.x = 9; s.foe.z = 0; s.foe.spin = s.foe.spinMax * ratio; s.w.knock(s.foe, 1, 0, speed / (1 + 0.85 * (1 - ratio)) * Math.sqrt(s.foe.mass), 0.7, 2); for (let i = 0; i < 60 && !s.w.result; i++) { s.me.x = 0; s.me.z = 9; s.me.vx = s.me.vz = 0; s.w.step(DT); } return !!s.w.result && s.w.result.kind === 'over'; };
+    // (A thrown top loses a little on the way to the wall, so each is tried well clear of the line.)
+    const need = (ratio) => ARENA.ringOutSpeed + (ARENA.ringOutFull - ARENA.ringOutSpeed) * Math.max(0, (ratio - ARENA.ringOutBelow) / (1 - ARENA.ringOutBelow));
+    for (const r of [1, 0.6]) check(!thrown(r, need(r) - 6) && thrown(r, need(r) + 8), `the wall: with ${r * 100}% of its spin a top stays in at a speed of ${Math.round(need(r) - 6)}, and goes over at ${Math.round(need(r) + 8)}`);
+    check(need(1) > need(0.6) && need(0.6) > need(ARENA.ringOutBelow) && need(ARENA.ringOutBelow) === ARENA.ringOutSpeed && need(0.05) === ARENA.ringOutSpeed, 'the more spin, the faster it must be thrown; at a fifth of its spin or less, what it always took');
+    check(thrown(ARENA.ringOutBelow, 23) && thrown(0.05, 23) && !thrown(0.05, 12), 'which a spent top goes over at, as it always did');
+  }
   ({ w, me, foe, run, saw } = setup('hammer', 20));
   w.hold(me, 'R'); run(4.1);
   check(!me.hold && me.ult >= 50 && me.ult < 51, 'R held 4 seconds: wasted, at the cost of half the charge');

@@ -347,7 +347,8 @@ export class CpuBrain {
           // Toward the nearest stretch of wall.
           const n = Math.hypot(foe.x, foe.z);
           // Only worth it when the target would fly outward, toward the wall.
-          if (((foe.x - me.x) * foe.x + (foe.z - me.z) * foe.z > 0 || n < 3) && want(0.3)) return go(foe.x, foe.z);
+          // (It has to reach: the kick is a short thrust now, not something that finds its target.)
+          if (d < S.range + foe.radius - 0.4 && ((foe.x - me.x) * foe.x + (foe.z - me.z) * foe.z > 0 || n < 3) && want(0.3)) return at(this.jitter(ahead(wind), 0.4));
           break;
         }
         case 'throw': {
