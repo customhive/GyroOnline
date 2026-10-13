@@ -40,7 +40,6 @@ export const BLADES = {
     name: 'アズール・ファング', en: 'AZURE FANG', type: 'ATTACK', typeJa: 'アタック',
     color: 0x2fb8ff, css: '#2fb8ff', teeth: 3,
     atk: 1.27, def: 0.94, mass: 1.0, speed: 15.5, decay: 7.0, spinMax: 1000, cdMul: 1.0, guardMul: 1.0,
-    bars: { atk: 5, def: 2, sta: 2, spd: 5 },
     desc: '弾・瞬間移動・突進で攻めては離れるヒットアンドアウェイ型。',
   },
   gaia: {
@@ -48,7 +47,6 @@ export const BLADES = {
     name: 'ガイア・バスティオン', en: 'GAIA BASTION', type: 'DEFENSE', typeJa: 'ディフェンス',
     color: 0x4dea8a, css: '#4dea8a', teeth: 6,
     atk: 1.04, def: 1.28, mass: 1.35, speed: 12.5, decay: 5.6, spinMax: 1000, cdMul: 1.0, guardMul: 1.35,
-    bars: { atk: 2, def: 5, sta: 3, spd: 2 },
     desc: 'スタン・引き寄せ・反撃で相手を捕まえるカウンター型。',
   },
   sol: {
@@ -56,7 +54,6 @@ export const BLADES = {
     name: 'ソル・エターナル', en: 'SOL ETERNAL', type: 'STAMINA', typeJa: 'スタミナ',
     color: 0xffb52e, css: '#ffb52e', teeth: 4,
     atk: 0.96, def: 1.0, mass: 1.05, speed: 14, decay: 5.4, spinMax: 1000, cdMul: 0.9, guardMul: 1.0,
-    bars: { atk: 3, def: 3, sta: 5, spd: 3 },
     desc: '回転を吸収・回復しながら粘り勝つドレイン型。',
   },
   gale: {
@@ -64,7 +61,6 @@ export const BLADES = {
     name: 'ゲイル・ロンド', en: 'GALE RONDO', type: 'ATTACK', typeJa: 'アタック',
     color: 0xdfeaf2, css: '#dfeaf2', teeth: 4,
     atk: 1.56, def: 1.16, mass: 0.95, speed: 15.5, decay: 6.6, spinMax: 1000, cdMul: 1.0, guardMul: 1.0,
-    bars: { atk: 5, def: 2, sta: 2, spd: 5 },
     desc: 'QとEで風を溜め、竜巻で打ち上げた相手を必殺技で仕留める。',
   },
   nox: {
@@ -72,7 +68,6 @@ export const BLADES = {
     name: 'ノクス・シェイド', en: 'NOX SHADE', type: 'ATTACK', typeJa: 'アタック',
     color: 0x7a86a8, css: '#7a86a8', teeth: 3,
     atk: 1.5, def: 1.04, mass: 0.95, speed: 15.5, decay: 6.6, spinMax: 1000, cdMul: 1.0, guardMul: 1.0,
-    bars: { atk: 5, def: 1, sta: 2, spd: 5 },
     desc: '影を置き、自分と影の2方向から攻める。影とは位置を入れ替えられる。',
   },
   curtain: {
@@ -80,7 +75,6 @@ export const BLADES = {
     name: 'フィナーレ・ガンナー', en: 'FINALE GUNNER', type: 'ATTACK', typeJa: 'アタック',
     color: 0xff5fb0, css: '#ff5fb0', teeth: 4,
     atk: 1.2, def: 0.94, mass: 0.95, speed: 13.5, decay: 6.6, spinMax: 1000, cdMul: 1.0, guardMul: 1.0,
-    bars: { atk: 5, def: 2, sta: 3, spd: 2 },
     desc: '4発ごとに装填する遠距離型。4発目と、必殺技の最後の1発はダメージが大きい。',
   },
   frost: {
@@ -88,7 +82,6 @@ export const BLADES = {
     name: 'フロスト・フェニックス', en: 'FROST PHOENIX', type: 'DEFENSE', typeJa: 'ディフェンス',
     color: 0x9fd8ff, css: '#9fd8ff', teeth: 6,
     atk: 1.28, def: 1.15, mass: 1.15, speed: 12.5, decay: 5.5, spinMax: 1000, cdMul: 1.0, guardMul: 1.0,
-    bars: { atk: 3, def: 4, sta: 4, spd: 2 },
     egg: { dur: 3, hp: 150, back: 0.3 },
     desc: '凍結させた相手に大きなダメージを与え、氷の壁と吹雪で動きを制限する。1ラウンドに1度、回転が尽きても卵になり、3秒間耐えれば復活する。',
   },
@@ -97,7 +90,6 @@ export const BLADES = {
     name: 'ブロークン・エッジ', en: 'BROKEN EDGE', type: 'ATTACK', typeJa: 'アタック',
     color: 0x2ee6c0, css: '#2ee6c0', teeth: 3,
     atk: 1.15, def: 1.0, mass: 1.05, speed: 15, decay: 6.8, spinMax: 1000, cdMul: 1.0, guardMul: 1.0,
-    bars: { atk: 4, def: 3, sta: 2, spd: 4 },
     buff: { atk: 1.2 },
     desc: '短い突進をつないで張り付き、回転の減った相手を必殺技で仕留める。',
   },
@@ -106,7 +98,6 @@ export const BLADES = {
     name: 'ミラージュ・トリック', en: 'MIRAGE TRICK', type: 'ATTACK', typeJa: 'アタック',
     color: 0xb06bff, css: '#b06bff', teeth: 5,
     atk: 1.48, def: 1.06, mass: 0.92, speed: 15.5, decay: 6.2, spinMax: 1000, cdMul: 1.0, guardMul: 1.0,
-    bars: { atk: 4, def: 2, sta: 2, spd: 5 },
     buff: { atk: 1.4 },
     ghostRet: true,
     desc: '突進しては元の位置へ戻り、直前のスキルをもう一度使って攻める。',
@@ -116,7 +107,6 @@ export const BLADES = {
     name: 'ギロチン・ロード', en: 'GUILLOTINE LORD', type: 'DEFENSE', typeJa: 'ディフェンス',
     color: 0xe8402e, css: '#e8402e', teeth: 4,
     atk: 1.04, def: 1.1, mass: 1.25, speed: 12.5, decay: 6.0, spinMax: 1000, cdMul: 1.0, guardMul: 1.0,
-    bars: { atk: 4, def: 4, sta: 3, spd: 2 },
     might: 1.15,
     desc: 'Q・W・Eを当てるたびに出血を重ねる。出血が5つ重なった相手には与えるダメージが15%増え、必殺技のダメージも増える。',
   },
@@ -125,7 +115,6 @@ export const BLADES = {
     name: 'ヴェノム・トレイル', en: 'VENOM TRAIL', type: 'STAMINA', typeJa: 'スタミナ',
     color: 0xa4e22a, css: '#a4e22a', teeth: 5,
     atk: 0.95, def: 1.02, mass: 1.2, speed: 14.5, decay: 5.6, spinMax: 1000, cdMul: 1.0, guardMul: 1.0,
-    bars: { atk: 2, def: 4, sta: 5, spd: 3 },
     buff: { speed: 1.3, armor: 0.8, regen: 8 },
     desc: '通った跡を毒の床に変え、追ってくる相手にダメージを与える。近づいた相手は背後へ投げる。',
   },
@@ -134,7 +123,6 @@ export const BLADES = {
     name: 'ターレット・エンジニア', en: 'TURRET ENGINEER', type: 'STAMINA', typeJa: 'スタミナ',
     color: 0xff8448, css: '#ff8448', teeth: 6,
     atk: 1.0, def: 1.0, mass: 1.0, speed: 13.5, decay: 5.0, spinMax: 1000, cdMul: 1.0, guardMul: 1.0,
-    bars: { atk: 3, def: 2, sta: 4, spd: 3 },
     desc: '砲台を並べて陣地を作る設置型。必殺技で次のスキルを強化する。',
   },
   sand: {
@@ -142,7 +130,6 @@ export const BLADES = {
     name: 'デューン・コマンダー', en: 'DUNE COMMANDER', type: 'DEFENSE', typeJa: 'ディフェンス',
     color: 0xe6cf8a, css: '#e6cf8a', teeth: 5,
     atk: 1.05, def: 0.98, mass: 0.98, speed: 13.5, decay: 5.8, spinMax: 1000, cdMul: 1.0, guardMul: 1.0,
-    bars: { atk: 3, def: 3, sta: 3, spd: 3 },
     desc: '衛兵を置いて戦わせる設置型。必殺技の壁で相手を吹き飛ばす。',
   },
   hammer: {
@@ -150,7 +137,6 @@ export const BLADES = {
     name: 'アイアン・ハンマー', en: 'IRON HAMMER', type: 'DEFENSE', typeJa: 'ディフェンス',
     color: 0x5f8cff, css: '#5f8cff', teeth: 6,
     atk: 1.02, def: 1.15, mass: 1.3, speed: 12.5, decay: 5.9, spinMax: 1000, cdMul: 1.0, guardMul: 1.0,
-    bars: { atk: 3, def: 5, sta: 3, spd: 2 },
     pin: { dmg: 40, stun: 2 },
     desc: '相手を壁へ運んでスタンさせ、突進してくる相手はWで止める。溜めた必殺技は相手を遠くへ吹き飛ばす。',
   },
@@ -159,7 +145,6 @@ export const BLADES = {
     name: 'ナインテイル・フレア', en: 'NINE TAIL FLARE', type: 'ATTACK', typeJa: 'アタック',
     color: 0xff8fd0, css: '#ff8fd0', teeth: 5,
     atk: 1.34, def: 1.0, mass: 0.94, speed: 15.5, decay: 6.4, spinMax: 1000, cdMul: 1.0, guardMul: 1.0,
-    bars: { atk: 4, def: 2, sta: 2, spd: 5 },
     desc: '行って戻る弾と、相手を引き寄せる魅了で攻める。必殺技は3回まで使える突進。',
   },
   reaper: {
@@ -167,7 +152,6 @@ export const BLADES = {
     name: 'ハープーン・ダイバー', en: 'HARPOON DIVER', type: 'ATTACK', typeJa: 'アタック',
     color: 0x1fae8c, css: '#1fae8c', teeth: 3,
     atk: 1.36, def: 1.02, mass: 0.96, speed: 15.5, decay: 6.5, spinMax: 1000, cdMul: 1.0, guardMul: 1.0,
-    bars: { atk: 5, def: 2, sta: 2, spd: 5 },
     store: { taken: 0.25, dealt: 0, max: 120, fade: 0 },
     grey: { rate: 45 },
     desc: 'Qで相手を引き寄せ、回転が20%未満の相手を必殺技で処刑する。',
@@ -177,7 +161,6 @@ export const BLADES = {
     name: 'バレル・ブルーザー', en: 'BARREL BRUISER', type: 'DEFENSE', typeJa: 'ディフェンス',
     color: 0xc97a3a, css: '#c97a3a', teeth: 6,
     atk: 0.94, def: 1.1, mass: 1.35, speed: 12.5, decay: 5.8, spinMax: 1000, cdMul: 1.0, guardMul: 1.0,
-    bars: { atk: 3, def: 4, sta: 4, spd: 2 },
     buff: { armor: 0.8 },
     desc: '樽と突進で、相手を狙った方向へ吹き飛ばす重量級。',
   },
@@ -186,7 +169,6 @@ export const BLADES = {
     name: 'クロノ・リワインド', en: 'CHRONO REWIND', type: 'STAMINA', typeJa: 'スタミナ',
     color: 0x4af0e0, css: '#4af0e0', teeth: 4,
     atk: 1.25, def: 1.04, mass: 0.98, speed: 15, decay: 5.6, spinMax: 1000, cdMul: 1.0, guardMul: 1.0,
-    bars: { atk: 3, def: 3, sta: 4, spd: 4 },
     rewind: 4,
     desc: '行って戻る弾、中に入って爆発させる罠、突進からの瞬間移動で攻める。必殺技で4秒前の位置へ戻る。',
   },
@@ -195,7 +177,6 @@ export const BLADES = {
     name: 'メイス・タイラント', en: 'MACE TYRANT', type: 'DEFENSE', typeJa: 'ディフェンス',
     color: 0x6f9f8a, css: '#6f9f8a', teeth: 4,
     atk: 1.25, def: 1.25, mass: 1.3, speed: 12.5, decay: 5.4, spinMax: 1000, cdMul: 1.0, guardMul: 1.0,
-    bars: { atk: 4, def: 4, sta: 4, spd: 1 },
     store: { taken: 0.15, dealt: 0.45, max: 140, fade: 4 },
     // DARKNESS RISE: three blows in a row (each within `keep` of the last) light an aura for `dur`,
     // kept alight by every blow after; it burns whatever is within `r` and quickens its owner.
@@ -207,7 +188,6 @@ export const BLADES = {
     name: 'ドラゴン・ストライカー', en: 'DRAGON STRIKER', type: 'ATTACK', typeJa: 'アタック',
     color: 0xff5a3c, css: '#ff5a3c', teeth: 3,
     atk: 1.08, def: 0.98, mass: 1.0, speed: 15.5, decay: 6.9, spinMax: 1000, cdMul: 1.0, guardMul: 1.0,
-    bars: { atk: 5, def: 3, sta: 2, spd: 5 },
     buff: { leech: 0.26 },
     desc: '弾を当てた相手へ瞬間移動し、背後に回って必殺技で遠くへ吹き飛ばす。',
   },
@@ -216,7 +196,6 @@ export const BLADES = {
     name: 'ブロウラー・キング', en: 'BRAWLER KING', type: 'DEFENSE', typeJa: 'ディフェンス',
     color: 0xf0a060, css: '#f0a060', teeth: 4,
     atk: 0.88, def: 1.0, mass: 1.3, speed: 13, decay: 6.0, spinMax: 1000, cdMul: 1.0, guardMul: 1.0,
-    bars: { atk: 4, def: 4, sta: 3, spd: 2 },
     store: { taken: 1, dealt: 0, max: 110, fade: 10 },
     desc: '受けたダメージを蓄え、攻撃とバリアに変える。必殺技は相手を掴んで運び、叩きつける。',
   },
@@ -225,7 +204,6 @@ export const BLADES = {
     name: 'パウダー・キャプテン', en: 'POWDER CAPTAIN', type: 'ATTACK', typeJa: 'アタック',
     color: 0xd96a1e, css: '#d96a1e', teeth: 5,
     atk: 1.4, def: 1.08, mass: 1.0, speed: 13.5, decay: 5.9, spinMax: 1000, cdMul: 1.0, guardMul: 1.0,
-    bars: { atk: 4, def: 3, sta: 3, spd: 3 },
     desc: '樽を並べ、撃って連鎖爆発させる。必殺技はアリーナのどこへでも砲撃を降らせる。',
   },
   ash: {
@@ -233,7 +211,6 @@ export const BLADES = {
     name: 'シンダー・ネイル', en: 'CINDER NAIL', type: 'ATTACK', typeJa: 'アタック',
     color: 0xb8b0a8, css: '#b8b0a8', teeth: 3,
     atk: 1.2, def: 0.94, mass: 0.95, speed: 15.5, decay: 6.9, spinMax: 1000, cdMul: 1.0, guardMul: 1.0,
-    bars: { atk: 5, def: 2, sta: 2, spd: 5 },
     nailPop: [20, 45, 80],
     doom: { line: 0.12, per: 0.005, max: 12 },
     ignite: { pay: 0.02, bonus: 30 },
@@ -245,7 +222,6 @@ export const BLADES = {
     name: 'プリズム・レディアンス', en: 'PRISM RADIANCE', type: 'STAMINA', typeJa: 'スタミナ',
     color: 0xfff3a0, css: '#fff3a0', teeth: 6,
     atk: 1.35, def: 1.06, mass: 0.95, speed: 13.5, decay: 5.6, spinMax: 1000, cdMul: 1.0, guardMul: 1.0,
-    bars: { atk: 4, def: 2, sta: 4, spd: 3 },
     desc: '相手の移動を封じ、アリーナの端まで届く光線で撃つ遠距離型。',
   },
   canvas: {
@@ -253,7 +229,6 @@ export const BLADES = {
     name: 'ヴィジョン・アーティスト', en: 'VISION ARTIST', type: 'STAMINA', typeJa: 'スタミナ',
     color: 0x7f7bff, css: '#7f7bff', teeth: 5,
     atk: 1.46, def: 1.1, mass: 0.96, speed: 13.5, decay: 5.4, spinMax: 1000, cdMul: 1.0, guardMul: 1.0,
-    bars: { atk: 3, def: 2, sta: 5, spd: 3 },
     desc: 'Q・W・Eでパレット（赤・青・紫）を選び、もう一度Q・W・Eを押してスキルを使う。3×3で9つのスキルを使い分ける。Rはパレットを選んでいる間は取り消し、選んでいなければ必殺技。',
   },
   star: {
@@ -261,7 +236,6 @@ export const BLADES = {
     name: 'トワイライト・スター', en: 'TWILIGHT STAR', type: 'ATTACK', typeJa: 'アタック',
     color: 0xffb38a, css: '#ffb38a', teeth: 5,
     atk: 1.4, def: 1.05, mass: 0.92, speed: 15.5, decay: 6.4, spinMax: 1000, cdMul: 1.0, guardMul: 1.0,
-    bars: { atk: 5, def: 1, sta: 2, spd: 5 },
     desc: '飛ばし直して遠くから当てるほどダメージが増える弾と、時間差で眠らせる弾で攻める。Rは1秒間だけ別の位置から撃つための瞬間移動で、ゲージの必殺技は持たない。',
   },
   spark: {
@@ -269,7 +243,6 @@ export const BLADES = {
     name: 'ボルト・ランナー', en: 'VOLT RUNNER', type: 'ATTACK', typeJa: 'アタック',
     color: 0xd8ff3a, css: '#d8ff3a', teeth: 4,
     atk: 1.1, def: 1.0, mass: 0.92, speed: 16, decay: 6.6, spinMax: 1000, cdMul: 1.0, guardMul: 1.0,
-    bars: { atk: 4, def: 2, sta: 2, spd: 5 },
     buff: { speed: 1.15, atk: 1.15, extendTo: 5 },
     desc: 'Qを押している間、弾を撃ち続ける連射型。必殺技を当てると加速し、与えるダメージが増える。',
   },
@@ -278,7 +251,6 @@ export const BLADES = {
     name: 'プルーム・ダンサー', en: 'PLUME DANCER', type: 'ATTACK', typeJa: 'アタック',
     color: 0xd03a8c, css: '#d03a8c', teeth: 5,
     atk: 1.32, def: 1.0, mass: 0.95, speed: 14.5, decay: 6.4, spinMax: 1000, cdMul: 1.0, guardMul: 1.0,
-    bars: { atk: 5, def: 2, sta: 3, spd: 4 },
     plume: 'plumeshot',
     desc: '投げた羽根は床に残り、呼び戻すと通り道の相手にダメージを与える。3枚当てると移動を封じる。',
   },
@@ -287,7 +259,6 @@ export const BLADES = {
     name: 'ブラッド・クレイモア', en: 'BLOOD CLAYMORE', type: 'ATTACK', typeJa: 'アタック',
     color: 0xc81e3c, css: '#c81e3c', teeth: 3,
     atk: 1.6, def: 1.02, mass: 1.15, speed: 13.5, decay: 5.8, spinMax: 1000, cdMul: 1.0, guardMul: 1.0,
-    bars: { atk: 5, def: 3, sta: 3, spd: 3 },
     buff: { atk: 1.3, speed: 1.2, leech: 0.3 },
     desc: '形の違う3回の斬撃を、先端で当てていく。必殺技の間は攻撃力が上がって加速し、与えたダメージで回転が回復する。',
   },
@@ -296,7 +267,6 @@ export const BLADES = {
     name: 'スタイル・ランカー', en: 'STYLE RANKER', type: 'ATTACK', typeJa: 'アタック',
     color: 0xe8566a, css: '#e8566a', teeth: 4,
     atk: 1.25, def: 0.98, mass: 0.98, speed: 15.5, decay: 6.6, spinMax: 1000, cdMul: 1.0, guardMul: 1.0,
-    bars: { atk: 5, def: 2, sta: 2, spd: 5 },
     style: { max: 6, keep: 8, speed: 0.035, ranks: ['E', 'D', 'C', 'B', 'A', 'S'] },
     desc: '直前と違う攻撃（体当たり・弾・斬撃・爆撃・W・E）を当てるたびにランクが上がり、加速する。ランクSでRが使える。ゲージの必殺技は持たない。',
   },
@@ -305,7 +275,6 @@ export const BLADES = {
     name: 'ゴールデン・グレイヴ', en: 'GOLDEN GLAIVE', type: 'DEFENSE', typeJa: 'ディフェンス',
     color: 0xe8b84a, css: '#e8b84a', teeth: 4,
     atk: 0.76, def: 0.9, mass: 1.2, speed: 13.5, decay: 7.4, spinMax: 1000, cdMul: 1.0, guardMul: 1.0,
-    bars: { atk: 4, def: 4, sta: 4, spd: 2 },
     ramp: { per: 0.008, max: 12, expire: 5 },
     egg: { dur: 3, hp: 150, back: 0.5, needStack: 12 },
     desc: '攻撃を当てるたびに攻撃力が上がる（5秒間当てないと消える）。12回ぶん溜まっていれば、回転が尽きても1度だけ復活する。',
@@ -315,7 +284,6 @@ export const BLADES = {
     name: 'ルナ・アーセナル', en: 'LUNAR ARSENAL', type: 'ATTACK', typeJa: 'アタック',
     color: 0x8fb8ff, css: '#8fb8ff', teeth: 4,
     atk: 1.28, def: 0.94, mass: 0.94, speed: 13.5, decay: 6.2, spinMax: 1000, cdMul: 1.0, guardMul: 1.0,
-    bars: { atk: 5, def: 1, sta: 3, spd: 3 },
     desc: '5つの武器のうち2つを持ち、主と副を入れ替えながら戦う。使い切った武器は次の武器に替わり、次のラウンドに持ち越す。',
   },
   cosmos: {
@@ -323,7 +291,6 @@ export const BLADES = {
     name: 'ネビュラ・ドレイク', en: 'NEBULA DRAKE', type: 'STAMINA', typeJa: 'スタミナ',
     color: 0x5a6cff, css: '#5a6cff', teeth: 6,
     atk: 1.1, def: 1.0, mass: 1.05, speed: 13, decay: 5.6, spinMax: 1000, cdMul: 1.0, guardMul: 1.0,
-    bars: { atk: 3, def: 3, sta: 5, spd: 2 },
     desc: '当てるたびにエナジーが溜まり、スキルの範囲が広がる。エナジーは次のラウンドに持ち越す。',
   },
   hex: {
@@ -331,7 +298,6 @@ export const BLADES = {
     name: 'ダーク・ソーサラー', en: 'DARK SORCERER', type: 'STAMINA', typeJa: 'スタミナ',
     color: 0x9a4aff, css: '#9a4aff', teeth: 5,
     atk: 1.28, def: 1.06, mass: 0.94, speed: 13.5, decay: 5.4, spinMax: 1000, cdMul: 1.0, guardMul: 1.0,
-    bars: { atk: 3, def: 2, sta: 4, spd: 3 },
     permDmg: 0.02,
     desc: 'Qを当てるたびに魔力が溜まり、与えるダメージが2%ずつ増える（最大30回）。魔力は次のラウンドに持ち越す。',
   },
@@ -340,7 +306,6 @@ export const BLADES = {
     name: 'ガントレット・ラッシュ', en: 'GAUNTLET RUSH', type: 'ATTACK', typeJa: 'アタック',
     color: 0xff4f9a, css: '#ff4f9a', teeth: 3,
     atk: 0.86, def: 0.98, mass: 1.15, speed: 14.5, decay: 6.8, spinMax: 1000, cdMul: 1.0, guardMul: 1.0,
-    bars: { atk: 5, def: 3, sta: 3, spd: 4 },
     dent: { dmg: 16, shred: 1.2, dur: 4, window: 3 },
     desc: '溜めた突進で攻め、3回当てるたびに相手の受けるダメージを増やす。必殺技は離れた相手を追って突進し、打ち上げる。',
   },
@@ -349,7 +314,6 @@ export const BLADES = {
     name: 'アーケイン・シューター', en: 'ARCANE SHOOTER', type: 'ATTACK', typeJa: 'アタック',
     color: 0x6ae0ff, css: '#6ae0ff', teeth: 4,
     atk: 1.58, def: 1.1, mass: 0.92, speed: 15, decay: 5.9, spinMax: 1000, cdMul: 1.0, guardMul: 1.0,
-    bars: { atk: 5, def: 1, sta: 2, spd: 4 },
     desc: 'Qを当てるたびに、すべてのスキルのクールダウンが縮む射撃型。',
   },
   magus: {
@@ -357,7 +321,6 @@ export const BLADES = {
     name: 'サンダー・セージ', en: 'THUNDER SAGE', type: 'ATTACK', typeJa: 'アタック',
     color: 0x5aa8ff, css: '#5aa8ff', teeth: 5,
     atk: 1.34, def: 1.0, mass: 0.94, speed: 13, decay: 6.0, spinMax: 1000, cdMul: 1.0, guardMul: 1.0,
-    bars: { atk: 5, def: 1, sta: 3, spd: 2 },
     desc: '溜めて伸ばす光線、中心で当てるとダメージが増える落雷、遠いほど長くスタンさせる弾で攻める。必殺技はその場から、アリーナのどこへでも砲撃を落とす。',
   },
   hunger: {
@@ -365,7 +328,6 @@ export const BLADES = {
     name: 'クリムゾン・ハンガー', en: 'CRIMSON HUNGER', type: 'ATTACK', typeJa: 'アタック',
     color: 0xd4264a, css: '#d4264a', teeth: 3,
     atk: 0.66, def: 0.88, mass: 1.0, speed: 14.5, decay: 7.4, spinMax: 1000, cdMul: 1.0, guardMul: 1.0,
-    bars: { atk: 5, def: 2, sta: 3, spd: 4 },
     costPct: 0.05, bleedAll: 1, bleedLeech: 0.25,
     buff: { speed: 1.4, frenzy: 3, hunt: true, leech: 0.1 },
     pin: { dmg: 70, stun: 1.5 },
@@ -376,7 +338,6 @@ export const BLADES = {
     name: 'ボイラー・タイタン', en: 'BOILER TITAN', type: 'DEFENSE', typeJa: 'ディフェンス',
     color: 0xf2b23a, css: '#f2b23a', teeth: 4,
     atk: 1.0, def: 1.12, mass: 1.3, speed: 12.5, decay: 5.7, spinMax: 1000, cdMul: 1.0, guardMul: 1.0,
-    bars: { atk: 3, def: 4, sta: 4, spd: 2 },
     lowShield: { at: 0.3, amount: 150, hold: 5 },
     desc: 'Qで相手を手元まで引き寄せ、Eで打ち上げる。必殺技は相手のバリアを消し、0.5秒間スキルを封じる。',
   },
@@ -385,7 +346,6 @@ export const BLADES = {
     name: 'アビス・レンズ', en: 'ABYSS LENS', type: 'ATTACK', typeJa: 'アタック',
     color: 0xb04cff, css: '#b04cff', teeth: 6,
     atk: 1.42, def: 1.04, mass: 0.94, speed: 13, decay: 6.0, spinMax: 1000, cdMul: 1.0, guardMul: 1.0,
-    bars: { atk: 5, def: 1, sta: 3, spd: 2 },
     decon: { n: 3, keep: 7, dmg: 42 },
     desc: '同じ相手にスキルを3回当てると分解し、防御を無視する追加ダメージを与える。左右に分かれる弾、2回爆発する直線、カーソルを追う必殺技の光線で攻める。',
   },
@@ -394,7 +354,6 @@ export const BLADES = {
     name: 'ツイン・トリガー', en: 'TWIN TRIGGER', type: 'ATTACK', typeJa: 'アタック',
     color: 0xf4f0d8, css: '#f4f0d8', teeth: 4,
     atk: 1.62, def: 1.12, mass: 0.96, speed: 15, decay: 6.0, spinMax: 1000, cdMul: 1.0, guardMul: 1.0,
-    bars: { atk: 5, def: 2, sta: 2, spd: 5 },
     dbl: { window: 3.5, mul: 0.6, cuts: 'lightslide', cut: 2 },
     desc: 'スキルのあとの体当たりは2回当たり、そのたびにEのクールダウンが2秒縮む。',
   },
@@ -403,7 +362,6 @@ export const BLADES = {
     name: 'ロック・サーファー', en: 'ROCK SURFER', type: 'STAMINA', typeJa: 'スタミナ',
     color: 0xc98a4a, css: '#c98a4a', teeth: 5,
     atk: 1.42, def: 1.02, mass: 0.96, speed: 13.5, decay: 6.0, spinMax: 1000, cdMul: 1.0, guardMul: 1.0,
-    bars: { atk: 4, def: 2, sta: 3, spd: 3 },
     surf: 1.25,
     desc: '岩をまいた床へ相手を吹き飛ばして攻める。攻撃を受けていなければ壁際で加速し、必殺技の壁でアリーナを区切る。',
   },
@@ -412,7 +370,6 @@ export const BLADES = {
     name: 'マッド・ドクター', en: 'MAD DOCTOR', type: 'DEFENSE', typeJa: 'ディフェンス',
     color: 0x9be04a, css: '#9be04a', teeth: 4,
     atk: 0.66, def: 0.9, mass: 1.25, speed: 13, decay: 6.2, spinMax: 1000, cdMul: 1.0, guardMul: 1.0,
-    bars: { atk: 3, def: 4, sta: 5, spd: 2 },
     shrug: { cd: 15, pay: 0.04, far: 3 },
     store: { taken: 0.5, dealt: 0, max: 220, fade: 0, whileBuff: true },
     grey: { rate: 0 },
@@ -1635,6 +1592,19 @@ export const kitOf = (blade) => KEYS.map((k) => SKILLS[blade.kit[k]]);
 // The skill (if any) that powers up a blade's next body hit.
 for (const b of Object.values(BLADES)) b.emp = kitOf(b).find((S) => S.bonus) || null;
 for (const b of Object.values(BLADES)) b.hasUlt = kitOf(b).some((S) => S.ult);
+// The four bars a blade is shown with (1 to 5) are read off its own numbers, by where it stands among all the
+// blades: the fifth with the least of something get 1, the fifth with the most get 5. Blades with the same number
+// get the same bar. Stamina is how slowly spin runs down, so less decay is more of it.
+{
+  const all = Object.values(BLADES);
+  const bar = (of, better) => (b) => {
+    const below = all.filter((o) => better(of(b), of(o))).length, same = all.filter((o) => of(o) === of(b)).length;
+    return Math.min(5, 1 + Math.floor(((below + same / 2) / all.length) * 5));
+  };
+  const more = (x, y) => x > y, less = (x, y) => x < y;
+  const atk = bar((b) => b.atk, more), def = bar((b) => b.def, more), sta = bar((b) => b.decay, less), spd = bar((b) => b.speed, more);
+  for (const b of all) b.bars = { atk: atk(b), def: def(b), sta: sta(b), spd: spd(b) };
+}
 
 // Where the match is fought. `gaps` are the openings in the rim wall, as
 // [centre angle, half width] in radians, the angle measured on screen: 0 is
