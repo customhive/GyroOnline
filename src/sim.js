@@ -66,6 +66,7 @@ export function makeTop(side, blade) {
     spray: null,           // a burst of shots being fired one after another: { skill, n, every, acc, dx, dz }
     echo: null,            // a follow-up that lands a second time a moment later: { t, wi, to: [sides] }
     grab: 0,               // BACK TOSS is waiting for a body hit: time left
+    hema: false,           // the frenzy it is in is the ultimate's: stronger than the plain one
     trailZ: null,          // TOXIC LINE: the stretch of trail still being drawn out behind this top
     volley: null,          // blows landing one after another on whoever is nearest: { skill, n, every, acc, off }
     rayA: null,            // the bearing of a beam that turns to follow the cursor
@@ -153,7 +154,7 @@ export function moveTop(t, dt, opp) {
   const sr = spinRatio(t);
   const B = t.buff > 0 && t.blade.buff;
   const eased = t.slow > 0 ? 1 - (t.slowK || 0.4) : 1;
-  const slow = (t.ground > 0 ? Math.min(0.4, eased) : eased) * ((B && B.speed) || 1) * (t.haste > 0 ? 1.3 : 1) * (t.hold ? 0.8 : 1) * (t.blade.style ? 1 + t.blade.style.speed * (t.stack || 0) : 1)
+  const slow = (t.ground > 0 ? Math.min(0.4, eased) : eased) * ((B && ((t.hema && t.blade.buffUp && t.blade.buffUp.speed) || B.speed)) || 1) * (t.haste > 0 ? 1.3 : 1) * (t.hold ? skillOf(t, t.hold.key).holdSlow ?? 0.8 : 1) * (t.blade.style ? 1 + t.blade.style.speed * (t.stack || 0) : 1)
     * (t.blade.aura && t.stack >= t.blade.aura.hits ? t.blade.aura.speed : 1)
     // TOXIC LINE: quicker while the trail is being laid.
     * (t.toggle ? SKILLS.poison.speed : 1)
@@ -265,7 +266,7 @@ function ghost(t) {
   return {
     blade: t.blade, x: t.x, z: t.z, vx: t.vx, vz: t.vz, spin: t.spin, spinMax: t.spinMax,
     dir: t.dir, radius: t.radius, tumble: t.tumble, slow: t.slow, phase: t.phase, stack: t.stack,
-    ground: t.ground, buff: t.buff, haste: t.haste, up: t.up, egg: t.egg, chan: t.chan, hold: t.hold, stun: t.stun, snare: t.snare, slowK: t.slowK, still: t.still, toggle: t.toggle,
+    ground: t.ground, buff: t.buff, haste: t.haste, up: t.up, egg: t.egg, chan: t.chan, hold: t.hold, stun: t.stun, snare: t.snare, slowK: t.slowK, still: t.still, toggle: t.toggle, hema: t.hema,
     cmd: t.cmd ? { ...t.cmd } : null, dash: t.dash ? { ...t.dash } : null,
     blink: t.blink ? { ...t.blink } : null, charge: t.charge,
   };
@@ -428,7 +429,7 @@ export class World {
     if (this.practice && t.side) { t.x = (t.side - 1) * 3; t.z = 0; t.vx = t.vz = 0; }
     t.back = 0;
     t.gone = null; t.prey = t.dmarkTo = -1; t.quills = t.quillT = 0; t.realm = 0; t.flash = 1;
-    t.silence = t.dbl = t.odT = t.deN = t.deT = t.ardent = t.shrugCd = t.rockT = t.kickT = t.kickHit = 0; t.shredK = 1; t.bleedBy = t.ardentBy = -1; t.spray = null; t.volley = null; t.echo = null; t.grab = 0; t.trailZ = null; t.rayA = null; t.once = false;
+    t.silence = t.dbl = t.odT = t.deN = t.deT = t.ardent = t.shrugCd = t.rockT = t.kickT = t.kickHit = 0; t.shredK = 1; t.bleedBy = t.ardentBy = -1; t.spray = null; t.volley = null; t.echo = null; t.grab = 0; t.trailZ = null; t.hema = false; t.rayA = null; t.once = false;
     t.spin = t.spinMax;
     t.cmd = t.cast = t.dash = t.air = t.out = t.blink = t.charge = t.orbs = t.tether = t.chan = t.ret = t.hold = null;
     t.tumble = t.launch = t.guard = t.slow = t.hitCd = t.empower = 0;
@@ -545,8 +546,14 @@ export class World {
   hold(t, key) {
     if (!this.canCast(t, key) || !this.aimSkill(t, key).wind) return false;
     t.hold = { key, t: 0, dx: 0, dz: 0 };
+    if (skillOf(t, key).calm) this.calm(t);
     this.emit('hold', { top: t, key });
     return true;
+  }
+
+  // The frenzy is over.
+  calm(t) {
+    if (t.buff > 0 && t.blade.buff && t.blade.buff.frenzy) { t.buff = 0; t.hema = false; }
   }
 
   // Which way a skill being wound up is pointed. It changes nothing about the
@@ -891,10 +898,13 @@ export class World {
         break;
       }
       case 'chillingscream': {
-        // Let go early it is only a shout; drawn in full it throws its targets back.
+        // The longer the breath, the further it throws its targets; only a full one pins them to the wall.
         const pow = clamp(c.held / S.wind.full, 0, 1), full = pow >= 0.99;
-        this.lineHit(t, { ...S, dmg: S.dmg * (0.1 + 0.9 * pow), kb: full ? S.kb : 0, pinT: full ? S.pinT : 0, range: c.reach }, t.x, t.z, c.dx, c.dz);
-        if (t.buff > 0 && t.blade.buff && t.blade.buff.frenzy) t.buff = 0;
+        const hit = this.lineHit(t, { ...S, dmg: S.dmg * (0.1 + 0.9 * pow), kb: S.kb * pow, tumble: S.tumble * pow, pinT: full ? S.pinT : 0, range: c.reach }, t.x, t.z, c.dx, c.dz);
+        // Only a shout that lands gives anything back, and the more the longer it was drawn.
+        if (hit > 0) this.mend(t, S.hitHeal * pow * t.spinMax);
+        // (A CPU does not hold the key: for it the frenzy ends here.)
+        this.calm(t);
         break;
       }
       case 'paddle2': {
@@ -981,8 +991,8 @@ export class World {
       case 'bloodfrenzy':
         // A leap, then the frenzy: it runs at whoever is nearest by itself.
         this.startDash(t, S, c.dx, c.dz, clamp(c.dist, S.minDist, S.dist));
-        t.buff = S.frenzy;
-        t.re[c.key] = S.frenzy;
+        // (Within the ultimate's hunt it stays the ultimate's.)
+        t.buff = Math.max(t.buff, S.frenzy);
         break;
       case 'certaindeath':
         this.fire(t, S, c.dx, c.dz);
@@ -1690,6 +1700,8 @@ export class World {
     if (foe && t.sleep > 0 && kind !== 'dot') { dmg += Math.min(dmg, (SKILLS.bubble.wake * from.blade.atk) / t.blade.def); t.sleep = 0; t.stun = 0; }
     const B = t.buff > 0 && t.blade.buff;
     if (B && B.armor) dmg *= B.armor;
+    // The ultimate's frenzy shrugs off a part of every blow.
+    if (B && t.hema && t.blade.buffUp && t.blade.buffUp.armor) dmg *= t.blade.buffUp.armor;
     if (t.shield > 0) {
       const s = Math.min(t.shield, dmg);
       t.shield -= s; dmg -= s;
@@ -1751,7 +1763,7 @@ export class World {
         this.emit('strike', { top: t, src: from, skill: SKILLS.denting, x: t.x, z: t.z, dmg: extra });
       }
     }
-    const L = foe && from.buff > 0 && from.blade.buff && from.blade.buff.leech;
+    const L = foe && from.buff > 0 && from.blade.buff && ((from.hema && from.blade.buffUp && from.blade.buffUp.leech) || from.blade.buff.leech);
     if (L) from.spin = Math.min(from.spinMax, from.spin + dmg * L);
     return dmg;
   }
@@ -2010,6 +2022,7 @@ export class World {
     t.poison = Math.max(0, t.poison - dt);
     const lit = t.buff > 0;
     t.buff = Math.max(0, t.buff - dt);
+    if (t.buff <= 0) t.hema = false;
     const I = t.blade.ignite;
     if (I && !this.result && t.spin > 1) {
       // SOUL IGNITION: spin is burned while it lasts and handed back, with what was taken, when it ends.
@@ -3141,6 +3154,8 @@ export class World {
       thrown(s, v, D.kb, 0.55);
       s.stats.skillHits++;
       this.affect(s, v, D, 0, 0, false);
+      // BITE RUSH: the bite feeds it.
+      if (D.hitHeal) this.mend(s, D.hitHeal * s.spinMax);
       // SHIFTING SANDS: the emperor arrives behind a shield, the target goes up.
       // SHIFTING SANDS: running into someone hands the emperor one more soldier to set.
       if (D.stockHit) { const K = KEYS.map((k) => skillOf(s, k)).find((q) => q.stock); if (K) s.stk = Math.min(K.stock.max, s.stk + 1); }
@@ -3463,7 +3478,7 @@ export class World {
       const L = SKILLS[S.flyTo];
       o.air = { t: 0, T: L.air, sx: o.x, sz: o.z, tx: v.x, tz: v.z, skill: L, by: o.side, to: v.side };
       o.cmd = o.dash = null; o.stun = o.snare = o.slow = o.up = 0;
-      o.buff = S.frenzy;
+      o.buff = S.frenzy; o.hema = true;
       this.emit('leap', { top: o, tx: v.x, tz: v.z, T: L.air, skill: L });
     }
     if (S.refundSelf) { const k2 = this.keyOf(o, S.id); if (k2) o.cd[k2] *= 1 - S.refundSelf; }

@@ -1650,26 +1650,46 @@ console.log('MAGUS ASCENDANT (Xerath)');
 console.log('CRIMSON HUNGER (Briar)');
 {
   let { w, me, foe, run, saw } = setup('hunger', 4);
-  const s0 = me.spin; w.cast(me, 'Q', foe.x, foe.z);
+  me.spin = 700; const s0 = me.spin; w.cast(me, 'Q', foe.x, foe.z); const paid = me.spin;
   check(Math.abs(s0 - me.spin - s0 * 0.05) < 1, 'every skill is paid for with 5% of the spin it has');
-  check(foe.stun > 0.4 && foe.shred > 4.9 && foe.bleed === 1, 'Q: a pounce that stuns, softens for 5 seconds, and draws blood');
+  check(!!me.dash && foe.stun === 0 && foe.stats.taken === 0, 'Q: a dash the way it was aimed; nothing has landed yet');
+  for (let i = 0; i < 40 && foe.stun === 0; i++) w.step(DT);
+  check(foe.stun > 1.3 && foe.shred > 4.9 && foe.bleed === 0, 'Q: whoever it runs into is stunned for 1.5 seconds and softened for 5 (and does not bleed)');
+  check(me.spin - paid > SKILLS.headrush.hitHeal * me.spinMax - 4 && me.spin > s0, `Q: landing it gives back more than it cost (${Math.round(s0 - paid)} paid, ${Math.round(me.spin - paid)} back)`);
+  {
+    const m = setup('hunger', 4), far = Math.hypot(m.foe.x - m.me.x, m.foe.z - m.me.z);
+    m.w.cast(m.me, 'Q', m.me.x + (m.foe.z - m.me.z), m.me.z - (m.foe.x - m.me.x)); const x0 = m.me.x, z0 = m.me.z;
+    for (let i = 0; i < 40; i++) { m.foe.vx = m.foe.vz = 0; m.w.step(DT); }
+    check(m.foe.stun === 0 && m.foe.stats.taken === 0 && Math.hypot(m.me.x - x0, m.me.z - z0) > 3 && m.me.cd.Q > 8 && m.me.spin < m.me.spinMax * 0.96, `Q: aimed to one side of a top ${far.toFixed(0)} away, it goes past: the bite is wasted and its price is not`);
+  }
+  foe.stun = 0; me.dash = null; me.vx = me.vz = 0;
   const a1 = w.hurt(foe, 50, me, 'x'); foe.shred = 0; const a2 = w.hurt(foe, 50, me, 'x');
   check(Math.abs(a1 / a2 - 1.2) < 0.01, 'Q: a softened target takes 20% more');
-  me.spin = 500; foe.bleed = 5; foe.bleedT = 5; foe.bleedBy = me.side; const b0 = foe.stats.taken; run(1, true);
-  const bled = foe.stats.taken - b0;
-  check(bled > 5 && Math.abs((me.spin - 500 + 7.4) / bled - 0.25) < 0.12, `bleeding feeds it: a quarter of what bleeds comes back (${bled.toFixed(0)} bled)`);
   ({ w, me, foe, run, saw } = setup('hunger', 12));
   w.cast(me, 'W', foe.x, foe.z); for (let i = 0; i < Math.round(0.4 / DT); i++) w.step(DT);
   check(me.buff > 4 && !w.issueMove(me, 9, 9), 'W: in a frenzy, it takes no orders');
   for (let i = 0; i < Math.round(1.2 / DT); i++) { w.step(DT); foe.x = 0; foe.z = -6; foe.vx = foe.vz = 0; }
   check(Math.hypot(me.x - foe.x, me.z - foe.z) < 4, 'W: and runs at whoever is nearest by itself');
-  check(w.aimSkill(me, 'W').id === 'snackattack' && w.cast(me, 'W', me.x, me.z) && me.empower > 0, 'W again: the next bite is a heavier one');
+  check(w.aimSkill(me, 'W').id === 'bloodfrenzy' && me.re.W === 0 && !w.canCast(me, 'W'), 'W: there is no second press');
   w.hold(me, 'E');
   check(!!me.hold && !me.charge, 'E: drawing breath for as long as the key is held');
+  check(me.buff === 0 && w.issueMove(me, me.x, me.z), 'E: the frenzy ends the moment the breath is drawn');
   const d0 = w.hurt(me, 100, foe, 'x');
   check(Math.abs(d0 - 65) < 0.5, 'E: 35% less damage meanwhile');
   for (let i = 0; i < Math.round(1.1 / DT); i++) w.step(DT);
-  check(me.buff === 0 && !me.hold && me.cd.E > 10, 'E: a full breath goes off by itself, and the scream ends the frenzy');
+  check(me.buff === 0 && !me.hold && me.cd.E > 10, 'E: a full breath goes off by itself');
+  {
+    // The ultimate's hunt is the frenzy and more: quicker still, more comes back from what it deals, and it is hurt less.
+    const U = BLADES.hunger.buffUp, B = BLADES.hunger.buff, h = setup('hunger', 6);
+    h.me.ult = 100; h.w.cast(h.me, 'R', h.foe.x, h.foe.z); h.run(1.2);
+    check(h.me.hema && h.me.buff > 6 && h.me.buff <= 8, 'R: landing on its target, the hunt is on for 8 seconds');
+    h.me.spin = 500; const dealt = h.w.hurt(h.foe, 100, h.me, 'x'), got = h.me.spin - 500, took = h.w.hurt(h.me, 100, h.foe, 'x');
+    const p = setup('hunger', 6); p.w.cast(p.me, 'W', p.foe.x, p.foe.z); p.run(0.3); p.me.spin = 500;
+    const dealt2 = p.w.hurt(p.foe, 100, p.me, 'x'), got2 = p.me.spin - 500, took2 = p.w.hurt(p.me, 100, p.foe, 'x');
+    check(Math.abs(got / dealt - U.leech) < 0.01 && Math.abs(got2 / dealt2 - B.leech) < 0.01 && Math.abs(took / took2 - U.armor) < 0.01, `R: 20% of damage dealt comes back (10% in the plain frenzy), and blows land ${Math.round((1 - U.armor) * 100)}% lighter`);
+    h.w.hold(h.me, 'E');
+    check(!h.me.hema && h.me.buff === 0, 'R: drawing breath ends that too');
+  }
   {
     const s2 = setup('hunger', 9); s2.w.hold(s2.me, 'E'); s2.w.aimHold(s2.me, s2.foe.x, s2.foe.z);
     s2.run(0.95); s2.me.tumble = 0.2; s2.run(0.1);
@@ -1678,8 +1698,22 @@ console.log('CRIMSON HUNGER (Briar)');
   }
   const scream = (hold) => { const s2 = setup('hunger', 4); s2.me.spin = 600; s2.w.hold(s2.me, 'E'); s2.w.aimHold(s2.me, s2.foe.x, s2.foe.z); const sp = s2.me.spin; s2.run(hold); const healed = s2.me.spin - sp; if (hold < 1) s2.w.cast(s2.me, 'E', s2.foe.x, s2.foe.z); s2.run(0.15, false); return { ...s2, healed }; };
   const quick = scream(0.3), full = scream(1.0);
-  check(quick.foe.stats.taken > 0 && full.foe.stats.taken > quick.foe.stats.taken * 2 && full.healed > quick.healed * 2, 'E: let go early it is weaker; the longer the breath, the more it mends and the harder it hits');
-  check(Math.hypot(full.foe.vx, full.foe.vz) > 5 && Math.hypot(quick.foe.vx, quick.foe.vz) < 3 && full.foe.slowK === 0.8, 'E: only a full breath throws its target back; either way an 80% slow');
+  check(quick.foe.stats.taken > 0 && full.foe.stats.taken > quick.foe.stats.taken * 2 && Math.abs(full.healed) < 12 && Math.abs(quick.healed) < 5, 'E: let go early it is weaker; drawing breath mends nothing by itself');
+  {
+    // What it gives back, it gives for landing: the longer the breath, the more; a miss, nothing.
+    const E = SKILLS.chillingscream;
+    const shout = (hold, aimAway) => { const s2 = setup('hunger', 4); s2.me.spin = 600; s2.w.hold(s2.me, 'E'); s2.run(hold); const tx = aimAway ? s2.me.x * 2 - s2.foe.x : s2.foe.x, tz = aimAway ? s2.me.z * 2 - s2.foe.z : s2.foe.z; if (hold < 1) { const b = s2.me.spin; s2.w.cast(s2.me, 'E', tx, tz); return s2.me.spin - b; } return 0; };
+    const part = shout(0.5, false), miss = shout(0.5, true);
+    check(Math.abs(part - miss - E.hitHeal * 0.5 * 1000) < 6 && Math.abs(miss + 600 * 0.05) < 4, `E: half a breath that lands gives back half of what a full one would (${Math.round(part - miss)}); one that misses gives nothing, and is still paid for (${Math.round(miss)})`);
+    const slow = (on) => { const s2 = setup('hunger', 20); s2.foe.x = 0; s2.foe.z = -11; s2.me.x = -8; s2.me.z = 6; s2.me.vx = s2.me.vz = 0; if (on) s2.w.hold(s2.me, 'E'); for (let i = 0; i < 60; i++) { s2.w.issueMove(s2.me, 8, 6); s2.foe.x = 0; s2.foe.z = -11; s2.foe.vx = s2.foe.vz = 0; s2.w.step(DT); } return s2.me.x + 8; };
+    const free = slow(false), held = slow(true);
+    check(held < free * 0.62 && held > free * 0.38, `E: half speed while the breath is drawn (${free.toFixed(1)} -> ${held.toFixed(1)} in the same time)`);
+  }
+  {
+    // How far it throws goes with how long the breath was: a third of one, about a third as hard.
+    const half = scream(0.6), v = (r) => Math.hypot(r.foe.vx, r.foe.vz), q = v(quick), h = v(half), f = v(full);
+    check(q > 1 && h > q * 1.5 && f > h * 1.3 && f > 9 && full.foe.slowK === 0.8 && quick.foe.slowK === 0.8, `E: the longer the breath, the further its target is thrown (${q.toFixed(1)}, ${h.toFixed(1)}, ${f.toFixed(1)}); either way an 80% slow`);
+  }
   {
     // A wide strip straight ahead, not a fan: as wide at the feet as at the far end.
     const at = (x, z, hold) => { const s2 = setup('hunger', 4); s2.foe.x = s2.me.x + x; s2.foe.z = s2.me.z - z; s2.w.hold(s2.me, 'E'); s2.run(hold); s2.w.cast(s2.me, 'E', s2.me.x, s2.me.z - 9); s2.w.step(DT); return s2.foe.stats.taken > 0; };

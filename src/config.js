@@ -327,11 +327,14 @@ export const BLADES = {
     id: 'hunger', kit: { Q: 'headrush', W: 'bloodfrenzy', E: 'chillingscream', R: 'certaindeath' },
     name: 'クリムゾン・ハンガー', en: 'CRIMSON HUNGER', type: 'ATTACK', typeJa: 'アタック',
     color: 0xd4264a, css: '#d4264a', teeth: 3,
-    atk: 0.66, def: 0.88, mass: 1.0, speed: 14.5, decay: 7.4, spinMax: 1000, cdMul: 1.0, guardMul: 1.0,
-    costPct: 0.05, bleedAll: 1, bleedLeech: 0.25,
+    atk: 0.75, def: 0.88, mass: 1.0, speed: 14.5, decay: 7.4, spinMax: 1000, cdMul: 1.0, guardMul: 1.0,
+    // Every skill is paid for; BITE RUSH and CHARGE SHOUT give spin back when they land, and nothing when they miss.
+    costPct: 0.05,
+    // What the frenzy is while the ultimate's hunt is on, in place of the plain one's numbers (see `buff`).
+    buffUp: { speed: 1.7, leech: 0.2, armor: 0.8 },
     buff: { speed: 1.4, frenzy: 3, hunt: true, leech: 0.1 },
     pin: { dmg: 70, stun: 1.5 },
-    desc: 'スキルを使うたびに今の回転の5%を払い、出血させた相手から回転が回復する。Wの間は移動を操作できず、一番近い相手へ自動で突進し続ける。止める手段はEだけ。',
+    desc: 'スキルを使うたびに今の回転の5%を払う。QとEは当てると回転が回復する。Wの間は移動を操作できず、一番近い相手へ自動で突進し続ける。止める手段はEだけ。',
   },
   golem: {
     id: 'golem', kit: { Q: 'rocketgrab', W: 'overdrive', E: 'powerfist', R: 'staticfield' },
@@ -1441,28 +1444,25 @@ export const SKILLS = {
   arcanebarrage: { name: 'サンダーアーティラリー', en: 'THUNDER ARTILLERY', aim: 'ground', kind: 'blast', hidden: true, aoe: 2.2, delay: 0.5, dmg: 52, heavier: 9 },
   // ---- CRIMSON HUNGER (Briar)
   headrush: {
-    name: 'バイトラッシュ', en: 'BITE RUSH', aim: 'self', kind: 'strike', icon: 'dash', cd: 9,
-    need: 'range', range: 5.2, tp: true, dmg: 46, stun: 0.85, shredT: 5, shredK: 1.2,
-    desc: 'カーソルに一番近い相手の位置へ瞬間移動して攻撃する。0.85秒間スタンさせ、5秒間、その相手の受けるダメージを20%増やす。',
+    name: 'バイトラッシュ', en: 'BITE RUSH', aim: 'dash', kind: 'dash', icon: 'dash', cd: 9, tele: 0.3,
+    // A dash the way it was aimed, always its full length: whoever it runs into first takes the bite.
+    dist: 5.2, minDist: 5.2, speed: 34, dmg: 80, kb: 2, stun: 1.5, shredT: 5, shredK: 1.2, hitHeal: 0.13,
+    desc: '狙った方向へ突進し、最初に当たった相手を攻撃して回転が回復する。1.5秒間スタンさせ、5秒間、その相手の受けるダメージを20%増やす。',
   },
   bloodfrenzy: {
-    name: 'バーサクラン', en: 'BERSERK RUN', aim: 'dash', icon: 'buff', cd: 10, re: 'snackattack', ai: 'dash',
+    name: 'バーサクラン', en: 'BERSERK RUN', aim: 'dash', icon: 'buff', cd: 10, ai: 'dash',
     dist: 3.5, minDist: 3.5, speed: 34, frenzy: 5, halt: false,
-    desc: '短く突進し、5秒間、40%加速して一番近い相手へ自動で突進し続ける（移動は操作できない）。体当たりは周囲の相手にも当たる。もう一度押すと、次の体当たりのダメージが増え、回転が回復する。',
-  },
-  snackattack: {
-    name: 'バーサクラン', en: 'BERSERK RUN', aim: 'self', kind: 'buff', hidden: true, free: true,
-    empower: 5, bonus: 20, missing: 70, hitHeal: 0.05, kb: 4,
+    desc: '短く突進し、5秒間、40%加速して一番近い相手へ自動で突進し続ける（移動は操作できない）。体当たりは周囲の相手にも当たり、与えたダメージの10%ぶん回転が回復する。',
   },
   chillingscream: {
     name: 'チャージシャウト', en: 'CHARGE SHOUT', aim: 'line', kind: 'beam', icon: 'cone', cd: 16,
-    tele: 0.1, wind: { min: 0.15, full: 1, max: 1, auto: true }, armor: 0.65, chargeHeal: 0.11, near: 3, range: 5.2, radius: 2.2, dmg: 60, slow: 0.5, slowPct: 0.8, kb: 13, tumble: 0.6, pinT: 1,
-    desc: '長押しで最大1秒間溜める。溜めている間は受けるダメージが35%減り、回転が回復する。離すと前方の幅の広い範囲を攻撃し、0.5秒間80%のスロウにする。溜めるほど遠くまで届く。最大まで溜めると相手を吹き飛ばし、壁に当たった相手を1.5秒間スタンさせて追加ダメージを与える。使うとWの効果が終わる。',
+    tele: 0.1, wind: { min: 0.15, full: 1, max: 1, auto: true }, armor: 0.65, holdSlow: 0.5, hitHeal: 0.18, near: 3, range: 5.2, radius: 2.2, dmg: 100, slow: 0.5, slowPct: 0.8, kb: 20, tumble: 0.6, pinT: 1, calm: true,
+    desc: '長押しで最大1秒間溜める。溜めている間は50%のスロウになり、受けるダメージが35%減る。離すと前方の幅の広い範囲を攻撃して0.5秒間80%のスロウにし、当てると回転が回復する。溜めるほど遠くまで届き、遠くへ吹き飛ばし、回復も増える。最大まで溜めると、壁に当たった相手を1.5秒間スタンさせて追加ダメージを与える。使うとWの効果が終わる。',
   },
   certaindeath: {
     name: 'ハンティングダイブ', en: 'HUNTING DIVE', aim: 'line', icon: 'star', cd: 2, ult: true, ai: 'shot',
     tele: 0.4, range: 30, speed: 42, radius: 0.9, dmg: 20, flyTo: 'certainland', frenzy: 8,
-    desc: 'アリーナの端まで届く弾を撃つ。当たった相手へ跳躍し（途中で止められない）、着地点の周囲を吹き飛ばす。巻き込んだほかの相手を1.5秒間恐怖させる（操作できず、逃げる）。その後8秒間、当たった相手を追うWの効果に入る。',
+    desc: 'アリーナの端まで届く弾を撃ち、当たった相手へ跳躍する。着地点の周囲にダメージを与え、ほかの相手を1.5秒間恐怖させる。その後8秒間、強化されたWの状態になり、その相手を追い続ける。',
   },
   certainland: { name: 'ハンティングダイブ', en: 'HUNTING DIVE', aim: 'leap', hidden: true, air: 0.55, height: 4, aoe: 3.2, dmg: 90, kb: 4, track: true, scare: 1.5 },
   // ---- STEAM GOLEM (Blitzcrank)
