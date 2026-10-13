@@ -980,7 +980,9 @@ export class View {
     const spilt = [];
     for (const z of w.zones) {
       if (z.kind !== 'poison' || z.dead || this.hidden(z.owner)) continue;
-      spilt.push({ x: z.x, z: z.z, dx: z.dx, dz: z.dz, r: z.r, a: Math.min(1, z.t / 0.08 + 0.4, (z.T - z.t) / 1.1), foe: this.dangerOf(z.owner) === ENEMY_COLOR });
+      // How much life is left in it, at the end it was begun from and at the other (laid a moment later, so a little fresher).
+      const life = (age) => Math.max(0, Math.min(1, (z.T - age) / 1.4));
+      spilt.push({ x: z.x, z: z.z, dx: z.dx, dz: z.dz, r: z.r, a0: life(z.t), a1: life(Math.max(0, z.t - z.skill.every)), foe: this.dangerOf(z.owner) === ENEMY_COLOR });
     }
     this.stage.trail(spilt);
     // A disc crossing the floor: its rim lit all the way round, over the ground it covers.

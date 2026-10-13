@@ -167,7 +167,8 @@ export function createStage(canvas) {
   });
   // What is spilt on the floor (a trail of poison) is painted into a mask the floor wears, and the floor's own shader
   // turns the mask into something that looks poured there: it darkens what is under it, glows, crawls and bubbles,
-  // and is lit along its edge. Red is this player's side's, green the other side's (whose edge is drawn as a threat).
+  // and is faintly lit along its edge. Red is where this player's side's lies, green the other side's (whose edge is
+  // drawn as a threat); blue is how much life is left in it there, which runs smoothly along the trail.
   const TRAIL = 512;
   const trailCanvas = document.createElement('canvas');
   trailCanvas.width = trailCanvas.height = TRAIL;
@@ -200,8 +201,10 @@ void main() {`)
       // It crawls: two layers of noise drifting across each other.
       float n1 = trailNoise(tp * 1.2 + vec2(uTrailTime * 0.22, -uTrailTime * 0.16));
       float n2 = trailNoise(tp * 2.6 - vec2(uTrailTime * 0.35, uTrailTime * 0.27));
-      float body = smoothstep(0.32, 0.7, tm + (n1 - 0.5) * 0.22);
-      float edge = smoothstep(0.16, 0.42, tm + (n1 - 0.5) * 0.12) * (1.0 - smoothstep(0.42, 0.78, tm));
+      // It does not shrink as it goes: it thins, drying out in patches at the last.
+      float life = trl.b, left = smoothstep(0.0, 0.55, life + (n1 - 0.5) * 0.16 * (1.0 - life)) * smoothstep(0.0, 0.1, life);
+      float body = smoothstep(0.32, 0.7, tm + (n1 - 0.5) * 0.22) * left;
+      float edge = smoothstep(0.2, 0.4, tm + (n1 - 0.5) * 0.12) * (1.0 - smoothstep(0.4, 0.62, tm)) * left;
       // It bubbles: in each cell a ring swells from a point and thins out, each to its own beat.
       vec2 cell = tp * 1.7, id = floor(cell);
       float h = trailHash(id), ph = fract(uTrailTime * (0.3 + h * 0.45) + h * 9.0);
@@ -212,7 +215,7 @@ void main() {`)
       vec3 rim = trl.g > trl.r ? vec3(1.0, 0.22, 0.2) : toxic;
       diffuseColor.rgb = mix(diffuseColor.rgb, deep, body * 0.85);
       totalEmissiveRadiance = mix(totalEmissiveRadiance, toxic * (0.035 + 0.11 * n2 * n2), body * 0.92);
-      totalEmissiveRadiance += rim * edge * (0.5 + 0.22 * sin(uTrailTime * 3.5 + n1 * 6.283)) + toxic * bubble * 0.8;
+      totalEmissiveRadiance += rim * edge * (trl.g > trl.r ? 0.34 : 0.16) * (1.0 + 0.25 * sin(uTrailTime * 3.5 + n1 * 6.283)) + toxic * bubble * 0.8;
     }
   }
 #endif`);
@@ -350,7 +353,7 @@ void main() {`)
       camera.aspect = w / h;
       camera.updateProjectionMatrix();
     },
-    // What lies on the floor this frame, as stretches: [{ x, z, dx, dz, r, a (how strongly, 0 to 1), foe }].
+    // What lies on the floor this frame, as stretches: [{ x, z, dx, dz, r, a0, a1 (life left at each end, 0 to 1), foe }].
     // (Painted at the stadium's own scale: a wider arena stretches the floor, and the mask with it.)
     trail(list) {
       if (!list.length && !trailInk) return;
@@ -367,8 +370,10 @@ void main() {`)
       // Three passes, widest and faintest first: a soft shoulder for the shader to find the edge in.
       for (const [wide, strength] of [[1.08, 0.3], [0.96, 0.62], [0.82, 1]]) {
         for (const q of list) {
-          const v = Math.round(255 * Math.max(0, Math.min(1, q.a)) * strength);
-          g.strokeStyle = q.foe ? `rgb(0,${v},0)` : `rgb(${v},0,0)`;
+          // Its shape is always whole; its life is a separate thing, shading from one end to the other.
+          const v = Math.round(255 * strength), ink = (a) => `rgb(${q.foe ? 0 : v},${q.foe ? v : 0},${Math.round(255 * a)})`;
+          if (Math.abs(q.a0 - q.a1) < 0.004 || Math.hypot(q.dx, q.dz) < 0.01) g.strokeStyle = ink(q.a1);
+          else { const gr = g.createLinearGradient(q.x, q.z, q.x + q.dx, q.z + q.dz); gr.addColorStop(0, ink(q.a0)); gr.addColorStop(1, ink(q.a1)); g.strokeStyle = gr; }
           g.lineWidth = q.r * 2 * wide;
           g.beginPath();
           g.moveTo(q.x, q.z);
