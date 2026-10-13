@@ -274,10 +274,12 @@ export const BLADES = {
     id: 'glaive', kit: { Q: 'darkglaive', W: 'dreaded', E: 'aureate', R: 'grim' },
     name: 'ゴールデン・グレイヴ', en: 'GOLDEN GLAIVE', type: 'DEFENSE', typeJa: 'ディフェンス',
     color: 0xe8b84a, css: '#e8b84a', teeth: 4,
-    atk: 0.76, def: 0.9, mass: 1.2, speed: 13.5, decay: 7.4, spinMax: 1000, cdMul: 1.0, guardMul: 1.0,
-    ramp: { per: 0.008, max: 12, expire: 5 },
-    egg: { dur: 3, hp: 150, back: 0.5, needStack: 12 },
-    desc: '攻撃を当てるたびに攻撃力が上がる（5秒間当てないと消える）。12回ぶん溜まっていれば、回転が尽きても1度だけ復活する。',
+    atk: 0.6, def: 0.73, mass: 1.2, speed: 13.5, decay: 7.4, spinMax: 1000, cdMul: 1.0, guardMul: 1.0,
+    // Weak until it has built up: 0.6 with nothing, 1.2 with all twelve (the twelfth counts double).
+    ramp: { per: 1 / 24, max: 12, expire: 4 },
+    // No egg: it is down for a moment, untouchable, and up again with what it had built spent.
+    egg: { dur: 0.3, rise: true, back: 0.5, needStack: 12 },
+    desc: '攻撃を当てるたびに攻撃力が上がる（4秒間当てないと消える）。12回ぶん溜まっていれば、回転が尽きても1度だけ、回転50%で復活する。',
   },
   lunar: {
     id: 'lunar', kit: { Q: 'arsenal', W: 'phase', E: 'nextweapon', R: 'vigil' },

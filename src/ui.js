@@ -204,7 +204,8 @@ export class UI {
   // In a match: what this key does with the weapons `me` holds right now.
   // { skill: whose name and cooldown to show (the weapon's own, on its key), body: the text }, or null for an ordinary skill.
   liveDesc(me, key) {
-    const S = skillOf(me, key), A = S.lines && kitOf(me.blade).find((q) => q.weapons);
+    // (FLASH is on the bar too, and is no skill of the blade's.)
+    const S = skillOf(me, key), A = S && S.lines && kitOf(me.blade).find((q) => q.weapons);
     if (!A) return null;
     const main = SKILLS[A.weapons[me.wm]], off = SKILLS[A.weapons[me.wo]];
     if (S.weapons) return { skill: main, body: main.desc };
@@ -755,7 +756,6 @@ export class UI {
     if (S.id === 'bladecaller') { const n = world.own(me, 'feather').length; return n ? String(n) : ''; }
     if (S.id === 'keg') { const n = world.own(me, 'keg').length; return n ? String(n) : ''; }
     if (S.kind === 'buff' && S.dur) return me.buff > 0 ? Math.ceil(me.buff) + 's' : '';
-    if (me.blade.ramp && key === 'Q') return me.stack ? '+' + Math.round(me.blade.ramp.per * me.stack * 100) + '%' : '';
     return '';
   }
 

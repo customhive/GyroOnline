@@ -1095,13 +1095,15 @@ function onEvent(e) {
       game.slow = { s: 0.4, t: 0.25 };
       break;
     case 'egg':
+      if (e.top.blade.egg.rise) { audio.tone('sine', 220, 70, 0.3, 0.3); game.slow = { s: 0.35, t: 0.3 }; break; }
       audio.guard();
       popAt(e.top, 'EGG', 'word gold');
       ui.flash(e.top.blade.css, 0.3);
       break;
     case 'rebirth':
+      if (e.top.blade.egg.rise) audio.tone('sawtooth', 110, 880, 0.5, 0.12);
       audio.heal();
-      popAt(e.top, 'REBIRTH!', 'word gold');
+      popAt(e.top, e.top.blade.egg.rise ? 'REVIVE' : 'REBIRTH!', 'word gold');
       ui.flash(e.top.blade.css, 0.4);
       break;
     case 'quake':
@@ -1321,8 +1323,24 @@ function tick(now, draw) {
   while (left > 0.05) { frame(0.05, false); left -= 0.05; }
   frame(left, draw);
 }
+// One bad frame must not end the game: the loop goes on, and what went wrong is shown (once each) so it can be reported.
+const faults = new Set();
+function fault(e) {
+  const text = `${e && e.name}: ${e && e.message}\n${String((e && e.stack) || '').split('\n').slice(1, 6).map((q) => q.trim()).join('\n')}`;
+  if (faults.has(text) || faults.size > 4) return;
+  faults.add(text);
+  console.error('[frame]', e);
+  let box = document.getElementById('fault');
+  if (!box) {
+    box = document.createElement('pre');
+    box.id = 'fault';
+    box.style.cssText = 'position:fixed;left:8px;top:8px;z-index:9999;max-width:70vw;margin:0;padding:8px 10px;background:rgba(40,0,0,.9);color:#ffb0b0;font:11px/1.4 monospace;white-space:pre-wrap;user-select:text;pointer-events:auto';
+    document.body.appendChild(box);
+  }
+  box.textContent += `${box.textContent ? '\n\n' : ''}${text}`;
+}
 function loop(now) {
-  tick(now, true);
+  try { tick(now, true); } catch (e) { fault(e); }
   requestAnimationFrame(loop);
 }
 requestAnimationFrame(loop);

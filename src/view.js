@@ -379,6 +379,24 @@ export class View {
       }
       case 'egg': case 'rebirth': {
         const t = e.top, y = groundY(t.x, t.z), born = e.type === 'rebirth';
+        if (t.blade.egg.rise) {
+          // GOLDEN GLAIVE: what it had built is drawn into it and it goes dark; then a column of light, and it is up.
+          const gold = t.blade.color;
+          if (!born) {
+            W.spawn(t.x, y + 0.1, t.z, 2.6, 0.3, 0.28, gold, 1);
+            for (let i = 0; i < 40; i++) { const a = Math.random() * 6.283, r = 1.6 + Math.random() * 1.2; P.emit(t.x + Math.cos(a) * r, y + 0.3, t.z + Math.sin(a) * r, -Math.cos(a) * r * 3.4, 1, -Math.sin(a) * r * 3.4, 0.28, 0.2, gold, 0, 0); }
+          } else {
+            const pl = this.pillars[0].m.visible ? this.pillars[1] : this.pillars[0];
+            pl.t = 0; pl.T = 0.9; pl.r = 1.7; pl.m.scale.y = 0.4; pl.m.visible = true; pl.m.position.set(t.x, y, t.z); pl.m.material.color.set(gold);
+            W.spawn(t.x, y + 0.12, t.z, 0.5, 7, 0.6, gold, 1);
+            W.spawn(t.x, y + 0.14, t.z, 0.3, 4, 0.45, 0xffffff, 1);
+            P.burst(t.x, y + 0.6, t.z, 160, gold, 9, { up: 2.4, life: 0.9, size: 0.26, gravity: 6 });
+            F.flash(t.x, y + 1, t.z, 14, 0.5, gold, 1, 340);
+            this.stage.pulseRim(gold, 1); this.addShake(0.5);
+            this.tops[t.side].risen = 1.2;
+          }
+          break;
+        }
         W.spawn(t.x, y + 0.1, t.z, born ? 0.6 : 4, born ? 6 : 0.8, 0.6, ICE, 1);
         P.burst(t.x, y + 0.8, t.z, born ? 200 : 90, ICE, born ? 20 : 9, { up: 1, life: 0.8, size: 0.3, gravity: born ? 8 : -3 });
         F.flash(t.x, y + 1, t.z, born ? 16 : 8, 0.5, ICE, 1, born ? 360 : 160);
@@ -838,7 +856,9 @@ export class View {
   updateTop(t, v, dt, rdt) {
     const P = this.particles;
     const gy = groundY(t.x, t.z);
-    const egg = t.egg > 0, sr = egg ? 0.06 : spinRatio(t), c = this.colorOf(t);
+    // (GOLDEN GLAIVE is down for a moment without an egg round it.)
+    const down = t.egg > 0, egg = down && !t.blade.egg.rise, sr = down ? 0.06 : spinRatio(t), c = this.colorOf(t);
+    v.risen = Math.max(0, (v.risen || 0) - rdt);
     let lift = 0;
     if (v.hold) {
       // Hovering over the start position until the countdown ends.
@@ -894,7 +914,8 @@ export class View {
     v.aura.material.opacity = (0.1 + 0.16 * sr + (ready ? 0.22 + 0.14 * Math.sin(this.time * 9) : 0)) * (1 - v.fall);
     v.aura.visible = lift < 0.5;
     v.aura.scale.setScalar(ready ? 7.5 : 5.5);
-    v.body.emissiveIntensity = 0.14 + (ready ? 0.25 + 0.15 * Math.sin(this.time * 9) : 0) + (t.dash ? 0.8 : 0) + (t.empower > 0 ? 0.5 + 0.3 * Math.sin(this.time * 30) : 0) + (t.charge || t.chan ? 1.2 : 0) + (t.buff > 0 ? 0.45 + 0.2 * Math.sin(this.time * 14) : 0);
+    v.body.emissiveIntensity = 0.14 + (ready ? 0.25 + 0.15 * Math.sin(this.time * 9) : 0) + (t.dash ? 0.8 : 0) + (t.empower > 0 ? 0.5 + 0.3 * Math.sin(this.time * 30) : 0) + (t.charge || t.chan ? 1.2 : 0) + (t.buff > 0 ? 0.45 + 0.2 * Math.sin(this.time * 14) : 0) + (v.risen > 0 ? 2.2 * Math.min(1, v.risen) : 0);
+    if (down && !egg) v.body.emissiveIntensity = 0;
 
     const target = t.guard > 0 || egg ? 1 : t.shield > 0 ? 0.5 : 0;
     v.shieldAlpha += (target - v.shieldAlpha) * Math.min(1, rdt * 14);
@@ -1034,6 +1055,21 @@ export class View {
         if (dt > 0) for (let i = 0; i < 3; i++) { const a = Math.random() * 6.283, r = Math.sqrt(Math.random()) * AU.r; P.emit(t.x + Math.cos(a) * r, gy + 0.1, t.z + Math.sin(a) * r, 0, 1.5 + Math.random() * 2, 0, 0.6, 0.2, c, -2, 0.6); }
       } else if (AU && t.stack > 0 && !t.out) {
         for (let i = 0; i < t.stack; i++) { const a = -Math.PI / 2 + (i - (t.stack - 1) / 2) * 0.5; G.ring(t.x + Math.cos(a) * 1.9, t.z + Math.sin(a) * 1.9, 0, 0.18, c, 0.95, 0.12); }
+      }
+      // What a growing blade has built up: a dot a hit along the near side, a closed arc once it is full (it would rise
+      // again). They flicker before they go.
+      const RP = t.blade.ramp;
+      if (RP && t.stack > 0 && !t.out && !t.air && t.egg <= 0 && (!RP.expire || t.stackT > 2 || Math.sin(this.time * 30) > -0.2)) {
+        // (They grow outward from the point nearest the camera, one to each side in turn.)
+        const full = t.stack >= RP.max, step = 0.2, mid = Math.PI / 2, half = ((RP.max - 1) / 2) * step + 0.08, gold = t.blade.color;
+        if (full) {
+          // Full: the arc burns, breathes and sheds sparks.
+          const pulse = 0.5 + 0.5 * Math.sin(this.time * 9);
+          G.ring(t.x, t.z, 1.6, 2.3, gold, 0.16 + 0.14 * pulse, 0.1, mid - half - 0.1, mid + half + 0.1);
+          G.ring(t.x, t.z, 1.8, 2.08, gold, 1, 0.12, mid - half, mid + half);
+          G.ring(t.x, t.z, 1.9, 1.98, 0xffffff, 0.6 + 0.4 * pulse, 0.14, mid - half, mid + half);
+          if (dt > 0 && Math.random() < 0.5) { const a = mid + (Math.random() * 2 - 1) * half; P.emit(t.x + Math.cos(a) * 1.94, gy + 0.15, t.z + Math.sin(a) * 1.94, 0, 1.5 + Math.random() * 2.5, 0, 0.5, 0.16, gold, -2, 0.6); }
+        } else for (let i = 0; i < t.stack; i++) { const a = mid + (i - (t.stack - 1) / 2) * step; G.ring(t.x + Math.cos(a) * 1.92, t.z + Math.sin(a) * 1.92, 0, 0.13, gold, 0.95, 0.12); }
       }
       // LUNAR ARSENAL: the weapon in hand as a band round the top, so the other side can tell which it is.
       if (t.blade.id === 'lunar' && !t.out && !t.air) G.ring(t.x, t.z, 1.72, 1.92, SKILLS.arsenal.tints[t.wm], 0.9);

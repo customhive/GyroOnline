@@ -1689,7 +1689,7 @@ export class World {
       const R = from.blade.ramp;
       if (R) {
         dmg *= 1 + R.per * from.stack * (from.stack >= R.max ? 2 : 1);
-        if (kind !== 'clash' && dmg >= 8) { from.stack = Math.min(R.max, from.stack + 1); if (R.expire) from.stackT = R.expire; }
+        if (dmg >= 8) { from.stack = Math.min(R.max, from.stack + 1); if (R.expire) from.stackT = R.expire; }
       }
       if (from.blade.permDmg) dmg *= 1 + from.blade.permDmg * from.perm;
     }
@@ -1709,6 +1709,7 @@ export class World {
       t.shield -= s; dmg -= s;
       if (dmg <= 0) return 0;
     }
+    if (t.egg > 0 && t.blade.egg.rise) return 0;
     if (t.egg > 0) {
       t.eggHp -= dmg;
       if (t.eggHp <= 0) { t.egg = 0; t.spin = 0; }
@@ -1971,7 +1972,8 @@ export class World {
 
   layEgg(t) {
     const E = t.blade.egg;
-    t.eggUsed = true; t.egg = E.dur; t.eggHp = E.hp; t.spin = 1;
+    t.eggUsed = true; t.egg = E.dur; t.eggHp = E.hp || 1; t.spin = 1;
+    if (E.rise) { t.stun = t.snare = t.slow = t.charm = t.silence = t.ground = 0; t.launch = 0; }
     t.cmd = t.dash = t.cast = t.chan = t.charge = null;
     t.vx = t.vz = 0; t.up = 0; t.tumble = 0;
     this.emit('egg', { top: t });
@@ -2149,6 +2151,7 @@ export class World {
       t.egg -= dt;
       if (t.egg <= 0 && !this.result) {
         t.egg = 0; t.spin = t.spinMax * t.blade.egg.back;
+        if (t.blade.egg.rise) t.stack = t.stackT = 0;
         this.emit('rebirth', { top: t });
       }
     } else if (!this.result && t.spin > 0) {

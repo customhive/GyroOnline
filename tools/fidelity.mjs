@@ -612,8 +612,13 @@ console.log('UNSUNDERED GLAIVE (Zaahen)');
   check(a > 100 * 1.15, `growth: at the peak the bonus is doubled (${a.toFixed(0)} for 100)`);
   me.spin = 5; w.hurt(me, 50, foe, 'x'); w.step(DT);
   check(me.egg > 0 && !w.result, 'at the peak, running out of spin is not the end');
-  for (let i = 0; i < 380; i++) { w.step(DT); foe.x = 0; foe.z = -10; }
-  check(me.egg === 0 && me.spin > 400 && !w.result, 'it comes back with half its spin');
+  check(w.hurt(me, 500, foe, 'x') === 0 && me.egg > 0, 'nothing touches it while it is down');
+  for (let i = 0; i < 30; i++) w.step(DT);
+  check(me.egg > 0, 'it is down for a moment');
+  for (let i = 0; i < 12; i++) w.step(DT);
+  check(me.egg === 0 && Math.abs(me.spin - 500) < 5 && me.stack === 0 && !w.result, 'and up again within 0.3 seconds with half its spin, what it had built spent');
+  me.stack = 12; me.spin = 5; w.hurt(me, 50, foe, 'x'); w.step(DT);
+  check(w.result && w.result.winner === foe, 'once a round');
   ({ w, me, foe, run, saw } = setup('glaive', 3));
   me.spin = 5; w.hurt(me, 50, foe, 'x'); w.step(DT);
   check(w.result && w.result.winner === foe, 'without the stacks there is no second life');
