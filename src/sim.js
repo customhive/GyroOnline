@@ -952,7 +952,7 @@ export class World {
         if (!v) break;
         const k = v.markK;
         v.mark = 0;
-        const dmg = this.hurt(v, (SKILLS.sigil.pop * k * t.blade.atk) / v.blade.def, t, 'sigil');
+        const dmg = this.hurt(v, (S.pop * k * t.blade.atk) / v.blade.def, t, 'sigil');
         t.stats.skillHits++;
         // The shot itself is the other hand's, and wears its colour.
         this.emit('strike', { top: v, src: t, skill: S, x: v.x, z: v.z, dmg, ...(v.guard > 0 ? { fx: t.x, fz: t.z } : {}) });
@@ -2944,12 +2944,13 @@ export class World {
   offhand(o, v, wi = o.wo, fly = false) {
     const A = SKILLS.arsenal, F = A.off.fx[wi];
     if (this.result || !F || !targetable(v) || v.guard > 0) return;
-    const dmg = this.hurt(v, (A.off.dmg * (F.mul || 1) * o.blade.atk) / v.blade.def, o, 'offhand');
+    // (The flame's blow is its burst and nothing else: half the rifle's, but for everyone it reaches.)
+    const dmg = F.blast ? 0 : this.hurt(v, (A.off.dmg * (F.mul || 1) * o.blade.atk) / v.blade.def, o, 'offhand');
     // The chakram's blow leaves one more circling (the ultimate's, a handful).
     if (F.chak) this.gainChak(o, fly === 2 ? SKILLS.vigil.arm[wi].chak : F.chak);
     if (F.slow) this.slowBy(v, F.slow, F.slowPct);
     if (F.leech) this.mend(o, dmg * F.leech);
-    // The flame's blow bursts where it lands: everyone near, the one it struck among them, takes a little more.
+    // The flame's blow bursts where it lands: everyone near, the one it struck among them, takes the same.
     // (The ultimate's is a bigger burst.)
     if (F.blast) { const B = fly === 2 ? SKILLS.vigil.arm[wi] : F; this.burst(o, SKILLS[A.weapons[wi]], v.x, v.z, B.blast, { dmg: B.blastDmg, as: {} }); }
     this.emit('strike', { top: v, src: o, skill: SKILLS[A.weapons[wi]], x: v.x, z: v.z, dmg, light: fly !== 2, ...(fly ? { fx: o.x, fz: o.z } : {}), ...(fly === 2 ? { strong: 1 } : {}) });

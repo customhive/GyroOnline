@@ -1279,7 +1279,7 @@ console.log('LUNAR ARSENAL (Aphelios)');
   w.cast(me, 'Q', me.x, me.z); run(0.2);
   check(!w.canCast(me, 'W') && !w.canCast(me, 'R') && w.canFlash(me) && w.issueMove(me, 0, 3), 'Q with the scythe: nothing but moving and FLASH while it lasts');
   run(1.3);
-  check(me.spin > 505 && me.haste > 0 && foe.stats.taken > 60, 'Q with the scythe: blows at whoever is nearest for 1.75 seconds, healing and faster');
+  check(me.spin > 500 && me.haste > 0 && foe.stats.taken > 30, 'Q with the scythe: blows at whoever is nearest for 1.75 seconds, healing and faster');
   run(1); w.cast(me, 'W', me.x, me.z);
   check(SKILLS.arsenal.weapons[me.wm] === 'moonshot' && me.cd.Q > 0 && me.cd.Q < 2, 'W back: the rifle is still cooling down from before');
   check(foe.mark > 0 && w.aimSkill(me, 'Q').id === 'longshot' && w.canCast(me, 'Q'), 'and its mark is still on the target: the follow-up is there to be taken');
@@ -1331,7 +1331,7 @@ console.log('LUNAR ARSENAL (Aphelios)');
   }
   check(v1.me.spin > 580, 'R with the scythe: heals');
   check(v2.foe.slowK === 0.99 && v2.w.aimSkill(v2.me, 'Q').id === 'bindeclipse', 'R with gravity: all but stopped, and open to the root');
-  check(v3.foe.stats.taken > v1.foe.stats.taken + 20, 'R with the flame: more damage');
+  check(v3.seen.some((e) => e.type === 'blast' && e.r === SKILLS.vigil.arm[3].blast) && v3.foe.stats.taken > v1.foe.stats.taken + 4, 'R with the flame: its follow-up is a bigger burst');
   check(v4.me.chak === 5 && !v4.w.own(v4.me, 'sentry').length, 'R with the chakram: the follow-up leaves five chakrams, not one');
   check(!w.canCast(me, 'E'), 'E: there is none');
   {
@@ -1358,7 +1358,7 @@ console.log('LUNAR ARSENAL (Aphelios)');
       const am = s.me.wa[0], cd = s.me.cd.Q;
       s.foe.x = -9; s.foe.z = -9; s.me.spin = 500;
       s.w.cast(s.me, 'Q', s.me.x, s.me.z); s.w.step(DT);
-      check(Math.abs(s.foe.stats.taken - (SKILLS.moonshot.dmg + SKILLS.sigil.pop + off.dmg) * k) < 1 && s.foe.mark === 0 && s.me.spin > 500 + off.dmg * k - 2 && s.me.wa[0] === am && s.me.cd.Q > cd - 0.1 && s.me.re.Q === 0,
+      check(Math.abs(s.foe.stats.taken - (SKILLS.moonshot.dmg + SKILLS.longshot.pop + off.dmg) * k) < 1 && s.foe.mark === 0 && s.me.spin > 500 + off.dmg * k - 2 && s.me.wa[0] === am && s.me.cd.Q > cd - 0.1 && s.me.re.Q === 0,
         'Q again: however far off, the mark goes off and the scythe in the other hand lands a blow that heals; no shot used, once only');
       s.run(5); s.me.cd.Q = 0; s.w.cast(s.me, 'Q', s.foe.x, s.foe.z); s.run(0.6); s.run(4.5);
       check(s.foe.mark === 0 && s.w.aimSkill(s.me, 'Q').id === 'moonshot', 'left alone, the mark and the second press both run out after 4.5 seconds');
@@ -1406,8 +1406,8 @@ console.log('LUNAR ARSENAL (Aphelios)');
       hold(); m.wm = 1; m.wo = 3; m.cd.Q = 0; w3.cast(m, 'Q', m.x, m.z);
       for (let i = 0; i < 0.12 / DT; i++) { hold(); w3.step(DT); ev.push(...w3.events); w3.events.length = 0; }
       const blasts = ev.filter((e) => e.type === 'blast');
-      check(blasts.length >= 1 && Math.hypot(blasts[0].x - a.x, blasts[0].z - a.z) < 0.3 && blasts[0].r === F.blast && Math.abs(a.stats.taken - (off.dmg + F.blastDmg) * k) < 1 && Math.abs(b.stats.taken - F.blastDmg * k) < 1,
-        `scythe with the flame in the other hand: the blow bursts round whoever it struck, and the one beside it is caught (${Math.round(a.stats.taken / k)}, ${Math.round(b.stats.taken / k)})`);
+      check(blasts.length >= 1 && Math.hypot(blasts[0].x - a.x, blasts[0].z - a.z) < 0.3 && blasts[0].r === F.blast && Math.abs(a.stats.taken - F.blastDmg * k) < 1 && Math.abs(b.stats.taken - F.blastDmg * k) < 1 && F.blastDmg * 2 === off.dmg * off.fx[0].mul,
+        `scythe with the flame in the other hand: the blow is a burst round whoever it struck, the same for the one beside it, and half the rifle's blow (${Math.round(a.stats.taken / k)}, ${Math.round(b.stats.taken / k)})`);
     }
     s = setup('lunar', 8); s.me.wm = 1;
     s.w.cast(s.me, 'Q', s.me.x, s.me.z); s.run(1.8);

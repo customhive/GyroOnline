@@ -1270,7 +1270,7 @@ export const SKILLS = {
     // Each weapon has a colour of its own, on its key and on everything it fires.
     tints: [0x4fe08a, 0xff4a5a, 0xb46bff, 0x4aa8ff, 0xf2f6ff],
     // What the weapon in the other hand adds when it joins in: a light blow, and something of its own.
-    off: { dmg: 14, fx: [{ mul: 2 }, { leech: 1 }, { slow: 2.5, slowPct: 0.3 }, { blast: 4.5, blastDmg: 10 }, { chak: 1 }] },
+    off: { dmg: 7, fx: [{ mul: 2 }, { leech: 1 }, { slow: 2.5, slowPct: 0.3 }, { blast: 4.5, blastDmg: 7 }, { chak: 1 }] },
     // CRESCENDUM: chakrams circle whoever holds them (up to `max`). A follow-up of its own that lands adds one; its
     // skill adds one and then throws them all, one after another. One that strikes comes back; one that misses is lost.
     // With none gained and none landed for `dur` seconds they all go; they flicker for the last `warn` of it.
@@ -1296,7 +1296,7 @@ export const SKILLS = {
   },
   moonshot: {
     name: 'ロングライフル', en: 'LONG RIFLE', aim: 'line', kind: 'shot', hidden: true, weapon: 0, cd: 4, tint: 0x4fe08a,
-    tele: 0.45, range: 13.5, speed: 52, radius: 0.7, dmg: 46, mark: 4.5, again: 'longshot',
+    tele: 0.45, range: 13.5, speed: 52, radius: 0.7, dmg: 23, mark: 4.5, again: 'longshot',
     desc: '長射程の弾を撃つ。当てると、4.5秒以内にもう一度押して追撃。',
     briefLine: '長射程の弾。当てると、もう一度押して追撃。',
     offLine: '追撃：ダメージを与える。',
@@ -1304,11 +1304,11 @@ export const SKILLS = {
   },
   // The follow-up on a marked target, on the same key: it reaches however far off the target is,
   // sets the mark off, and the weapon in the other hand lands its blow with it.
-  longshot: { name: 'ロングライフル', en: 'LONG RIFLE', aim: 'self', hidden: true, tint: 0x4fe08a, ai: 'longshot' },
+  longshot: { name: 'ロングライフル', en: 'LONG RIFLE', aim: 'self', hidden: true, tint: 0x4fe08a, ai: 'longshot', pop: 23 },
   onslaught: {
     name: 'ドレインサイス', en: 'DRAIN SCYTHE', aim: 'self', hidden: true, weapon: 1, cd: 4, tint: 0xff4a5a, ai: 'volley',
     // Six blows in 1.75 seconds at whoever is nearest: the other hand, then the scythe, by turns.
-    dur: 1.75, shots: 6, range: 5.5, dmg: 26, leech: 0.35, haste: 1.75,
+    dur: 1.75, shots: 6, range: 5.5, dmg: 13, leech: 0.35, haste: 1.75,
     desc: '1.75秒間加速し、いちばん近い相手に攻撃と追撃を交互にする。',
     briefLine: '加速し、いちばん近い相手に攻撃と追撃を交互にする。',
     offLine: '追撃：与えたダメージぶん回転が回復する。',
@@ -1316,17 +1316,17 @@ export const SKILLS = {
   },
   gravshot: {
     name: 'グラビティキャノン', en: 'GRAVITY CANNON', aim: 'line', kind: 'shot', hidden: true, weapon: 2, cd: 5, tint: 0xb46bff,
-    tele: 0.4, range: 10, speed: 34, radius: 0.8, dmg: 30, slow: 2.5, slowPct: 0.3, eclipse: 2.5,
+    tele: 0.4, range: 10, speed: 34, radius: 0.8, dmg: 15, slow: 2.5, slowPct: 0.3, eclipse: 2.5,
     desc: '弾を撃ち、2.5秒間30%のスロウを与える。スロウ中の相手がいるときに押すと、その全員の移動を1秒間封じる。',
     briefLine: 'スロウの弾。スロウ中の相手全員の移動を封じる。',
     offLine: '追撃：2.5秒間30%のスロウを与える。',
     ultLine: '強化追撃：2.5秒間99%のスロウを与える。',
   },
-  bindeclipse: { name: 'グラビティキャノン', en: 'GRAVITY CANNON', aim: 'self', hidden: true, tint: 0xb46bff, ai: 'bindeclipse', weapon: 2, cd: 5, dmg: 40, snareT: 1, bigSnare: 1.35 },
+  bindeclipse: { name: 'グラビティキャノン', en: 'GRAVITY CANNON', aim: 'self', hidden: true, tint: 0xb46bff, ai: 'bindeclipse', weapon: 2, cd: 5, dmg: 20, snareT: 1, bigSnare: 1.35 },
   duskwave: {
     name: 'エナジーディスク', en: 'ENERGY DISC', aim: 'line', kind: 'shot', hidden: true, weapon: 3, cd: 2.5, tint: 0x4aa8ff,
     // A wide disc that drifts across the floor, slow enough to walk out of, through everyone in its way.
-    tele: 0.3, range: 12, speed: 9, radius: 2, dmg: 42, pierce: true, disc: true, kb: 0, tumble: 0, launch: 0, offhand: true,
+    tele: 0.3, range: 12, speed: 9, radius: 2, dmg: 21, pierce: true, disc: true, kb: 0, tumble: 0, launch: 0, offhand: true,
     desc: '狙った方向へ、ゆっくり進む光の円を放つ。貫通する。',
     briefLine: 'ゆっくり進む光の円を放つ。貫通する。',
     offLine: '追撃：爆発し、周囲の相手にもダメージを与える。',
@@ -1334,7 +1334,7 @@ export const SKILLS = {
   },
   chakram: {
     name: 'リターンチャクラム', en: 'RETURN CHAKRAM', aim: 'line', hidden: true, weapon: 4, cd: 3, ai: 'shot', tint: 0xf2f6ff,
-    tele: 0.3, range: 9, speed: 36, radius: 0.6, dmg: 26, every: 0.12, kb: 1, tumble: 0, launch: 0,
+    tele: 0.3, range: 9, speed: 36, radius: 0.6, dmg: 13, every: 0.12, kb: 1, tumble: 0, launch: 0,
     desc: '円月輪を1つ得て、持っている円月輪をすべて、狙った方向へ続けて撃つ。当たった円月輪は戻り、外れた円月輪は失う。',
     briefLine: '円月輪を1つ得て、持っている分を続けて撃つ。当たれば戻る。',
     offLine: '追撃：円月輪を1つ得る（5つまで）。',
@@ -1348,7 +1348,7 @@ export const SKILLS = {
   vigil: {
     name: 'ムーンバースト', en: 'MOON BURST', aim: 'line', kind: 'shot', icon: 'star', cd: 2, ult: true,
     tele: 0.4, range: 13, speed: 24, radius: 1.4, dmg: 70, splash: 4, splashDmg: 70, onHit: true,
-    arm: [{ twice: 0.18 }, { heal: 90 }, { slow: 2.5, slowPct: 0.99 }, { blast: 6.5, blastDmg: 30 }, { chak: 5 }],
+    arm: [{ twice: 0.18 }, { heal: 90 }, { slow: 2.5, slowPct: 0.99 }, { blast: 6.5, blastDmg: 14 }, { chak: 5 }],
     lines: 'ultLine',
     desc: '遅い弾を撃つ。相手に当たると爆発し、当たった相手と周囲の相手に、主の武器が強化された追撃をする。',
   },
