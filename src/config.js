@@ -1341,7 +1341,7 @@ export const SKILLS = {
   },
   blackhole: {
     name: 'ブラックホール', en: 'BLACK HOLE', aim: 'ground', kind: 'field', icon: 'field', cd: 12,
-    tele: 0.1, range: 7.4, aoe: 4, dur: 5, dps: 15, pullIn: 75, slowIn: true, star: true, gain: 1, core: 1.4, line: 0.05, perLine: 0.00026,
+    tele: 0.1, range: 7.4, aoe: 4, dur: 5, dps: 15, pullIn: 40, slowIn: true, slowPct: 0.4, star: true, gain: 1, core: 1.4, line: 0.05, perLine: 0.00026,
     desc: '狙った地点に5秒間の領域を置く。中の相手は中心へ引き寄せられ続け、中にいる間は毎秒エナジーを1得る。中心にいる回転が5%未満の相手は処刑する。エナジーが多いほど範囲が広がる。',
   },
   fallingstar: {
