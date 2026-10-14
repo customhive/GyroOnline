@@ -625,6 +625,8 @@ export class World {
     const reach = this.holdRange(t, key);
     t.hold = null;
     const re = !!((base.re || base.id === 'mimic') && t.re[key] > 0);
+    // Only the opening shot of a continuous stream announces an ultimate.
+    const streamFollowup = !!base.stream && t.streamT > 0;
     if (t.blade.painter && (base.spells || t.subj)) {
       // Two steps: a subject first (nothing happens yet), then one of its spells.
       if (!t.subj) { t.subj = KEYS.indexOf(key) + 1; this.emit('subject', { top: t, key }); return true; }
@@ -654,7 +656,7 @@ export class World {
     // The next body hit after a skill lands twice.
     if (t.blade.dbl && !re) t.dbl = t.blade.dbl.window;
     if (S.aim === 'ground' || S.aim === 'leap') { const m = this.groundTarget(t, S, ax, az); c.ax = m.x; c.az = m.z; }
-    this.emit('cast', { top: t, key, skill: S, base, ult: !!base.ult && !re, windup: c.T, dx, dz, ax: c.ax, az: c.az });
+    this.emit('cast', { top: t, key, skill: S, base, ult: !!base.ult && !re && !streamFollowup, windup: c.T, dx, dz, ax: c.ax, az: c.az });
     if (c.t <= 0) this.execute(t, c); else t.cast = c;
     return true;
   }
