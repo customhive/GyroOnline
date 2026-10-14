@@ -1002,7 +1002,7 @@ export const SKILLS = {
   },
   finalspark: {
     name: 'プリズムレイ', en: 'PRISM RAY', aim: 'line', kind: 'beam', icon: 'beam', cd: 2, ult: true,
-    tele: 0.1, charge: 1, root: true, range: 33, radius: 1.4, dmg: 325, litBonus: 0.25,
+    tele: 0.1, charge: 1, selfSnare: true, range: 33, radius: 1.4, dmg: 325, litBonus: 0.25,
     desc: '1秒間溜め、アリーナの端まで届く貫通する光線を放つ。溜めている間は移動できない。直前にスキルを当てていた相手にはダメージが25%増える。',
   },
   lightorb: { name: 'ライトボム', en: 'LIGHT BOMB', aim: 'line', hidden: true, range: 11, speed: 30, radius: 0.7, dmg: 0, friendly: true, opens: 'singularity' },
@@ -1418,7 +1418,7 @@ export const SKILLS = {
   },
   trueshot: {
     name: 'ワイドウェーブ', en: 'WIDE WAVE', aim: 'line', kind: 'shot', icon: 'beam', cd: 2, ult: true,
-    tele: 0.1, charge: 1, root: true, range: 40, speed: 40, radius: 2, dmg: 175, pierce: true,
+    tele: 0.1, charge: 1, selfSnare: true, range: 40, speed: 40, radius: 2, dmg: 175, pierce: true,
     desc: '1秒間溜め、アリーナの端まで届く幅の広い貫通する弾を放つ。溜めている間は移動できない。',
   },
   // ---- MAGUS ASCENDANT (Xerath)

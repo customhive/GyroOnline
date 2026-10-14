@@ -656,6 +656,8 @@ export class World {
     // The next body hit after a skill lands twice.
     if (t.blade.dbl && !re) t.dbl = t.blade.dbl.window;
     if (S.aim === 'ground' || S.aim === 'leap') { const m = this.groundTarget(t, S, ax, az); c.ax = m.x; c.az = m.z; }
+    // Like the continuous ray, stop steering without granting knockback immunity.
+    if (S.selfSnare) { t.cmd = null; t.snare = Math.max(t.snare, c.T + S.charge); }
     this.emit('cast', { top: t, key, skill: S, base, ult: !!base.ult && !re && !streamFollowup, windup: c.T, dx, dz, ax: c.ax, az: c.az });
     if (c.t <= 0) this.execute(t, c); else t.cast = c;
     return true;
@@ -1782,6 +1784,7 @@ export class World {
   // Throws `v` along (dx, dz) and cancels whatever it was doing.
   knock(v, dx, dz, speed, tumble, launch) {
     if (fixed(v)) return;
+    if (v.charge?.skill.selfSnare) v.charge = null;
     const k = (speed * kbMul(v)) / Math.sqrt(v.mass);
     v.vx = dx * k; v.vz = dz * k;
     v.tumble = Math.max(v.tumble, tumble);
@@ -1815,6 +1818,7 @@ export class World {
 
   stun(v, T) {
     if (fixed(v) || this.shrug(v)) return;
+    if (v.charge?.skill.selfSnare) v.charge = null;
     v.stun = Math.max(v.stun, T * CC.scale);
     v.vx = v.vz = 0;
     v.cmd = null; v.dash = null; v.cast = null; v.chan = null; v.hold = null;
