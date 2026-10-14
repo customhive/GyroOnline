@@ -2200,6 +2200,14 @@ export class World {
       a.t += dt;
       const k = Math.min(1, a.t / a.T), e = k * k * (3 - 2 * k);
       t.x = a.sx + (a.tx - a.sx) * e; t.z = a.sz + (a.tz - a.sz) * e;
+      if (a.skill.id === 'fling') {
+        // The toss hits the rim at its current flight speed, like other knockbacks.
+        const speed = 6 * k * (1 - k) / a.T;
+        t.vx = (a.tx - a.sx) * speed; t.vz = (a.tz - a.sz) * speed;
+        t.launch = Math.max(t.launch, dt);
+        this.walls(t);
+        if (!t.air || t.out) return;
+      }
       if (k >= 1) this.land(t, opp);
       return;
     }
@@ -3348,10 +3356,22 @@ export class World {
   }
 
   walls(t) {
-    if (t.air || t.out) return;
+    if (t.out) return;
+    let c;
+    if (t.air) {
+      if (t.air.skill.id !== 'fling') return;
+      const contact = wallContact(t);
+      if (!contact || (contact.open ? contact.r <= ARENA.R + 0.15 : contact.vn <= 0)) return;
+      // End the flight at contact, then use the ordinary wall / ring-out rules.
+      const vx = t.vx, vz = t.vz;
+      t.air.tx = t.x; t.air.tz = t.z;
+      this.land(t, this.other(t));
+      t.vx = vx; t.vz = vz;
+      c = contact;
+    }
     // Riding the rim: the ride itself keeps it on the wall.
     if (t.dash && t.dash.skill.slide) return;
-    const c = wallContact(t);
+    c = c || wallContact(t);
     if (c && c.open) {
       // No wall here. A warp stops at the edge; anything else that crosses it is out.
       if (t.blink) { const lim = ARENA.R - t.radius; t.x = c.nx * lim; t.z = c.nz * lim; t.blink.t = 0; return; }
@@ -3421,8 +3441,6 @@ export class World {
     let dx = t.x - opp.x, dz = t.z - opp.z;
     const d = Math.hypot(dx, dz) || 1;
     let x = t.x + (dx / d) * S.dist, z = t.z + (dz / d) * S.dist;
-    const lim = ARENA.R - 1.6, r = Math.hypot(x, z);
-    if (r > lim) { x *= lim / r; z *= lim / r; }
     opp.air = { t: 0, T: S.air, sx: opp.x, sz: opp.z, tx: x, tz: z, skill: S, by: t.side };
     opp.cmd = opp.dash = opp.cast = opp.chan = opp.charge = null; opp.vx = opp.vz = 0; opp.up = 0;
     this.emit('fling', { top: t, target: opp, tx: x, tz: z });
