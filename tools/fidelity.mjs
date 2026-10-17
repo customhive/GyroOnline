@@ -854,6 +854,16 @@ console.log('IRON REVENANT (Mordekaiser)');
   check(a.drag === 0 && claw.x === 0 && claw.z === 0, 'E: the claw waits at its placed position after the caster moves');
   w.updateZones(0.02);
   check(a.drag > 0 && b.stats.taken === missed && b.drag === 0, 'E: pulls along its line and misses targets to the side');
+  check(Math.abs(a.x - a.dragTo.x - 3.5) < 1e-6, 'E: pull destination is 3.5 units back');
+  w.updateTop(a, 0.49, me);
+  check(a.slow === 0 && a.clawSlowDelay > 0, 'E: no slow before the pull finishes');
+  w.updateTop(a, 0.02, me);
+  check(a.drag === 0 && a.slow === 0.5 && a.slowK === 0.5, 'E: pull ends with a full half second of 50% slow');
+  w.updateTop(a, 0.49, me);
+  check(a.slow > 0 && a.slowK === 0.5, 'E: slow lasts after the pull');
+  w.updateTop(a, 0.02, me);
+  check(a.slow === 0 && a.slowK === 0, 'E: slow expires after half a second');
+
 }
 
 {

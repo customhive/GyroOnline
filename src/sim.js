@@ -67,6 +67,7 @@ export function makeTop(side, blade) {
     echo: null,            // a follow-up that lands a second time a moment later: { t, wi, to: [sides] }
     grab: 0,               // BACK TOSS is waiting for a body hit: time left
     drag: 0,               // being pulled in: time left (no FLASH out of it)
+    clawSlowDelay: 0,     // delayed slow after Death Grasp finishes pulling
     dragTo: null,          // and toward whom or what
     hema: false,           // the frenzy it is in is the ultimate's: stronger than the plain one
     trailZ: null,          // TOXIC LINE: the stretch of trail still being drawn out behind this top
@@ -433,7 +434,7 @@ export class World {
     if (this.practice && t.side) { t.x = (t.side - 1) * 3; t.z = 0; t.vx = t.vz = 0; }
     t.back = 0;
     t.gone = null; t.prey = t.dmarkTo = -1; t.quills = t.quillT = 0; t.realm = 0; t.flash = 1;
-    t.silence = t.dbl = t.odT = t.deN = t.deT = t.ardent = t.shrugCd = t.rockT = t.kickT = t.kickHit = 0; t.shredK = 1; t.bleedBy = t.ardentBy = -1; t.spray = null; t.volley = null; t.echo = null; t.drag = 0; t.dragTo = null; t.grab = 0; t.trailZ = null; t.hema = false; t.rayA = null; t.once = false;
+    t.silence = t.dbl = t.odT = t.deN = t.deT = t.ardent = t.shrugCd = t.rockT = t.kickT = t.kickHit = 0; t.shredK = 1; t.bleedBy = t.ardentBy = -1; t.spray = null; t.volley = null; t.echo = null; t.drag = 0; t.clawSlowDelay = 0; t.dragTo = null; t.grab = 0; t.trailZ = null; t.hema = false; t.rayA = null; t.once = false;
     t.spin = t.spinMax;
     t.cmd = t.cast = t.dash = t.air = t.out = t.blink = t.charge = t.orbs = t.tether = t.chan = t.ret = t.hold = null;
     t.tumble = t.launch = t.guard = t.slow = t.hitCd = t.empower = 0;
@@ -1636,7 +1637,7 @@ export class World {
       const g = opp.guard > 0 ? 0.3 : 1;
       hit += this.hurt(opp, (S.dmg * mul * g * t.blade.atk) / opp.blade.def, t, S.id);
       if (g === 1) {
-        if (S.pullDist) this.pull(opp, { x: opp.x - dx * S.pullDist, z: opp.z - dz * S.pullDist }, S.pull, S.pullDist);
+        if (S.pullDist) this.pull(opp, { x: opp.x - dx * S.pullDist, z: opp.z - dz * S.pullDist }, S.pull, S.pullDist, S.id === 'deathgrasp');
         this.affect(t, opp, S, dx, dz);
       }
       t.stats.skillHits++;
@@ -1808,13 +1809,13 @@ export class World {
   }
 
   // Dragged toward `to`, never far enough to overshoot.
-  pull(v, to, speed, far = 99) {
+  pull(v, to, speed, far = 99, claw = false) {
     if (fixed(v)) return;
     const dx = to.x - v.x, dz = to.z - v.z, d = Math.hypot(dx, dz) || 1;
     // 2.3: what it takes to cover `far` before the stagger wears off.
     const sp = Math.min(speed, d * 3.2, far * 2.3);
     v.vx = (dx / d) * sp; v.vz = (dz / d) * sp;
-    v.tumble = Math.max(v.tumble, 0.5); v.drag = 0.5; v.dragTo = to; v.cmd = null; v.dash = null; v.cast = null; v.chan = null; v.hold = null;
+    v.tumble = Math.max(v.tumble, 0.5); v.drag = 0.5; v.clawSlowDelay = claw ? v.drag : 0; v.dragTo = to; v.cmd = null; v.dash = null; v.cast = null; v.chan = null; v.hold = null;
   }
 
   // Slows `v` for `T` seconds, taking `pct` of its speed (40% unless said).
@@ -2037,6 +2038,10 @@ export class World {
     // A pull sets its catch down beside whoever pulled, not into them: no clash to knock it away again.
     if (t.drag > 0 && t.dragTo && Math.hypot(t.dragTo.x - t.x, t.dragTo.z - t.z) < (t.dragTo.radius ? t.dragTo.radius + t.radius + 0.4 : 0.5)) { t.vx = 0; t.vz = 0; }
     if (t.drag <= 0) t.dragTo = null;
+    if (t.clawSlowDelay > 0) {
+      t.clawSlowDelay = Math.max(0, t.clawSlowDelay - dt);
+      if (t.clawSlowDelay === 0) this.slowBy(t, SKILLS.deathgrasp.afterSlow, SKILLS.deathgrasp.afterSlowPct);
+    }
     t.empower = Math.max(0, t.empower - dt);
     t.up = Math.max(0, t.up - dt);
     t.ground = Math.max(0, t.ground - dt);

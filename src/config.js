@@ -877,7 +877,7 @@ export const SKILLS = {
   },
   deathgrasp: {
     name: 'グラウンドクロウ', en: 'GROUND CLAW', aim: 'line', kind: 'beam', icon: 'grab', cd: 8,
-    tele: 0.2, range: 9, radius: 1.3, delay: 0.5, dmg: 40, pull: 16, pullDist: 2.5,
+    tele: 0.2, range: 9, radius: 1.3, delay: 0.5, dmg: 40, pull: 16, pullDist: 3.5, afterSlow: 0.5, afterSlowPct: 0.5,
     desc: '0.5秒後、前方の直線上にいる相手を攻撃し、手前へ引き寄せる。',
   },
   shieldheal: { name: 'リザーブバリア', en: 'RESERVE BARRIER', aim: 'self', hidden: true, heal: 0.45 },
