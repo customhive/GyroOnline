@@ -222,6 +222,14 @@ export function moveTop(t, dt, opp) {
   t.vx += ax * dt; t.vz += az * dt;
   const f = Math.exp(-drag * dt);
   t.vx *= f; t.vz *= f;
+  // Slow caps ordinary travel without changing its direction. Forced movement
+  // keeps its momentum; dash/blink already returned above.
+  if ((t.slow > 0 || t.ground > 0) && t.spin > 0 && !held && !t.still
+      && t.tumble <= 0 && !(t.drag > 0) && !(t.launch > 0) && !t.air && !t.out) {
+    const base = t.blade.speed * (t.cmd ? 1.2 * (0.55 + 0.45 * sr) : 0.3 + 0.7 * sr);
+    const limit = Math.max(0, base * slow), speed = Math.hypot(t.vx, t.vz);
+    if (speed > limit) { const k = limit / speed; t.vx *= k; t.vz *= k; }
+  }
   t.x += t.vx * dt; t.z += t.vz * dt;
 }
 
@@ -268,7 +276,7 @@ export function bounce(t, c) {
 function ghost(t) {
   return {
     blade: t.blade, x: t.x, z: t.z, vx: t.vx, vz: t.vz, spin: t.spin, spinMax: t.spinMax,
-    dir: t.dir, radius: t.radius, tumble: t.tumble, slow: t.slow, phase: t.phase, stack: t.stack,
+    dir: t.dir, radius: t.radius, tumble: t.tumble, drag: t.drag, launch: t.launch, slow: t.slow, phase: t.phase, stack: t.stack,
     ground: t.ground, buff: t.buff, haste: t.haste, up: t.up, egg: t.egg, chan: t.chan, hold: t.hold, stun: t.stun, snare: t.snare, slowK: t.slowK, still: t.still, toggle: t.toggle, hema: t.hema,
     cmd: t.cmd ? { ...t.cmd } : null, dash: t.dash ? { ...t.dash } : null,
     blink: t.blink ? { ...t.blink } : null, charge: t.charge,
@@ -1727,7 +1735,7 @@ export class World {
     }
     if (t.egg > 0 && t.blade.egg.rise) return 0;
     if (t.egg > 0) {
-      t.eggHp -= dmg;
+      t.eggHp = Math.max(0, t.eggHp - dmg);
       if (t.eggHp <= 0) { t.egg = 0; t.spin = 0; }
     } else t.spin -= dmg;
     t.stats.taken += dmg;
@@ -1821,7 +1829,18 @@ export class World {
   // Slows `v` for `T` seconds, taking `pct` of its speed (40% unless said).
   // A weaker slow never replaces a stronger one that is still running.
   slowBy(v, T, pct = 0.4) {
-    v.slowK = v.slow > 0 ? Math.max(v.slowK || 0.4, pct) : pct;
+    if (T <= 0) return;
+    const previous = v.slow > 0 ? v.slowK || 0.4 : 0;
+    const next = Math.max(previous, clamp(pct, 0, 1));
+    // Apply only the change in multiplier, once. Refreshes must not keep
+    // halving velocity, and forced movement keeps its original momentum.
+    if (next > previous && v.spin > 0 && !rooted(v) && !v.still
+        && !v.dash && !v.blink && !v.air && !v.out
+        && v.tumble <= 0 && !(v.drag > 0) && !(v.launch > 0)) {
+      const ratio = (1 - next) / (1 - previous);
+      v.vx *= ratio; v.vz *= ratio;
+    }
+    v.slowK = next;
     v.slow = Math.max(v.slow, T);
   }
 
@@ -2540,7 +2559,7 @@ export class World {
     }
     const dmg = this.hurt(opp, (S.drain * dt * t.blade.atk) / opp.blade.def, t, 'drain');
     t.spin = Math.min(t.spinMax, t.spin + dmg * S.heal);
-    opp.slow = Math.max(opp.slow, 0.15);
+    this.slowBy(opp, 0.15);
     th.acc += dmg; th.tick += dt;
     // Reported in chunks so the HUD shows a few readable numbers, not a blur.
     if (th.tick >= 0.5) {
@@ -2612,7 +2631,7 @@ export class World {
           }
           z.b += dt;
           if (z.b >= 1) { for (const o of this.tops) if (z.heal[o.side] >= 1) this.emit('heal', { top: o, amount: z.heal[o.side] }); z.heal = {}; z.b = 0; }
-          if (!this.result) for (const o of this.foes(t)) if (targetable(o) && Math.hypot(o.x - z.x, o.z - z.z) < z.r) o.slow = Math.max(o.slow, 0.2);
+          if (!this.result) for (const o of this.foes(t)) if (targetable(o) && Math.hypot(o.x - z.x, o.z - z.z) < z.r) this.slowBy(o, 0.2);
           break;
         case 'lotus':
           // c: sprung, a: when
@@ -2858,7 +2877,7 @@ export class World {
           if (z.t < S.arm) break;
           // c: it has formed, and said so
           if (!z.c) { z.c = 1; this.emit('formed', { zone: z, top: t }); }
-          if (live && d < z.r) opp.slow = Math.max(opp.slow, 0.3);
+          if (live && d < z.r) this.slowBy(opp, 0.3);
           if (targetable(t) && Math.hypot(t.x - z.x, t.z - z.z) < z.r) this.spring(z);
           break;
         case 'deathbelow': {

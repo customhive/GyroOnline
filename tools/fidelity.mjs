@@ -803,11 +803,35 @@ console.log('STAR FORGER: flight and gravity');
   let ticks = 0; for (let i = 0; i < 60; i++) { if (w.cast(me, 'Q', foe.x, foe.z)) ticks++; w.step(DT); }
   check(!!me.dash || ticks >= 3, 'W during Q: the breath goes on');
   check(ticks >= 3, `W during Q: it keeps ticking in flight (${ticks})`);
-  ({ w, me, foe, run } = setup('cosmos', 6));
-  foe.x = 3; foe.z = -3;
-  w.cast(me, 'E', 0, -3);
-  for (let i = 0; i < 120; i++) { w.step(DT); w.issueMove(foe, 12, -3); }
-  check(foe.x < 6.5, `E: a top trying to walk out is held back hard (${foe.x.toFixed(1)} after a second of walking away)`);
+  // Compare identical move orders with and without the field. It delays
+  // escape; it does not promise to hold a moving opponent inside for a second.
+  const escape = (withField) => {
+    const { w, me, foe } = setup('cosmos', 6);
+    foe.x = 3; foe.z = -3;
+    if (withField) check(w.cast(me, 'E', 0, -3), 'E: black hole is successfully placed');
+    const radius = SKILLS.blackhole.aoe + foe.radius * 0.3;
+    let exited = null, slowed = false, damaged = false, earlyDistance = 0;
+    for (let i = 0; i < 120; i++) {
+      w.step(DT); w.issueMove(foe, 12, -3);
+      if (i === 29) earlyDistance = Math.hypot(foe.x, foe.z + 3);
+      slowed ||= foe.slow > 0;
+      damaged ||= foe.stats.taken > 0;
+      if (exited === null && Math.hypot(foe.x, foe.z + 3) >= radius) exited = (i + 1) * DT;
+    }
+    return { exited, earlyDistance, slowed, damaged };
+  };
+  const freeEscape = escape(false), fieldEscape = escape(true);
+  check(fieldEscape.exited !== null && freeEscape.exited !== null && fieldEscape.exited > freeEscape.exited,
+    `E: movement escapes later with the field (${fieldEscape.exited?.toFixed(3)}s vs ${freeEscape.exited?.toFixed(3)}s)`);
+  check(fieldEscape.earlyDistance < freeEscape.earlyDistance && fieldEscape.slowed && fieldEscape.damaged,
+    'E: the field slows and damages its target, reducing outward travel');
+  {
+    const { w, me, foe } = setup('cosmos', 6);
+    foe.x = 3; foe.z = -3; w.cast(me, 'E', 0, -3);
+    const zone = w.own(me, 'blackhole')[0];
+    w.fieldOn(zone, me, foe, zone.skill, 3, DT);
+    check(foe.vx < 0, 'E: field force points toward its centre');
+  }
 }
 
 console.log('SPARK SURGE: the laser');

@@ -8,7 +8,7 @@
 import { SKILLS, KEYS } from './config.js';
 import { initZone } from './sim.js';
 
-export const PROTOCOL = 22;
+export const PROTOCOL = 23;
 export const PKT_SNAPSHOT = 1, PKT_PING = 2, PKT_PONG = 3;
 
 const SKILL_IDS = Object.keys(SKILLS);
@@ -66,7 +66,8 @@ function writeTop(w, t) {
     | (t.charge ? F_CHARGE : 0) | (t.orbs ? F_ORBS : 0) | (t.tether ? F_TETHER : 0));
   if (t.cmd) { w.i16(t.cmd.x * POS); w.i16(t.cmd.z * POS); w.u8(t.cmd.t * 100); }
   for (const d of [t.dash, t.blink]) if (d) { w.u16(skillNo(d.skill)); w.i16(d.dx * DIR); w.i16(d.dz * DIR); w.u8(d.t * 250); }
-  if (t.air) { const a = t.air; w.u16(skillNo(a.skill)); w.u8(a.by); w.u8(a.t * 200); w.i16(a.sx * POS); w.i16(a.sz * POS); w.i16(a.tx * POS); w.i16(a.tz * POS); }
+  // A throw can land beyond the rim and outside the compact position range.
+  if (t.air) { const a = t.air; w.u16(skillNo(a.skill)); w.u8(a.by); w.u8(a.t * 200); w.f32(a.sx); w.f32(a.sz); w.f32(a.tx); w.f32(a.tz); }
   if (t.out) { w.u8(t.out.t * 50); w.i16(t.out.y * 100); w.i16(t.out.vy * 100); }
   if (t.charge) { const c = t.charge; w.u16(skillNo(c.skill)); w.u8(c.t * 150); w.i16((c.dx || 0) * DIR); w.i16((c.dz || 0) * DIR); }
   if (t.orbs) { const o = t.orbs; w.u16(skillNo(o.skill)); w.u8(o.alive); w.u8(o.t * 40); w.u16((((o.ang % TAU) + TAU) % TAU) * 10000); w.u8(o.cd * 200); }
@@ -119,7 +120,7 @@ function readTop(r, t) {
   t.blink = f & F_BLINK ? readDash(r) : null;
   if (f & F_AIR) {
     const skill = skillAt(r.u16());
-    t.air = { skill, by: r.u8() & 1, t: r.u8() / 200, T: skill.air, sx: r.i16() / POS, sz: r.i16() / POS, tx: r.i16() / POS, tz: r.i16() / POS };
+    t.air = { skill, by: r.u8() & 1, t: r.u8() / 200, T: skill.air, sx: r.f32(), sz: r.f32(), tx: r.f32(), tz: r.f32() };
   } else t.air = null;
   t.out = f & F_OUT ? { t: r.u8() / 50, y: r.i16() / 100, vy: r.i16() / 100 } : null;
   if (f & F_CHARGE) { const skill = skillAt(r.u16()); t.charge = { t: r.u8() / 150, T: skill.charge, skill, ...readDir(r) }; } else t.charge = null;

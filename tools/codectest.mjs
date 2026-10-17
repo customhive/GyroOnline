@@ -28,6 +28,34 @@ for (const t of a.tops) { t.ult = 100; t.cd.Q = 0; t.cd.R = 0; t.tumble = 0; t.x
 applySnapshot(b, encodeSnapshot(a, { seq: 2, ack: 0, timeLeft: 60 }));
 for (const k of KEYS) for (const i of [0, 1]) check(a.canCast(a.tops[i], k) === b.canCast(b.tops[i], k), `canCast ${k} differs for top ${i}`);
 
+// Regression: a throw near either rim must retain its actual landing point.
+{
+  const source = new World(BLADES.venom, BLADES.reaper, 7);
+  const copy = new World(BLADES.venom, BLADES.reaper, 7);
+  for (const sign of [-1, 1]) {
+    const [thrower, victim] = source.tops;
+    Object.assign(thrower, { x: sign * 11, z: 0 });
+    Object.assign(victim, { x: sign * 10, z: 0 });
+    source.toss(thrower, victim);
+    check(Math.abs(victim.air.tx) > 16.384, 'throw regression must exceed old wire limit');
+    applySnapshot(copy, encodeSnapshot(source, { seq: 0, ack: 0, timeLeft: 60 }));
+    for (const field of ['sx', 'sz', 'tx', 'tz']) {
+      check(Math.abs(victim.air[field] - copy.tops[1].air[field]) < 0.001, 'throw coordinate survives: ' + field);
+    }
+  }
+}
+// Regression: lethal damage to an egg has the same zero health on both peers.
+{
+  const source = new World(BLADES.frost, BLADES.gear, 7);
+  const copy = new World(BLADES.frost, BLADES.gear, 7);
+  const [victim, attacker] = source.tops;
+  source.layEgg(victim);
+  source.hurt(victim, victim.eggHp + 30, attacker, 'test');
+  check(victim.eggHp === 0 && victim.egg === 0 && victim.spin === 0, 'egg destruction normalizes health without reviving');
+  applySnapshot(copy, encodeSnapshot(source, { seq: 0, ack: 0, timeLeft: 60 }));
+  check(copy.tops[0].eggHp === victim.eggHp && copy.tops[0].egg === 0 && copy.tops[0].spin === 0, 'destroyed egg matches on both peers');
+}
+
 // Every blade, mid-fight: bots play a round while each state is copied to a
 // second world through the codec and compared field by field. A reader that
 // falls out of step with the writer shows up at once as garbage.
