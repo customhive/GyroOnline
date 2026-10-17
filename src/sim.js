@@ -1022,6 +1022,10 @@ export class World {
         if (p) { p.dead = true; this.splitPlasma(t, p.x, p.z, p.dx, p.dz, 0); this.emit('projEnd', { proj: p, x: p.x, z: p.z }); }
         break;
       }
+      case 'deathgrasp':
+        // The claw stays where it was placed; its owner is free to move.
+        this.zone(t, S, t.x, t.z, { dx: c.dx, dz: c.dz });
+        break;
       case 'voidrift':
         this.lineHit(t, S, t.x, t.z, c.dx, c.dz);
         this.zone(t, SKILLS.riftz, t.x, t.z, { dx: c.dx, dz: c.dz });
@@ -1628,10 +1632,13 @@ export class World {
     let hit = 0, target = null;
     for (const opp of this.foes(t)) {
       const rx = opp.x - x, rz = opp.z - z, along = rx * dx + rz * dz, side = Math.abs(-rx * dz + rz * dx);
-      if (!(targetable(opp) && !this.result && along > -1 && along < S.range + opp.radius && side < S.radius + opp.radius * 0.6)) continue;
+      if (!(targetable(opp) && !this.result && along > -1 && along < S.range + (S.id === 'deathgrasp' ? 0 : opp.radius) && side < S.radius + opp.radius * 0.6)) continue;
       const g = opp.guard > 0 ? 0.3 : 1;
       hit += this.hurt(opp, (S.dmg * mul * g * t.blade.atk) / opp.blade.def, t, S.id);
-      if (g === 1) this.affect(t, opp, S, dx, dz);
+      if (g === 1) {
+        if (S.pullDist) this.pull(opp, { x: opp.x - dx * S.pullDist, z: opp.z - dz * S.pullDist }, S.pull, S.pullDist);
+        this.affect(t, opp, S, dx, dz);
+      }
       t.stats.skillHits++;
       target = target || opp;
     }
@@ -1710,6 +1717,8 @@ export class World {
     if (B && B.armor) dmg *= B.armor;
     // The ultimate's frenzy shrugs off a part of every blow.
     if (B && t.hema && t.blade.buffUp && t.blade.buffUp.armor) dmg *= t.blade.buffUp.armor;
+    const AU = foe && from.blade.aura;
+    if (AU && kind !== 'wall' && kind !== 'dot') { from.stack = Math.min(AU.hits, from.stack + 1); from.stackT = from.stack >= AU.hits ? AU.dur : AU.keep; }
     if (t.shield > 0) {
       const s = Math.min(t.shield, dmg);
       t.shield -= s; dmg -= s;
@@ -1731,8 +1740,7 @@ export class World {
     }
     if (kind === 'dot') return dmg;
     // DARKNESS RISE: the third blow in a row lights the aura; every one after keeps it lit.
-    const AU = foe && from.blade.aura;
-    if (AU && kind !== 'wall') { from.stack = Math.min(AU.hits, from.stack + 1); from.stackT = from.stack >= AU.hits ? AU.dur : AU.keep; }
+
     if (foe) {
       t.scar = SCAR;
       if (from.dmark > 0 && kind !== 'deathmark' && (from.dmarkTo < 0 || from.dmarkTo === t.side)) from.dacc += dmg;
@@ -2377,12 +2385,17 @@ export class World {
       const { dx, dz } = t.charge;
       t.charge = null;
       let hit = 0, tg = null;
-      for (const opp of this.foes(t)) {
+      const victims = this.foes(t).filter((opp) => {
         const rx = opp.x - t.x, rz = opp.z - t.z, along = rx * dx + rz * dz, side = Math.abs(-rx * dz + rz * dx);
-        if (!(targetable(opp) && along > -1 && along < S.range && side < S.radius + opp.radius * 0.6)) continue;
+        return targetable(opp) && along > -1 && along < S.range && side < S.radius + opp.radius * 0.6;
+      });
+      for (const opp of victims) {
         const g = opp.guard > 0 ? 0.3 : 1;
         hit += this.hurt(opp, (S.dmg * (S.litBonus && opp.scar > 0 ? 1 + S.litBonus : 1) * g * t.blade.atk) / opp.blade.def, t, S.id);
-        if (g === 1) this.affect(t, opp, S, dx, dz);
+        if (g === 1) {
+          if (S.pull) this.pull(opp, { x: opp.x - dx * S.pullDist, z: opp.z - dz * S.pullDist }, S.pull, S.pullDist);
+          this.affect(t, opp, S, dx, dz);
+        }
         t.stats.skillHits++;
         tg = tg || opp;
       }
@@ -2736,6 +2749,7 @@ export class World {
           }
           break;
         }
+        case 'deathgrasp':
         case 'riftz':
           if (z.t < z.T) break;
           z.dead = true;

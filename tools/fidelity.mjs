@@ -829,6 +829,34 @@ console.log('VAULT BREAKER: the shockwave');
 
 console.log('IRON REVENANT (Mordekaiser)');
 {
+  const w = new World([BLADES.iron, BLADES.gaia, BLADES.gaia], { seed: 7 });
+  const [me, a, b] = w.tops;
+  me.x = me.z = 0; a.x = 4; a.z = 0; a.vx = a.vz = 0; b.x = 4; b.z = 8;
+  const slam = () => { me.charge = { skill: SKILLS.obliterate, dx: 1, dz: 0 }; w.chargeDone(me, a); };
+  slam(); const single = a.stats.taken;
+  check(a.vx === 0 && a.vz === 0, 'Q: no knockback');
+  a.x = 6; const beforeRange = a.stats.taken; slam();
+  check(a.stats.taken === beforeRange, 'Q: original 5.6 range does not reach a target at 6');
+  a.x = 4;
+  a.stats.taken = 0; b.z = 0.5; slam();
+  check(Math.abs(single - a.stats.taken) < 1e-6, 'Q: single and multiple targets take the same damage');
+  me.stack = 0; a.shield = 1000;
+  for (let i = 0; i < 3; i++) w.hurt(a, 10, me, 'obliterate');
+  check(me.stack === 3, 'passive: shielded enemies still count as landed hits');
+  me.store = 300; me.cd.W = 0; w.cast(me, 'W', 0, 0);
+  check(me.shield === 300, 'W: a full bank grants a 300-point shield');
+  me.cd.E = 0; w.cast(me, 'E', 9, 0);
+  const claw = w.own(me, 'deathgrasp')[0];
+  check(!!claw && !me.charge && me.cd.E === 8, 'E: places a claw with eight-second cooldown, without charging');
+  check(w.issueMove(me, 0, 8), 'E: movement is accepted immediately after placement');
+  me.x = 0; me.z = 8; b.z = 4; const missed = b.stats.taken;
+  w.updateZones(0.49);
+  check(a.drag === 0 && claw.x === 0 && claw.z === 0, 'E: the claw waits at its placed position after the caster moves');
+  w.updateZones(0.02);
+  check(a.drag > 0 && b.stats.taken === missed && b.drag === 0, 'E: pulls along its line and misses targets to the side');
+}
+
+{
   let { w, me, foe, run, saw } = setup('iron', 5);
   w.cast(me, 'Q', foe.x, foe.z); run(0.4);
   check(!!me.charge && foe.stats.taken === 0, 'Q: half a second of winding up');
@@ -842,8 +870,11 @@ console.log('IRON REVENANT (Mordekaiser)');
   check(Math.abs(s1 - 45) < 3 && Math.abs(me.store - s1 - 15) < 3, `W: banks 45% of damage dealt and 15% of damage taken (${s1.toFixed(0)}, ${(me.store - s1).toFixed(0)})`);
   me.store = 100; me.spin = 500; w.cast(me, 'W', me.x, me.z);
   check(me.shield === 100 && me.re.W > 0, 'W: the bank becomes a shield, and the key can be pressed again');
+  check(!w.canCast(me, 'W'), 'W: cannot consume the shield during the first half second');
+  run(0.51);
+  const healBefore = me.spin, shieldBefore = me.shield;
   w.cast(me, 'W', me.x, me.z);
-  check(me.shield === 0 && Math.abs(me.spin - 545) < 1, 'W again: 45% of what is left of the shield becomes spin');
+  check(me.shield === 0 && Math.abs(me.spin - healBefore - shieldBefore * 0.45) < 1, 'W again: 45% of the remaining shield becomes spin');
   ({ w, me, foe, run, saw } = setup('iron', 6));
   const d0 = Math.hypot(me.x - foe.x, me.z - foe.z);
   w.cast(me, 'E', foe.x, foe.z); run(0.35);
@@ -860,7 +891,7 @@ console.log('IRON REVENANT (Mordekaiser)');
   const ring = w.own(me, 'realmz')[0];
   check(me.realm === 1 && foe.realm === 1 && !!ring && ring.r === 7 && saw('realm'), 'R: the two are shut in a ring of 7');
   const big = w.hurt(foe, 50, me, 'x'), small = w.hurt(me, 50, foe, 'x');
-  check(Math.abs(big / plain - 1.5) < 0.01 && Math.abs(small / took - 2 / 3) < 0.01, 'R: a fifth of the other\'s attack and defence: 1.5 times dealt, two thirds taken');
+  check(Math.abs(big / plain - 1.5) < 0.01 && Math.abs(small / took - 2 / 3) < 0.01, 'R: original damage adjustment, 1.5 dealt and two thirds taken');
   foe.x = ring.x + 20; foe.vx = 9; w.step(DT);
   check(Math.hypot(foe.x - ring.x, foe.z - ring.z) <= 7 - foe.radius + 1e-6 && foe.vx < 0, 'R: neither can leave the ring');
   run(7);

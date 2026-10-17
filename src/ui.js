@@ -682,12 +682,13 @@ export class UI {
       const S = skillOf(me, k);
       const s = this.skills[k], cd = me.cd[k], total = S.cd * me.blade.cdMul;
       // While the recast window is open the key is live again, whatever the cooldown says.
-      const again = !!S.re && me.re[k] > 0;
+      const recastPause = S.id === 'indestructible' && me.re[k] > S.window - S.pause ? me.re[k] - (S.window - S.pause) : 0;
+      const again = !!S.re && me.re[k] > 0 && recastPause <= 0;
       const charging = !again && S.ult && me.ult < 100;
       // A stocked skill with nothing left in store is waiting for the next one to
       // come back, however short its own cooldown: it shows that wait, and is not lit.
       const empty = !!S.stock && me.stk <= 0;
-      const wait = empty ? Math.max(cd, S.stock.every - me.stkT) : cd, span = empty ? S.stock.every : total;
+      const wait = recastPause > 0 ? recastPause : empty ? Math.max(cd, S.stock.every - me.stkT) : cd, span = recastPause > 0 ? S.pause : empty ? S.stock.every : total;
       const ready = again || (wait <= 0 && !charging);
       s.cd.style.setProperty('--p', charging || again ? 0 : Math.min(1, wait / span));
       s.num.textContent = again ? '' : charging ? Math.floor(me.ult) + '%' : wait > 0 ? (wait < 1 ? wait.toFixed(1) : Math.ceil(wait)) : '';
@@ -730,6 +731,9 @@ export class UI {
     if (S.weapon !== undefined) return kitOf(me.blade).find((q) => q.weapons).short[S.weapon] + me.wa[S.weapon];
     if (S.id === 'bindeclipse') return '縛';
     switch (S.id) {
+      case 'indestructible':
+        if (me.re[key] > 0) return me.re[key] > S.window - S.pause ? '' : '↩';
+        return me.store >= 1 ? String(Math.round(me.store)) : '';
       case 'inferno': return me.stack ? me.blade.style.ranks[Math.min(me.stack, me.blade.style.max) - 1] : '';
       case 'nextweapon': return 'NEXT';
       case 'galeq': return me.stack >= S.stacks ? '竜巻' : me.stack ? String(me.stack) : '';

@@ -177,11 +177,11 @@ export const BLADES = {
     name: 'メイス・タイラント', en: 'MACE TYRANT', type: 'DEFENSE', typeJa: 'ディフェンス',
     color: 0x6f9f8a, css: '#6f9f8a', teeth: 4,
     atk: 1.25, def: 1.25, mass: 1.3, speed: 12.5, decay: 5.4, spinMax: 1000, cdMul: 1.0, guardMul: 1.0,
-    store: { taken: 0.15, dealt: 0.45, max: 140, fade: 4 },
+    store: { taken: 0.15, dealt: 0.45, max: 300, fade: 4 },
     // DARKNESS RISE: three blows in a row (each within `keep` of the last) light an aura for `dur`,
     // kept alight by every blow after; it burns whatever is within `r` and quickens its owner.
     aura: { hits: 3, keep: 4, dur: 4, r: 3.4, dps: 9, speed: 1.09 },
-    desc: '攻撃を3回続けて当てると4秒間、9%加速し、周囲の相手にダメージを与え続ける（当て続けるかぎり続く）。与えたダメージを蓄えてバリアに変える。必殺技は相手1人と自分を7秒間、輪の中に閉じ込める。',
+    desc: '攻撃を3回続けて当てると4秒間、9%加速し、周囲の相手にダメージを与え続ける。',
   },
   dragon: {
     id: 'dragon', kit: { Q: 'sonicwave', W: 'safeguard', E: 'tempest', R: 'dragonrage' },
@@ -867,18 +867,18 @@ export const SKILLS = {
   // ---- IRON REVENANT: every blow is banked -----------------------------------
   obliterate: {
     name: 'メイスドロップ', en: 'MACE DROP', aim: 'line', kind: 'beam', icon: 'blast', cd: 4,
-    tele: 0.2, charge: 0.5, root: true, range: 5.6, radius: 1.3, dmg: 72, kb: 4,
+    tele: 0.2, charge: 0.5, root: true, range: 5.6, radius: 1.3, dmg: 72, kb: 0,
     desc: '0.5秒間溜め、前方の直線を叩く。溜めている間は移動できない。',
   },
   indestructible: {
-    name: 'リザーブバリア', en: 'RESERVE BARRIER', aim: 'self', kind: 'buff', icon: 'shield', cd: 8, re: 'shieldheal', window: 4,
-    storeShield: true, min: 30, max: 140, hold: 4,
-    desc: '与えたダメージと受けたダメージの蓄えを、4秒間のバリアに変える。その間にもう一度押すと、残ったバリアの45%ぶん回転が回復する。',
+    name: 'リザーブバリア', en: 'RESERVE BARRIER', aim: 'self', kind: 'buff', icon: 'shield', cd: 8, re: 'shieldheal', window: 4, pause: 0.5,
+    storeShield: true, min: 0, max: 300, hold: 4,
+    desc: '与えたダメージの45%と受けたダメージの15%を最大300まで蓄え、4秒間のバリアに変える。もう一度押すと、残ったバリアの45%ぶん回転が回復する。',
   },
   deathgrasp: {
-    name: 'グラウンドクロウ', en: 'GROUND CLAW', aim: 'ground', kind: 'blast', icon: 'grab', cd: 8,
-    tele: 0.2, range: 6.5, aoe: 2.3, delay: 0.5, dmg: 40, pull: 16,
-    desc: '狙った地点を0.5秒後に攻撃し、範囲内の相手を引き寄せる。',
+    name: 'グラウンドクロウ', en: 'GROUND CLAW', aim: 'line', kind: 'beam', icon: 'grab', cd: 8,
+    tele: 0.2, range: 9, radius: 1.3, delay: 0.5, dmg: 40, pull: 16, pullDist: 2.5,
+    desc: '0.5秒後、前方の直線上にいる相手を攻撃し、手前へ引き寄せる。',
   },
   shieldheal: { name: 'リザーブバリア', en: 'RESERVE BARRIER', aim: 'self', hidden: true, heal: 0.45 },
   realm: {

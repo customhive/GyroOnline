@@ -1322,6 +1322,7 @@ export class View {
       return true;
     }
     if (z.kind === 'undertowz') { G.ring(z.x, z.z, 0.9, 1.05, c, 0.7); G.ring(z.x, z.z, 0, 0.9 * k, c, 0.25); if (dt > 0 && Math.random() < 0.5) speck(c, 2, -2); return true; }
+    if (z.kind === 'deathgrasp') { G.lane(z.x, z.z, z.dx, z.dz, S.range, S.radius, col, 0.18 + 0.12 * k, 0.9); return true; }
     if (z.kind === 'riftz') { G.lane(z.x, z.z, z.dx, z.dz, S.range + 1.2, S.radius, col, 0.12 + 0.1 * Math.sin(this.time * 30), 0.9); return true; }
     if (z.kind === 'boulders') {
       // Scattered stones over a fan: slow to cross, and they go off under anything thrown across.

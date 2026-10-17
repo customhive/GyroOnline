@@ -8,7 +8,7 @@
 import { SKILLS, KEYS } from './config.js';
 import { initZone } from './sim.js';
 
-export const PROTOCOL = 20;
+export const PROTOCOL = 21;
 export const PKT_SNAPSHOT = 1, PKT_PING = 2, PKT_PONG = 3;
 
 const SKILL_IDS = Object.keys(SKILLS);
@@ -60,7 +60,7 @@ function writeTop(w, t) {
   // Whom its follow-ups go to, and whom its death mark is on.
   w.u8(((t.prey + 1) & 7) | (((t.dmarkTo + 1) & 7) << 3)); w.u8(t.silence * 100); w.u8(t.realm | (t.flash > 0 ? 8 : 0) | (t.chak << 4) | (t.chak && t.chakT < 2 ? 128 : 0));
   w.u8(Math.ceil(t.stun * 100)); w.u8(Math.ceil(t.snare * 100)); w.u8(t.slowK * 100);
-  w.u8(t.haste * 50); w.u8(Math.ceil(t.charm * 100)); w.u8(t.pin * 100); w.u8(t.store); w.u8(t.tag); w.u8(t.tagT * 25); w.u8(t.perm);
+  w.u8(t.haste * 50); w.u8(Math.ceil(t.charm * 100)); w.u8(t.pin * 100); w.u16(t.store); w.u8(t.tag); w.u8(t.tagT * 25); w.u8(t.perm);
   w.u8((t.toggle ? G_TOGGLE : 0) | (t.eggUsed ? G_EGGUSED : 0) | (t.chan ? G_CHAN : 0) | (t.ret ? G_RET : 0) | (t.dash && t.dash.hit ? G_DASHHIT : 0) | (t.charmDir < 0 ? G_FEAR : 0) | (t.hold ? G_HOLD : 0) | (t.ret2 ? G_RET2 : 0));
   w.u8((t.cmd ? F_CMD : 0) | (t.dash ? F_DASH : 0) | (t.blink ? F_BLINK : 0) | (t.air ? F_AIR : 0) | (t.out ? F_OUT : 0)
     | (t.charge ? F_CHARGE : 0) | (t.orbs ? F_ORBS : 0) | (t.tether ? F_TETHER : 0));
@@ -108,7 +108,7 @@ function readTop(r, t) {
   for (const k of KEYS) t.re[k] = r.u8() / 20;
   { const a = r.u8(), b = r.u8(); t.wm = a & 7; t.wo = (a >> 3) & 7; t.hema = !!(a & 64); t.wa[t.wm] = b & 15; t.wa[t.wo] = b >> 4; const c = r.u8(); t.wq[0] = c & 15; t.subj = c >> 4; const d = r.u8(); t.prey = (d & 7) - 1; t.dmarkTo = ((d >> 3) & 7) - 1; t.silence = r.u8() / 100; const rb = r.u8(); t.realm = rb & 7; t.flash = rb & 8 ? 1 : 0; t.chak = (rb >> 4) & 7; if (t.chak) t.chakT = rb & 128 ? Math.min(Math.max(t.chakT, 0.3), 2) : Math.max(t.chakT, 2.5); }
   t.stun = r.u8() / 100; t.snare = r.u8() / 100; t.slowK = r.u8() / 100;
-  t.haste = r.u8() / 50; t.charm = r.u8() / 100; t.pin = r.u8() / 100; t.store = r.u8(); t.tag = r.u8(); t.tagT = r.u8() / 25; t.perm = r.u8();
+  t.haste = r.u8() / 50; t.charm = r.u8() / 100; t.pin = r.u8() / 100; t.store = r.u16(); t.tag = r.u8(); t.tagT = r.u8() / 25; t.perm = r.u8();
   const g = r.u8();
   t.toggle = !!(g & G_TOGGLE); t.eggUsed = !!(g & G_EGGUSED); t.charmDir = g & G_FEAR ? -1 : 1;
   const f = r.u8();

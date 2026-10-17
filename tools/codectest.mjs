@@ -8,6 +8,13 @@ import { encodeSnapshot, applySnapshot, packEvent, reviveEvent } from '../src/ne
 let bad = 0;
 const check = (ok, msg) => { if (!ok) { bad++; if (bad < 40) console.log('FAIL', msg); } };
 const a = new World(BLADES.azure, BLADES.sol, 1), b = new World(BLADES.azure, BLADES.sol, 1);
+// The shield bank must survive values above the old one-byte limit.
+for (const bank of [0, 140, 255, 256, 299, 300]) {
+  a.tops[0].store = bank;
+  applySnapshot(b, encodeSnapshot(a, { seq: 0, ack: 0, timeLeft: 60 }));
+  check(b.tops[0].store === bank, 'shield bank round-trip: ' + bank);
+}
+a.tops[0].store = 0;
 for (let u = 0; u <= 100; u += 0.25) {
   a.tops[0].ult = u; a.tops[1].ult = 100 - u;
   applySnapshot(b, encodeSnapshot(a, { seq: 1, ack: 0, timeLeft: 60 }));
